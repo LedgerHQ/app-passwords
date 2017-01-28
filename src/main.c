@@ -24,12 +24,10 @@
 
 #include "glyphs.h"
 
+#include "binary_keyboard.h"
 #include "ctr_drbg.h"
 #include "hid_mapping.h"
 #include "password_generation.h"
-
-#include "bui.h"
-#include "bui_keyboard.h"
 
 #define META_NONE 0x00
 #define META_ERASED 0xFF
@@ -416,7 +414,7 @@ unsigned int ui_confirm_create_nanos_button(unsigned int button_mask,
     switch (button_mask) {
     case BUTTON_EVT_RELEASED | BUTTON_RIGHT:
         // confirm
-        write_metadata(bui_keyboard_get_typed(), bui_keyboard_get_typed_size());
+        write_metadata(bkb_type_buff, bkb_get_type_buff_size());
     // no break intentional
 
     case BUTTON_EVT_RELEASED | BUTTON_LEFT:
@@ -601,7 +599,9 @@ unsigned int ui_idle_nanos_button(unsigned int button_mask,
         }
         if (ui_idle_nanos_state == 1) {
             createEntry = 1;
-            bui_keyboard_init();
+            bkb_init();
+            bkb_draw();
+            bkb_display_ready();
         }
         break;
     }
@@ -825,14 +825,20 @@ unsigned int handle_button_push_create_entry(unsigned int button_mask,
     switch (button_mask) {
     case BUTTON_EVT_RELEASED | BUTTON_LEFT | BUTTON_RIGHT:
         createEntry = 0;
-        os_memmove(metaName, bui_keyboard_get_typed(),
-                   bui_keyboard_get_typed_size());
-        metaName[bui_keyboard_get_typed_size()] = '\0';
+        os_memmove(metaName, bkb_type_buff, bkb_get_type_buff_size());
+        metaName[bkb_get_type_buff_size()] = '\0';
         ui_confirm_create_nanos_state = 0;
         UX_DISPLAY(ui_confirm_create_nanos, ui_confirm_create_nanos_prepro);
         break;
-    default:
-        bui_keyboard_event_button_push(button_mask, button_mask_counter);
+    case BUTTON_EVT_RELEASED | BUTTON_LEFT:
+        bkb_choose_left();
+        bkb_draw();
+        bkb_display_ready();
+        break;
+    case BUTTON_EVT_RELEASED | BUTTON_RIGHT:
+        bkb_choose_right();
+        bkb_draw();
+        bkb_display_ready();
         break;
     }
     return 0;
@@ -872,7 +878,7 @@ unsigned char io_event(unsigned char channel) {
         if (!createEntry) {
             UX_DISPLAYED_EVENT({});
         } else {
-            bui_keyboard_event_display_processed();
+            bkb_display_ready();
         }
         break;
 
@@ -887,6 +893,8 @@ unsigned char io_event(unsigned char channel) {
                 }
             });
             break;
+        } else {
+            bkb_animate(100);
         }
     }
 
@@ -913,8 +921,6 @@ void app_exit(void) {
 __attribute__((section(".boot"))) int main(void) {
     // exit critical section
     __asm volatile("cpsie i");
-
-    bui_init();
 
     UX_INIT();
 

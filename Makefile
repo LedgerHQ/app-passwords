@@ -68,9 +68,9 @@ $(GLYPH_DESTC) $(GLYPH_DESTH): $(GLYPH_FILES) $(BOLOS_SDK)/icon.py
 # SOURCE_FILES  := $(foreach path, $(SOURCE_PATH),$(shell find $(path) | grep -E "\.c$$|\.s") ) $(GLYPH_DESTC)
 # INCLUDES_PATH := $(dir $(shell find $(BOLOS_SDK)/lib_stusb* | grep "\.h$$")) include $(BOLOS_SDK)/include $(BOLOS_SDK)/include/arm
 
-SOURCE_PATH   := src bolos-user-interface/src $(BOLOS_SDK)/src $(dir $(shell find $(BOLOS_SDK)/lib_stusb | grep "\.c$$"))
+SOURCE_PATH   := src bui/src $(BOLOS_SDK)/src $(dir $(shell find $(BOLOS_SDK)/lib_stusb | grep "\.c$$"))
 SOURCE_FILES  := $(foreach path, $(SOURCE_PATH),$(shell find $(path) | grep -E "\.c$$|\.s") ) $(GLYPH_DESTC)
-INCLUDES_PATH := $(dir $(shell find $(BOLOS_SDK)/lib_stusb | grep "\.h$$")) include src bolos-user-interface/include $(BOLOS_SDK)/include $(BOLOS_SDK)/include/arm
+INCLUDES_PATH := $(dir $(shell find $(BOLOS_SDK)/lib_stusb | grep "\.h$$")) include src bui/include $(BOLOS_SDK)/include $(BOLOS_SDK)/include/arm
 
 
 ### platform definitions
@@ -83,6 +83,8 @@ DEFINES   += PRINTF\(...\)=
 DEFINES   += HAVE_IO_USB HAVE_L4_USBLIB IO_USB_MAX_ENDPOINTS=6 IO_HID_EP_LENGTH=64 HAVE_USB_APDU
 DEFINES   += LEDGER_MAJOR_VERSION=$(APPVERSION_M) LEDGER_MINOR_VERSION=$(APPVERSION_N) LEDGER_PATCH_VERSION=$(APPVERSION_P) TCS_LOADER_PATCH_VERSION=0
 DEFINES   += MAX_METADATAS=4096 MAX_METANAME=20
+DEFINES   += BUI_FONT_CHOOSE BUI_FONT_INCLUDE_LUCIDA_CONSOLE_8
+#DEFINES   += BKB_ANIMATE
 
 APPNAME ="Passwd"
 #ICONNAME=/dev/null
