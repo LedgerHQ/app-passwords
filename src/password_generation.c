@@ -15,14 +15,22 @@
 *  limitations under the License.
 ********************************************************************************/
 
+#include <string.h>
 #include "os.h"
 #include "cx.h"
 #include "password_generation.h"
 
-static const uint8_t LETTERS[] =
-    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
-static const uint8_t NUMBERS[] = "0123456789";
-static const uint8_t SPECIALS[] = "@&-():;!?,/.';";
+static const uint8_t *SETS[] = {
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
+    "abcdefghijklmnopqrstuvwxyz",
+    "0123456789",
+    "-",
+    "_",
+    " ",
+    "\"#$%&'*+,./:;=?@\\^`|~",
+    "[]{}()<>",
+    NULL
+};
 
 uint8_t rng_u8_modulo(mbedtls_ctr_drbg_context *drbg, uint8_t modulo) {
     uint32_t rng_max = 256 % modulo;
@@ -47,24 +55,46 @@ void shuffle_array(mbedtls_ctr_drbg_context *drbg, uint8_t *buffer,
     }
 }
 
-uint32_t generate_password(mbedtls_ctr_drbg_context *drbg, uint32_t numLetters,
-                           uint32_t numSpecials, uint32_t numNumbers,
-                           uint8_t *out) {
-    uint8_t tmp[60];
+/* Sample from set with replacement */
+void sample(mbedtls_ctr_drbg_context *drbg, const uint8_t *set,
+            uint32_t setSize, uint8_t *out, uint32_t size) {
+    uint32_t i;
+    for (i = 0; i < size; i++) {
+        uint32_t index = rng_u8_modulo(drbg, setSize);
+        out[i] = set[index];
+    }
+}
+
+uint32_t generate_password(mbedtls_ctr_drbg_context *drbg, setmask_t setMask,
+                           const uint8_t *minFromSet,
+                           uint8_t *out, uint32_t size) {
+    uint8_t setChars[100];
+    uint32_t setCharsOffset = 0;
     uint32_t outOffset = 0;
-    os_memmove(tmp, LETTERS, sizeof(LETTERS));
-    shuffle_array(drbg, tmp, sizeof(LETTERS) - 1);
-    os_memmove(out + outOffset, tmp, numLetters);
-    outOffset += numLetters;
-    os_memmove(tmp, SPECIALS, sizeof(SPECIALS));
-    shuffle_array(drbg, tmp, sizeof(SPECIALS) - 1);
-    os_memmove(out + outOffset, tmp, numSpecials);
-    outOffset += numSpecials;
-    os_memmove(tmp, NUMBERS, sizeof(NUMBERS));
-    shuffle_array(drbg, tmp, sizeof(NUMBERS) - 1);
-    os_memmove(out + outOffset, tmp, numNumbers);
-    outOffset += numNumbers;
-    shuffle_array(drbg, out, outOffset);
-    out[outOffset] = '\0';
-    return outOffset;
+    uint32_t i;
+
+    for (i = 0; setMask && i < NUM_SETS; i++, setMask >>= 1) {
+        if (setMask & 1) {
+            const uint8_t *set = (const uint8_t*) PIC(SETS[i]);
+            uint32_t setSize = strlen((const char*)set);
+            os_memcpy(setChars + setCharsOffset, set, setSize);
+            setCharsOffset += setSize;
+            if (minFromSet[i] > 0) {
+                if (outOffset + minFromSet[i] > size) {
+                    THROW(EXCEPTION);
+                }
+                sample(drbg, set, setSize, out + outOffset, minFromSet[i]);
+                outOffset += minFromSet[i];
+            }
+        }
+    }
+
+    if (setMask || setCharsOffset == 0) {
+        THROW(EXCEPTION);
+    }
+
+    sample(drbg, setChars, setCharsOffset, out + outOffset, size - outOffset);
+    shuffle_array(drbg, out, size);
+    out[size] = '\0';
+    return size;
 }

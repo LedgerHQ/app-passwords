@@ -67,6 +67,8 @@ WIDE internalStorage_t N_storage_real;
 
 static const uint8_t EMPTY_REPORT[] = {0x00, 0x00, 0x00};
 
+static const uint8_t DEFAULT_MIN_SET[] = {1,1,1,0,0,1,0,0};
+
 uint8_t entropyProvided;
 uint8_t entropy[32];
 
@@ -80,8 +82,8 @@ int entropyProvider2(void *context, unsigned char *buffer, size_t bufferSize) {
 }
 
 void type_password(uint8_t *data, uint32_t dataSize, uint8_t *out,
-                   uint32_t numLetters, uint32_t numSpecials,
-                   uint32_t numNumbers) {
+                   setmask_t setMask, const uint8_t *minFromSet,
+                   uint32_t size) {
     uint32_t derive[9];
     uint8_t tmp[64];
     uint8_t i;
@@ -104,8 +106,8 @@ void type_password(uint8_t *data, uint32_t dataSize, uint8_t *out,
     if (out == NULL) {
         out = tmp;
     }
-    generate_password(&ctx, numLetters, numSpecials, numNumbers, out);
-    for (i = 0; i < 14; i++) {
+    generate_password(&ctx, setMask, minFromSet, out, size);
+    for (i = 0; i < size; i++) {
         uint8_t report[3];
         map_char(HID_MAPPING_QWERTY, out[i], report);
         io_usb_send_data(1, report, 3);
@@ -596,8 +598,8 @@ unsigned int ui_idle_nanos_button(unsigned int button_mask,
         }
         if (ui_idle_nanos_state == 2) {
             type_password(N_storage.metadatas + currentMetadataOffset + 2,
-                          N_storage.metadatas[currentMetadataOffset], NULL, 8,
-                          2, 4);
+                          N_storage.metadatas[currentMetadataOffset], NULL,
+                          ALL_SETS, (const uint8_t*)PIC(DEFAULT_MIN_SET), 20);
         }
         if (ui_idle_nanos_state == 1) {
             createEntry = 1;

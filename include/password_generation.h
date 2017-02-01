@@ -22,8 +22,23 @@
 #include <stdint.h>
 #include "ctr_drbg.h"
 
-uint32_t generate_password(mbedtls_ctr_drbg_context *drbg, uint32_t numLetters,
-                           uint32_t numSpecials, uint32_t numNumbers,
-                           uint8_t *out);
+typedef enum {
+    UPPERCASE = 1,
+    LOWERCASE = 2,
+    NUMBERS = 4,
+    MINUS = 8,
+    UNDERLINE = 16,
+    SPACE = 32,
+    SPECIAL = 64,
+    BRACKETS = 128,
+
+    ALL_SETS = 0xFF,
+} setmask_t;
+
+#define NUM_SETS 8
+
+uint32_t generate_password(mbedtls_ctr_drbg_context *drbg, setmask_t setMask,
+                           const uint8_t *minFromSet,
+                           uint8_t *out, uint32_t size);
 
 #endif
