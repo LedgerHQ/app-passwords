@@ -63,7 +63,7 @@ typedef struct internalStorage_t {
 WIDE internalStorage_t N_storage_real;
 #define N_storage (*(WIDE internalStorage_t *)PIC(&N_storage_real))
 
-static const uint8_t EMPTY_REPORT[] = {0x00, 0x00, 0x00};
+static const uint8_t EMPTY_REPORT[] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 
 static const uint8_t DEFAULT_MIN_SET[] = {1,1,1,0,0,1,0,0};
 
@@ -85,6 +85,7 @@ void type_password(uint8_t *data, uint32_t dataSize, uint8_t *out,
     uint32_t derive[9];
     uint8_t tmp[64];
     uint8_t i;
+    uint8_t report[8];
     cx_hash_sha256(data, dataSize, tmp);
     derive[0] = DERIVE_PASSWORD_PATH;
     for (i = 0; i < 8; i++) {
@@ -105,11 +106,11 @@ void type_password(uint8_t *data, uint32_t dataSize, uint8_t *out,
         out = tmp;
     }
     generate_password(&ctx, setMask, minFromSet, out, size);
+    os_memset(report, 0, sizeof(report));
     for (i = 0; i < size; i++) {
-        uint8_t report[3];
         map_char(HID_MAPPING_QWERTY, out[i], report);
-        io_usb_send_data(1, report, 3);
-        io_usb_send_data(1, EMPTY_REPORT, 3);
+        io_usb_send_data(1, report, 8);
+        io_usb_send_data(1, EMPTY_REPORT, 8);
     }
 }
 
