@@ -11,8 +11,6 @@ This release is an early alpha - among the missing parts :
 
    * Ledger Blue support
 
-   * Validation of the HID typing logic on other OS X and Windows - should work on Linux
-
    * Support of different password policies mechanisms
 
    * Metadatas backup
