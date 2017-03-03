@@ -93,12 +93,6 @@
   * @{
   */
 
-#if 0
-/* Private functions ---------------------------------------------------------*/
-static void IntToUnicode (uint32_t value , uint8_t *pbuf , uint8_t len);
-static void Get_SerialNum(void);
-#endif
-
 /**
   * @}
   */
@@ -171,7 +165,7 @@ static const uint8_t const USBD_LangIDDesc[] = {
 };
 
 static const uint8_t const USB_SERIAL_STRING[] = {
-    3 * 2 + 2, USB_DESC_TYPE_STRING, '0', 0, '.', 0, '1', 0,
+    4 * 2 + 2, USB_DESC_TYPE_STRING, '0', 0, '0', 0, '0', 0, '1', 0,
 };
 
 static const uint8_t const USBD_MANUFACTURER_STRING[] = {
