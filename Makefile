@@ -17,18 +17,24 @@
 #extract TARGET_ID from the SDK to allow for makefile choices
 TARGET_ID := $(shell cat $(BOLOS_SDK)/include/bolos_target.h | grep 0x | cut -f3 -d' ')
 $(info TARGET_ID=$(TARGET_ID))
+APPNAME ="Passwords"
 APP_LOAD_PARAMS=--appFlags 0x40 --path "" --curve secp256k1
 
 APPVERSION_M=0
 APPVERSION_N=0
-APPVERSION_P=0
+APPVERSION_P=2
 APPVERSION=$(APPVERSION_M).$(APPVERSION_N).$(APPVERSION_P)
+
 
 #prepare hsm generation
 ifeq ($(TARGET_ID),0x31000002)
 LOADFLAGS = --params --appVersion $(APPVERSION)
 else
+ICONNAME=icon.gif
 endif
+
+ICONDATAHEX=$(shell python $(BOLOS_SDK)/icon.py $(ICONNAME) hexbitmaponly)
+
 
 
 ################
@@ -37,7 +43,7 @@ endif
 
 all: default
 
-# consider every intermediate target aTARGET_ID=s final to avoid deleting intermediate files
+# consider every intermediate target as final to avoid deleting intermediate files
 .SECONDARY:
 
 # disable builtin rules that overload the build process (and the debug log !!)
@@ -86,9 +92,7 @@ DEFINES   += MAX_METADATAS=4096 MAX_METANAME=20
 DEFINES   += BUI_FONT_CHOOSE BUI_FONT_INCLUDE_LUCIDA_CONSOLE_8
 #DEFINES   += BKB_ANIMATE
 
-APPNAME ="Passwd"
-#ICONNAME=/dev/null
-ICONDATAHEX=""#$(shell python $(BOLOS_SDK)/icon.py $(ICONNAME) hexbitmaponly)
+DEFINES   += APPVERSION=\"$(APPVERSION)\"
 
 ##############
 # Compiler #
@@ -159,7 +163,6 @@ log = $(if $(strip $(VERBOSE)),$1,@$1)
 
 default: prepare bin/$(PROG)
 
-
 load: all
 	python -m ledgerblue.loadApp --targetId $(TARGET_ID) --fileName bin/$(PROG).hex --appName $(APPNAME) --icon $(ICONDATAHEX) $(LOADFLAGS) $(APP_LOAD_PARAMS)
 
@@ -202,5 +205,3 @@ as_cmdline = $(AS) -c $(AFLAGS) $(addprefix -D,$(2)) $(addprefix -I,$(1)) -o $(4
 
 ### END GCC COMPILER RULES
 
-loadall:
-	for i in bitcoin dash zcash litecoin dogecoin ; do bash ../st31g480_bolos/make_app.sh clean; bash ../st31g480_bolos/make_app.sh -j4 COIN=$$i load ; done
