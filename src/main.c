@@ -51,7 +51,13 @@ unsigned int ux_step_count;
 uint32_t currentMetadataOffset;
 uint8_t firstMetadataFound;
 uint8_t metaName[MAX_METANAME];
-uint8_t createEntry;
+enum {
+    MODE_NONE,
+    MODE_CREATE,
+    MODE_TYPE,
+    MODE_REMOVE,
+};
+uint8_t mode;
 
 enum {
     LAYOUT_QWERTY,
@@ -123,6 +129,11 @@ void type_password(uint8_t *data, uint32_t dataSize, uint8_t *out,
 
 void reset_metadatas(void) {
     nvm_write(N_storage.metadatas, NULL, sizeof(N_storage.metadatas));
+}
+
+void erase_metadata(uint32_t offset) {
+    unsigned char m = META_ERASED;
+    nvm_write(&N_storage.metadatas[offset + 1], &m, 1);
 }
 
 uint32_t find_free_metadata(void) {
@@ -204,6 +215,7 @@ uint8_t write_metadata(uint8_t *data, uint8_t dataSize) {
 
 const ux_menu_entry_t menu_main[];
 const ux_menu_entry_t menu_settings[];
+void menu_remove_init(unsigned int start);
 
 // change the setting
 void menu_settings_layout_change(uint32_t layout) {
@@ -228,22 +240,22 @@ void menu_settings_layout_init(unsigned int ignored) {
 
 const ux_menu_entry_t menu_settings[] = {
     {NULL, menu_settings_layout_init, 0, NULL, "Keyboard layout", NULL, 0, 0},
-    {menu_main, NULL, 3, &C_icon_back, "Back", NULL, 61, 40},
+    {menu_main, NULL, 4, &C_icon_back, "Back", NULL, 61, 40},
     UX_MENU_END};
 
 const ux_menu_entry_t menu_about[] = {
     {NULL, NULL, 0, NULL, "Version", APPVERSION, 0, 0},
-    {menu_main, NULL, 4, &C_icon_back, "Back", NULL, 61, 40},
+    {menu_main, NULL, 5, &C_icon_back, "Back", NULL, 61, 40},
     UX_MENU_END};
 
 void menu_reset_confirm(unsigned int ignored) {
     UNUSED(ignored);
     reset_metadatas();
-    UX_MENU_DISPLAY(2, menu_main, NULL);
+    UX_MENU_DISPLAY(3, menu_main, NULL);
 }
 
-const ux_menu_entry_t menu_reset[] = {
-    {menu_main, NULL, 2, NULL, "No", NULL, 0, 0},
+const ux_menu_entry_t menu_reset_all[] = {
+    {menu_main, NULL, 3, NULL, "No", NULL, 0, 0},
     {NULL, menu_reset_confirm, 0, NULL, "Yes", NULL, 0, 0},
     UX_MENU_END};
 
@@ -254,6 +266,32 @@ void menu_entries_type_password(void) {
                   NULL, ALL_SETS, (const uint8_t *)PIC(DEFAULT_MIN_SET), 20);
 }
 
+uint32_t removed_entry;
+void menu_entry_reset_confirm(unsigned int ignored) {
+    UNUSED(ignored);
+    unsigned int offset = get_metadata(removed_entry);
+    erase_metadata(offset);
+    // redisplay the complete remove menu (starting where we erased the entry)
+    menu_remove_init(removed_entry);
+}
+
+void menu_entry_reset_cancel(unsigned int ignored) {
+    UNUSED(ignored);
+    // redisplay the complete remove menu (starting where we DID NOT erased the
+    // entry)
+    menu_remove_init(removed_entry);
+}
+
+const ux_menu_entry_t menu_entry_reset[] = {
+    {NULL, menu_entry_reset_cancel, 0, NULL, "No", NULL, 0, 0},
+    {NULL, menu_entry_reset_confirm, 0, NULL, "Yes", NULL, 0, 0},
+    UX_MENU_END};
+
+void menu_entries_remove(void) {
+    removed_entry = ux_menu.current_entry;
+    UX_MENU_DISPLAY(0, menu_entry_reset, NULL);
+}
+
 unsigned char metaName_prev[MAX_METANAME];
 unsigned char metaName_next[MAX_METANAME];
 const ux_menu_entry_t menu_entries_default[] = {
@@ -262,14 +300,24 @@ const ux_menu_entry_t menu_entries_default[] = {
     {NULL, NULL, 0, NULL, metaName_next, NULL, 0, 0},
     {menu_main, NULL, 0, &C_icon_back, "Back", NULL, 61, 40},
 };
-ux_menu_entry_t fake_entries[3];
+ux_menu_entry_t fake_entries[4];
 
 const ux_menu_entry_t *menu_entries_iterator(unsigned int entry_index) {
     unsigned int offset;
 
     // the last entry is "back"
     if (entry_index == ux_menu.menu_entries_count - 1) {
-        return &menu_entries_default[3];
+        os_memmove(&fake_entries[3], &menu_entries_default[3],
+                   sizeof(ux_menu_entry_t));
+        switch (mode) {
+        case MODE_TYPE:
+            fake_entries[3].userid = 0;
+            break;
+        case MODE_REMOVE:
+            fake_entries[3].userid = 2;
+            break;
+        }
+        return &fake_entries[3];
     }
 
     // get previous
@@ -291,6 +339,14 @@ const ux_menu_entry_t *menu_entries_iterator(unsigned int entry_index) {
         os_memmove(metaName, &N_storage.metadatas[offset + 2],
                    N_storage.metadatas[offset]);
         metaName[N_storage.metadatas[offset]] = 0;
+        switch (mode) {
+        case MODE_TYPE:
+            fake_entries[1].callback = menu_entries_type_password;
+            break;
+        case MODE_REMOVE:
+            fake_entries[1].callback = menu_entries_remove;
+            break;
+        }
         return &fake_entries[1];
     }
     // get next
@@ -306,10 +362,10 @@ const ux_menu_entry_t *menu_entries_iterator(unsigned int entry_index) {
     }
 }
 
-void menu_entries_init(unsigned int ignored) {
-    UNUSED(ignored);
+void menu_entries_init(unsigned int start) {
+    UNUSED(start);
     unsigned int offset;
-    UX_MENU_DISPLAY(0, NULL, NULL);
+    UX_MENU_DISPLAY(start, NULL, NULL);
     // count number of entries
     ux_menu.menu_entries_count = 0;
     while (get_metadata(ux_menu.menu_entries_count) != -1UL) {
@@ -319,13 +375,19 @@ void menu_entries_init(unsigned int ignored) {
     ux_menu.menu_entries_count++;
     // setup iterator
     ux_menu.menu_iterator = menu_entries_iterator;
+    mode = MODE_TYPE;
+}
+
+void menu_remove_init(unsigned int start) {
+    menu_entries_init(start);
+    mode = MODE_REMOVE;
 }
 
 unsigned int handle_button_push_create_entry(unsigned int button_mask,
                                              unsigned int button_mask_counter) {
     switch (button_mask) {
     case BUTTON_EVT_RELEASED | BUTTON_LEFT | BUTTON_RIGHT:
-        createEntry = 0;
+        mode = MODE_NONE;
         write_metadata(bkb_type_buff, bkb_get_type_buff_size());
         UX_MENU_DISPLAY(1, menu_main, NULL);
         break;
@@ -344,7 +406,7 @@ unsigned int handle_button_push_create_entry(unsigned int button_mask,
 }
 
 void menu_new_entry(void) {
-    createEntry = 1;
+    mode = MODE_CREATE;
     bkb_init();
     bkb_draw();
     bkb_display_ready();
@@ -353,7 +415,8 @@ void menu_new_entry(void) {
 const ux_menu_entry_t menu_main[] = {
     {NULL, menu_entries_init, 0, NULL, "Passwords", NULL, 0, 0},
     {NULL, menu_new_entry, 0, NULL, "New password", NULL, 0, 0},
-    {menu_reset, NULL, 0, NULL, "Reset", NULL, 0, 0},
+    {NULL, menu_remove_init, 0, NULL, "Delete password", NULL, 0, 0},
+    {menu_reset_all, NULL, 0, NULL, "Reset all", NULL, 0, 0},
     {menu_settings, NULL, 0, NULL, "Settings", NULL, 0, 0},
     {menu_about, NULL, 0, NULL, "About", NULL, 0, 0},
     {NULL, os_sched_exit, 0, &C_icon_dashboard, "Quit app", NULL, 50, 29},
@@ -567,13 +630,13 @@ unsigned char io_event(unsigned char channel) {
 
     case SEPROXYHAL_TAG_BUTTON_PUSH_EVENT:
         // switch handle to bkb
-        if (createEntry) {
+        if (mode == MODE_CREATE) {
             callback = ux.button_push_handler;
             ux.button_push_handler = handle_button_push_create_entry;
         }
         UX_BUTTON_PUSH_EVENT(G_io_seproxyhal_spi_buffer);
         // rollback
-        if (createEntry) {
+        if (mode == MODE_CREATE) {
             ux.button_push_handler = callback;
         }
         break;
@@ -591,7 +654,7 @@ unsigned char io_event(unsigned char channel) {
 
     case SEPROXYHAL_TAG_DISPLAY_PROCESSED_EVENT:
         UX_DISPLAYED_EVENT({
-            if (createEntry) {
+            if (mode == MODE_CREATE) {
                 bkb_display_ready();
             }
         });
@@ -601,7 +664,7 @@ unsigned char io_event(unsigned char channel) {
         UX_TICKER_EVENT(G_io_seproxyhal_spi_buffer, {
             // a pin lock is undergoing ?
             if (UX_ALLOWED) {
-                if (!createEntry) {
+                if (mode != MODE_CREATE) {
                     if (ux_step_count) {
                         // prepare next screen
                         ux_step = (ux_step + 1) % ux_step_count;
@@ -660,7 +723,7 @@ __attribute__((section(".boot"))) int main(void) {
 
             USB_power(1);
 
-            createEntry = 0;
+            mode = MODE_NONE;
             UX_MENU_DISPLAY(0, menu_main, NULL);
 
             currentMetadataOffset = 0;
