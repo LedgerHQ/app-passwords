@@ -110,7 +110,7 @@
 #define USBD_LANGID_STRING 0x409
 
 #define USBD_VID 0x2C97
-#if TARGET_ID == 0x31000002 // blue
+#if defined(TARGET_BLUE) // blue
 #define USBD_PID 0x0000
 const uint8_t const USBD_PRODUCT_FS_STRING[] = {
     8 * 2 + 2, USB_DESC_TYPE_STRING,
@@ -124,7 +124,7 @@ const uint8_t const USBD_PRODUCT_FS_STRING[] = {
     'D',       0,
 };
 
-#elif TARGET_ID == 0x31100002 // nano s
+#elif defined(TARGET_NANOS) // nano s
 #define USBD_PID 0x0001
 const uint8_t const USBD_PRODUCT_FS_STRING[] = {
     10 * 2 + 2, USB_DESC_TYPE_STRING,
@@ -139,7 +139,7 @@ const uint8_t const USBD_PRODUCT_FS_STRING[] = {
     'B',        0,
     'D',        0,
 };
-#elif TARGET_ID == 0x31200002 // aramis
+#elif defined(TARGET_ARAMIS) // aramis
 #define USBD_PID 0x0002
 const uint8_t const USBD_PRODUCT_FS_STRING[] = {
     10 * 2 + 2, USB_DESC_TYPE_STRING,
@@ -238,9 +238,9 @@ static __ALIGN_BEGIN const uint8_t const USBD_CfgDesc[] __ALIGN_END = {
     0x09,                /*bLength: HID Descriptor size*/
     HID_DESCRIPTOR_TYPE, /*bDescriptorType: HID*/
     0x11,                /*bHIDUSTOM_HID: HID Class Spec release number*/
-    0x01,
-    0x21, /*bCountryCode: Hardware target country*/ // 0x21: US, 0x08: FR, 0x0D:
-                                                    // ISO Intl
+    0x01, 0x21,
+    /*bCountryCode: Hardware target country*/ // 0x21: US, 0x08: FR, 0x0D:
+                                              // ISO Intl
     0x01, /*bNumDescriptors: Number of HID class descriptors to follow*/
     0x22, /*bDescriptorType*/
     sizeof(
@@ -253,8 +253,7 @@ static __ALIGN_BEGIN const uint8_t const USBD_CfgDesc[] __ALIGN_END = {
     0x81,                   /*bEndpointAddress: Endpoint Address (IN)*/
     0x03,                   /*bmAttributes: Interrupt endpoint*/
     8,                      /*wMaxPacketSize: */
-    0x00,
-    0x01, /*bInterval: Polling Interval */
+    0x00, 0x01,             /*bInterval: Polling Interval */
 
     0x07,                   /* bLength: Endpoint Descriptor size */
     USB_DESC_TYPE_ENDPOINT, /* bDescriptorType: */
@@ -291,8 +290,7 @@ static __ALIGN_BEGIN const uint8_t const USBD_CfgDesc[] __ALIGN_END = {
     HID_EPIN_ADDR,          /*bEndpointAddress: Endpoint Address (IN)*/
     0x03,                   /*bmAttributes: Interrupt endpoint*/
     HID_EPIN_SIZE,          /*wMaxPacketSize: 2 Byte max */
-    0x00,
-    0x01, /*bInterval: Polling Interval (20 ms)*/
+    0x00, 0x01,             /*bInterval: Polling Interval (20 ms)*/
 
     0x07,                   /* bLength: Endpoint Descriptor size */
     USB_DESC_TYPE_ENDPOINT, /* bDescriptorType: */
@@ -533,26 +531,34 @@ uint8_t *USBD_HID_GetReportDescriptor_impl(uint16_t *len) {
  * sent over the out hid endpoint
   */
 extern volatile unsigned short G_io_apdu_length;
+extern volatile unsigned int G_led_status; // 1 if activated, 0 else
 
 uint8_t USBD_HID_DataOut_impl(USBD_HandleTypeDef *pdev, uint8_t epnum,
                               uint8_t *buffer) {
     // only the data hid endpoint will receive data
-    if (epnum == 2) {
+    if (epnum == 1) {
+        // prepare receiving the next chunk (masked time)
+        USBD_LL_PrepareReceive(pdev, 0x01, 8);
+        G_led_status = buffer[0];
+    } else if (epnum == 2) {
         // prepare receiving the next chunk (masked time)
         USBD_LL_PrepareReceive(pdev, HID_EPOUT_ADDR, HID_EPOUT_SIZE);
 
-        // add to the hid transport
-        switch (
-            io_usb_hid_receive(io_usb_send_apdu_data, buffer,
-                               io_seproxyhal_get_ep_rx_size(HID_EPOUT_ADDR))) {
-        default:
-            break;
+        // avoid troubles when an apdu has not been replied yet
+        if (G_io_apdu_media == IO_APDU_MEDIA_NONE) {
+            // add to the hid transport
+            switch (io_usb_hid_receive(
+                io_usb_send_apdu_data, buffer,
+                io_seproxyhal_get_ep_rx_size(HID_EPOUT_ADDR))) {
+            default:
+                break;
 
-        case IO_USB_APDU_RECEIVED:
-            G_io_apdu_media = IO_APDU_MEDIA_USB_HID; // for application code
-            G_io_apdu_state = APDU_USB_HID; // for next call to io_exchange
-            G_io_apdu_length = G_io_usb_hid_total_length;
-            break;
+            case IO_USB_APDU_RECEIVED:
+                G_io_apdu_media = IO_APDU_MEDIA_USB_HID; // for application code
+                G_io_apdu_state = APDU_USB_HID; // for next call to io_exchange
+                G_io_apdu_length = G_io_usb_hid_total_length;
+                break;
+            }
         }
     }
 

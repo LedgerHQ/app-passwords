@@ -24,7 +24,7 @@
 #include "bui.h"
 #include "bui_bkb.h"
 
-#if TARGET_ID == 0x31100002
+#if defined(TARGET_NANOS)
 
 bui_bitmap_128x32_t bkb_disp_buff;
 int8_t bkb_disp_progress;
@@ -33,14 +33,15 @@ bui_bkb_bkb_t bkb_bkb;
 char bkb_type_buff[BKB_TYPE_BUFF_CAP];
 
 void bkb_init() {
-    bui_bkb_init(&bkb_bkb, bui_bkb_layout_standard, sizeof(bui_bkb_layout_standard), bkb_type_buff, 0,
+    bui_bkb_init(&bkb_bkb, bui_bkb_layout_standard,
+                 sizeof(bui_bkb_layout_standard), bkb_type_buff, 0,
                  sizeof(bkb_type_buff),
 #ifdef BKB_ANIMATE
                  true
 #else
                  false
 #endif
-                );
+                 );
 }
 
 void bkb_choose_left() {

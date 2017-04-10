@@ -36,9 +36,6 @@
 
 unsigned char G_io_seproxyhal_spi_buffer[IO_SEPROXYHAL_BUFFER_SIZE_B];
 
-void io_usb_send_data(uint8_t endpoint, unsigned char *buffer,
-                      unsigned short length);
-
 #define CLA 0xE0
 
 bagl_element_t tmp_element;
@@ -59,12 +56,6 @@ enum {
 };
 uint8_t mode;
 
-enum {
-    LAYOUT_QWERTY,
-    LAYOUT_AZERTY,
-    LAYOUT_QWERTZ,
-};
-
 typedef struct internalStorage_t {
 #define STORAGE_MAGIC 0xDEAD1337
     uint32_t magic;
@@ -75,8 +66,18 @@ typedef struct internalStorage_t {
 WIDE internalStorage_t N_storage_real;
 #define N_storage (*(WIDE internalStorage_t *)PIC(&N_storage_real))
 
+uint8_t write_metadata(uint8_t *data, uint8_t dataSize);
+
 static const uint8_t EMPTY_REPORT[] = {0x00, 0x00, 0x00, 0x00,
                                        0x00, 0x00, 0x00, 0x00};
+static const uint8_t SPACE_REPORT[] = {0x00, 0x00, 0x2C, 0x00,
+                                       0x00, 0x00, 0x00, 0x00};
+static const uint8_t CAPS_REPORT[] = {0x02, 0x00, 0x00, 0x00,
+                                      0x00, 0x00, 0x00, 0x00};
+static const uint8_t CAPS_LOCK_REPORT[] = {0x00, 0x00, 0x39, 0x00,
+                                           0x00, 0x00, 0x00, 0x00};
+
+volatile unsigned int G_led_status;
 
 static const uint8_t DEFAULT_MIN_SET[] = {1, 1, 1, 0, 0, 1, 0, 0};
 
@@ -96,6 +97,7 @@ void type_password(uint8_t *data, uint32_t dataSize, uint8_t *out,
                    setmask_t setMask, const uint8_t *minFromSet,
                    uint32_t size) {
     uint32_t derive[9];
+    uint32_t led_status;
     uint8_t tmp[64];
     uint8_t i;
     uint8_t report[8];
@@ -118,12 +120,50 @@ void type_password(uint8_t *data, uint32_t dataSize, uint8_t *out,
     if (out == NULL) {
         out = tmp;
     }
+
     generate_password(&ctx, setMask, minFromSet, out, size);
+#if 0
+    out = "A-B_C D\\E\"F#G$H%I&J'K*L+M,N.O/P:Q;R=S?T@U^V`W|X~Y[Z]a{b}c(d)e<f>g!hijklmnopqrstuvwxyz0123456789~e^e'e`e\"e\"\"e";
+    size = strlen(out);
+#endif
+
     os_memset(report, 0, sizeof(report));
+    // Insert EMPTY_REPORT CAPS_REPORT EMPTY_REPORT to avoid undesired capital
+    // letter on KONSOLE
+    led_status = G_led_status;
+    io_usb_send_ep(1, EMPTY_REPORT, 8, 20);
+    io_usb_send_ep(1, CAPS_REPORT, 8, 20);
+    io_usb_send_ep(1, EMPTY_REPORT, 8, 20);
+
+    // toggle shift if set.
+    if (led_status & 2) {
+        io_usb_send_ep(1, CAPS_LOCK_REPORT, 8, 20);
+        io_usb_send_ep(1, EMPTY_REPORT, 8, 20);
+    }
     for (i = 0; i < size; i++) {
-        map_char(HID_MAPPING_QWERTY, out[i], report);
-        io_usb_send_data(1, report, 8);
-        io_usb_send_data(1, EMPTY_REPORT, 8);
+        // If keyboard layout not initialized, use the default
+        map_char(N_storage.keyboard_layout, out[i], report);
+        io_usb_send_ep(1, report, 8, 20);
+        io_usb_send_ep(1, EMPTY_REPORT, 8, 20);
+
+        if (N_storage.keyboard_layout == HID_MAPPING_QWERTY_INTL) {
+            switch (out[i]) {
+            case '\"':
+            case '\'':
+            case '`':
+            case '~':
+            case '^':
+                // insert a extra space to validate the symbol
+                io_usb_send_ep(1, SPACE_REPORT, 8, 20);
+                io_usb_send_ep(1, EMPTY_REPORT, 8, 20);
+                break;
+            }
+        }
+    }
+    // restore shift state
+    if (led_status & 2) {
+        io_usb_send_ep(1, CAPS_LOCK_REPORT, 8, 20);
+        io_usb_send_ep(1, EMPTY_REPORT, 8, 20);
     }
 }
 
@@ -211,7 +251,7 @@ uint8_t write_metadata(uint8_t *data, uint8_t dataSize) {
     return 1;
 }
 
-#if TARGET_ID == 0x31100002
+#if defined(TARGET_NANOS)
 
 const ux_menu_entry_t menu_main[];
 const ux_menu_entry_t menu_settings[];
@@ -225,17 +265,21 @@ void menu_settings_layout_change(uint32_t layout) {
 }
 
 const ux_menu_entry_t menu_settings_layout[] = {
-    {NULL, menu_settings_layout_change, 0, NULL, "Qwerty", NULL, 0, 0},
-    {NULL, menu_settings_layout_change, 1, NULL, "Azerty", NULL, 0, 0},
-    {NULL, menu_settings_layout_change, 2, NULL, "Qwertz", NULL, 0, 0},
+    {NULL, menu_settings_layout_change, HID_MAPPING_QWERTY, NULL, "Qwerty",
+     NULL, 0, 0},
+    {NULL, menu_settings_layout_change, HID_MAPPING_QWERTY_INTL, NULL,
+     "Qwerty Int'l", NULL, 0, 0},
+    {NULL, menu_settings_layout_change, HID_MAPPING_AZERTY, NULL, "Azerty",
+     NULL, 0, 0},
+    //  {NULL, menu_settings_layout_change, 3, NULL, "Qwertz", NULL, 0, 0},
     UX_MENU_END};
 
 // show the currently activated entry
 void menu_settings_layout_init(unsigned int ignored) {
     UNUSED(ignored);
-    UX_MENU_DISPLAY(N_storage.keyboard_layout < 3 ? N_storage.keyboard_layout
-                                                  : 0,
-                    menu_settings_layout, NULL);
+    UX_MENU_DISPLAY(
+        N_storage.keyboard_layout > 0 ? N_storage.keyboard_layout - 1 : 0,
+        menu_settings_layout, NULL);
 }
 
 const ux_menu_entry_t menu_settings[] = {
@@ -413,7 +457,7 @@ void menu_new_entry(void) {
 }
 
 const ux_menu_entry_t menu_main[] = {
-    {NULL, menu_entries_init, 0, NULL, "Passwords", NULL, 0, 0},
+    {NULL, menu_entries_init, 0, NULL, "Type password", NULL, 0, 0},
     {NULL, menu_new_entry, 0, NULL, "New password", NULL, 0, 0},
     {NULL, menu_remove_init, 0, NULL, "Delete password", NULL, 0, 0},
     {menu_reset_all, NULL, 0, NULL, "Reset all", NULL, 0, 0},
@@ -421,67 +465,7 @@ const ux_menu_entry_t menu_main[] = {
     {menu_about, NULL, 0, NULL, "About", NULL, 0, 0},
     {NULL, os_sched_exit, 0, &C_icon_dashboard, "Quit app", NULL, 50, 29},
     UX_MENU_END};
-#endif // #if TARGET_ID == 0x31100002
-
-void io_usb_send_data(uint8_t endpoint, unsigned char *buffer,
-                      unsigned short length) {
-    unsigned int rx_len;
-
-    // won't send if overflowing seproxyhal buffer format
-    if (length > 255) {
-        return;
-    }
-
-    G_io_seproxyhal_spi_buffer[0] = SEPROXYHAL_TAG_USB_EP_PREPARE;
-    G_io_seproxyhal_spi_buffer[1] = (3 + length) >> 8;
-    G_io_seproxyhal_spi_buffer[2] = (3 + length);
-    G_io_seproxyhal_spi_buffer[3] = 0x80 | endpoint;
-    G_io_seproxyhal_spi_buffer[4] = SEPROXYHAL_TAG_USB_EP_PREPARE_DIR_IN;
-    G_io_seproxyhal_spi_buffer[5] = length;
-    io_seproxyhal_spi_send(G_io_seproxyhal_spi_buffer, 6);
-    io_seproxyhal_spi_send(buffer, length);
-
-    for (;;) {
-        if (!io_seproxyhal_spi_is_status_sent()) {
-            io_seproxyhal_general_status();
-        }
-
-        rx_len = io_seproxyhal_spi_recv(G_io_seproxyhal_spi_buffer,
-                                        sizeof(G_io_seproxyhal_spi_buffer), 0);
-
-        // wait for ack of the seproxyhal
-        // discard if not an acknowledgment
-        if (G_io_seproxyhal_spi_buffer[0] != SEPROXYHAL_TAG_USB_EP_XFER_EVENT ||
-            rx_len != 6 || G_io_seproxyhal_spi_buffer[3] != (0x80 | endpoint) ||
-            G_io_seproxyhal_spi_buffer[4] != SEPROXYHAL_TAG_USB_EP_XFER_IN ||
-            G_io_seproxyhal_spi_buffer[5] != length) {
-            // usb reset ?
-            io_seproxyhal_handle_usb_event();
-
-            // link disconnected ?
-            if (G_io_seproxyhal_spi_buffer[0] == SEPROXYHAL_TAG_STATUS_EVENT) {
-                if (!(U4BE(G_io_seproxyhal_spi_buffer, 3) &
-                      SEPROXYHAL_TAG_STATUS_EVENT_FLAG_USB_POWERED)) {
-                    THROW(EXCEPTION_IO_RESET);
-                }
-            }
-
-            if (!io_event(CHANNEL_SPI)) {
-                // THROW ??
-            }
-
-            if (!io_seproxyhal_spi_is_status_sent()) {
-                io_seproxyhal_general_status();
-            }
-
-            // no general status ack, io_event is responsible for it
-            continue;
-        }
-
-        // chunk sending succeeded
-        break;
-    }
-}
+#endif // #if defined(TARGET_NANOS)
 
 unsigned short io_exchange_al(unsigned char channel, unsigned short tx_len) {
     switch (channel & ~(IO_FLAGS)) {
@@ -573,9 +557,7 @@ void sample_main(void) {
                 }
 
                 case 0x08: {
-                    uint8_t dummy[2];
-                    os_memset(dummy, 0, 2);
-                    nvm_write(N_storage.metadatas, (void *)&dummy, 2);
+                    reset_metadatas();
                     break;
                 }
                 }

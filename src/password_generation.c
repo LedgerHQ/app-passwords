@@ -20,17 +20,15 @@
 #include "cx.h"
 #include "password_generation.h"
 
-static const uint8_t *SETS[] = {
-    "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
-    "abcdefghijklmnopqrstuvwxyz",
-    "0123456789",
-    "-",
-    "_",
-    " ",
-    "\"#$%&'*+,./:;=?@\\^`|~",
-    "[]{}()<>",
-    NULL
-};
+static const uint8_t *SETS[] = {"ABCDEFGHIJKLMNOPQRSTUVWXYZ",
+                                "abcdefghijklmnopqrstuvwxyz",
+                                "0123456789",
+                                "-",
+                                "_",
+                                " ",
+                                "\"#$%&'*+,./:;=?!@\\^`|~",
+                                "[]{}()<>",
+                                NULL};
 
 uint8_t rng_u8_modulo(mbedtls_ctr_drbg_context *drbg, uint8_t modulo) {
     uint32_t rng_max = 256 % modulo;
@@ -66,8 +64,8 @@ void sample(mbedtls_ctr_drbg_context *drbg, const uint8_t *set,
 }
 
 uint32_t generate_password(mbedtls_ctr_drbg_context *drbg, setmask_t setMask,
-                           const uint8_t *minFromSet,
-                           uint8_t *out, uint32_t size) {
+                           const uint8_t *minFromSet, uint8_t *out,
+                           uint32_t size) {
     uint8_t setChars[100];
     uint32_t setCharsOffset = 0;
     uint32_t outOffset = 0;
@@ -75,8 +73,8 @@ uint32_t generate_password(mbedtls_ctr_drbg_context *drbg, setmask_t setMask,
 
     for (i = 0; setMask && i < NUM_SETS; i++, setMask >>= 1) {
         if (setMask & 1) {
-            const uint8_t *set = (const uint8_t*) PIC(SETS[i]);
-            uint32_t setSize = strlen((const char*)set);
+            const uint8_t *set = (const uint8_t *)PIC(SETS[i]);
+            uint32_t setSize = strlen((const char *)set);
             os_memcpy(setChars + setCharsOffset, set, setSize);
             setCharsOffset += setSize;
             if (minFromSet[i] > 0) {

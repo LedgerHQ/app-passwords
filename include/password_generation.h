@@ -38,7 +38,7 @@ typedef enum {
 #define NUM_SETS 8
 
 uint32_t generate_password(mbedtls_ctr_drbg_context *drbg, setmask_t setMask,
-                           const uint8_t *minFromSet,
-                           uint8_t *out, uint32_t size);
+                           const uint8_t *minFromSet, uint8_t *out,
+                           uint32_t size);
 
 #endif
