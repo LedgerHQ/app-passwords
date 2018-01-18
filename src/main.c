@@ -76,6 +76,8 @@ static const uint8_t CAPS_REPORT[] = {0x02, 0x00, 0x00, 0x00,
                                       0x00, 0x00, 0x00, 0x00};
 static const uint8_t CAPS_LOCK_REPORT[] = {0x00, 0x00, 0x39, 0x00,
                                            0x00, 0x00, 0x00, 0x00};
+static const uint8_t ENTER_REPORT[] = {0x00, 0x00, 0x28, 0x00,
+                                       0x00, 0x00, 0x00, 0x00};
 
 volatile unsigned int G_led_status;
 
@@ -165,6 +167,10 @@ void type_password(uint8_t *data, uint32_t dataSize, uint8_t *out,
         io_usb_send_ep(1, CAPS_LOCK_REPORT, 8, 20);
         io_usb_send_ep(1, EMPTY_REPORT, 8, 20);
     }
+
+    // press enter
+    io_usb_send_ep(1, ENTER_REPORT, 8, 20);
+    io_usb_send_ep(1, EMPTY_REPORT, 8, 20);
 }
 
 void reset_metadatas(void) {
