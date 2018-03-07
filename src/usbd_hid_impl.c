@@ -595,8 +595,9 @@ void USB_power(unsigned char enabled) {
         /* Init Device Library */
         USBD_Init(&USBD_Device, (USBD_DescriptorsTypeDef *)&HID_Desc, 0);
 
-        /* Register the HID class */
-        USBD_RegisterClass(&USBD_Device, (USBD_ClassTypeDef *)&USBD_HID);
+        // register both interfaces
+        USBD_RegisterClassForInterface(0,  &USBD_Device, (USBD_ClassTypeDef*)&USBD_HID);
+        USBD_RegisterClassForInterface(1,  &USBD_Device, (USBD_ClassTypeDef*)&USBD_HID);
 
         /* Start Device Process */
         USBD_Start(&USBD_Device);
