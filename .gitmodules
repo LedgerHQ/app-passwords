@@ -1,4 +1,0 @@
-[submodule "bui"]
-	path = bui
-	url = https://github.com/parkerhoyes/bolos-user-interface.git
-	branch = master

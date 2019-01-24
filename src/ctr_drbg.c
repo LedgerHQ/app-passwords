@@ -46,8 +46,8 @@
 #include "mbedtls/platform.h"
 #else
 #include <stdio.h>
-//#define mbedtls_printf printf
-#define mbedtls_printf(x)
+//#define mbedtls_PRINTF PRINTF
+#define mbedtls_PRINTF(x)
 #endif /* MBEDTLS_PLATFORM_C */
 #endif /* MBEDTLS_SELF_TEST */
 
@@ -84,7 +84,7 @@ int mbedtls_ctr_drbg_seed_entropy_len(
     /*
      * Initialize with an empty key
      */
-    cx_aes_init_key(key, MBEDTLS_CTR_DRBG_KEYSIZE, &ctx->aes_ctx);
+    AES256_CTX_INIT(key, MBEDTLS_CTR_DRBG_KEYSIZE, &ctx->aes_ctx);
 
     if ((ret = mbedtls_ctr_drbg_reseed(ctx, custom, len)) != 0)
         return (ret);
@@ -133,7 +133,7 @@ static int block_cipher_df(unsigned char *output, const unsigned char *data,
     unsigned char key[MBEDTLS_CTR_DRBG_KEYSIZE];
     unsigned char chain[MBEDTLS_CTR_DRBG_BLOCKSIZE];
     unsigned char *p, *iv;
-    cx_aes_key_t aes_ctx;
+    AES256_CTX_T aes_ctx;
 
     int i, j;
     size_t buf_len, use_len;
@@ -166,7 +166,7 @@ static int block_cipher_df(unsigned char *output, const unsigned char *data,
     for (i = 0; i < MBEDTLS_CTR_DRBG_KEYSIZE; i++)
         key[i] = i;
 
-    cx_aes_init_key(key, MBEDTLS_CTR_DRBG_KEYSIZE, &aes_ctx);
+    AES256_CTX_INIT(key, MBEDTLS_CTR_DRBG_KEYSIZE, &aes_ctx);
 
     /*
      * Reduce data to MBEDTLS_CTR_DRBG_SEEDLEN bytes of data
@@ -183,8 +183,9 @@ static int block_cipher_df(unsigned char *output, const unsigned char *data,
             use_len -= (use_len >= MBEDTLS_CTR_DRBG_BLOCKSIZE)
                            ? MBEDTLS_CTR_DRBG_BLOCKSIZE
                            : use_len;
-            cx_aes(&aes_ctx, CX_LAST | CX_ENCRYPT | CX_PAD_NONE | CX_CHAIN_ECB,
-                   chain, sizeof(chain), chain);
+            // PRINTF("1 aes in: %.*H\n", sizeof(chain), chain);
+            AES256_ECB_ENC(&aes_ctx, chain, chain);
+            // PRINTF("1 aes out: %.*H\n", sizeof(chain), chain);
         }
 
         memcpy(tmp + j, chain, MBEDTLS_CTR_DRBG_BLOCKSIZE);
@@ -198,18 +199,19 @@ static int block_cipher_df(unsigned char *output, const unsigned char *data,
     /*
      * Do final encryption with reduced data
      */
-    cx_aes_init_key(tmp, MBEDTLS_CTR_DRBG_KEYSIZE, &aes_ctx);
+    AES256_CTX_INIT(tmp, MBEDTLS_CTR_DRBG_KEYSIZE, &aes_ctx);
     iv = tmp + MBEDTLS_CTR_DRBG_KEYSIZE;
     p = output;
 
     for (j = 0; j < MBEDTLS_CTR_DRBG_SEEDLEN; j += MBEDTLS_CTR_DRBG_BLOCKSIZE) {
-        cx_aes(&aes_ctx, CX_LAST | CX_ENCRYPT | CX_PAD_NONE | CX_CHAIN_ECB, iv,
-               MBEDTLS_CTR_DRBG_BLOCKSIZE, iv);
+        // PRINTF("2 aes in iv: %.*H\n", MBEDTLS_CTR_DRBG_BLOCKSIZE, iv);
+        AES256_ECB_ENC(&aes_ctx, iv, iv);
+        // PRINTF("2 aes out iv: %.*H\n", MBEDTLS_CTR_DRBG_BLOCKSIZE, iv);
         memcpy(p, iv, MBEDTLS_CTR_DRBG_BLOCKSIZE);
         p += MBEDTLS_CTR_DRBG_BLOCKSIZE;
     }
 
-    memset(&aes_ctx, 0, sizeof(cx_aes_key_t));
+    memset(&aes_ctx, 0, sizeof(AES256_CTX_T));
 
     return (0);
 }
@@ -234,9 +236,9 @@ ctr_drbg_update_internal(mbedtls_ctr_drbg_context *ctx,
         /*
          * Crypt counter block
          */
-        cx_aes(&ctx->aes_ctx, CX_LAST | CX_ENCRYPT | CX_PAD_NONE | CX_CHAIN_ECB,
-               ctx->counter, sizeof(ctx->counter), p);
-
+        // PRINTF("3 aes in: %.*H\n", 16, ctx->counter);
+        AES256_ECB_ENC(&ctx->aes_ctx, ctx->counter, p);
+        // PRINTF("3 aes out: %.*H\n", 16, p);
         p += MBEDTLS_CTR_DRBG_BLOCKSIZE;
     }
 
@@ -246,7 +248,7 @@ ctr_drbg_update_internal(mbedtls_ctr_drbg_context *ctx,
     /*
      * Update key and counter
      */
-    cx_aes_init_key(tmp, MBEDTLS_CTR_DRBG_KEYSIZE, &ctx->aes_ctx);
+    AES256_CTX_INIT(tmp, MBEDTLS_CTR_DRBG_KEYSIZE, &ctx->aes_ctx);
     memcpy(ctx->counter, tmp + MBEDTLS_CTR_DRBG_KEYSIZE,
            MBEDTLS_CTR_DRBG_BLOCKSIZE);
 
@@ -300,12 +302,16 @@ int mbedtls_ctr_drbg_reseed(mbedtls_ctr_drbg_context *ctx,
      */
     block_cipher_df(seed, seed, seedlen);
 
+    // PRINTF("drbg: %.*H\n", sizeof(mbedtls_ctr_drbg_context), ctx);
+
     /*
      * Update state
      */
     ctr_drbg_update_internal(ctx, seed);
+
     ctx->reseed_counter = 1;
 
+    // PRINTF("drbg: %.*H\n", sizeof(mbedtls_ctr_drbg_context), ctx);
     return (0);
 }
 
@@ -331,6 +337,7 @@ int mbedtls_ctr_drbg_random_with_add(void *p_rng, unsigned char *output,
 
     if (ctx->reseed_counter > ctx->reseed_interval ||
         ctx->prediction_resistance) {
+        // PRINTF("reseed\n");
         if ((ret = mbedtls_ctr_drbg_reseed(ctx, additional, add_len)) != 0)
             return (ret);
 
@@ -338,6 +345,7 @@ int mbedtls_ctr_drbg_random_with_add(void *p_rng, unsigned char *output,
     }
 
     if (add_len > 0) {
+        // PRINTF("add_len update\n");
         block_cipher_df(add_input, additional, add_len);
         ctr_drbg_update_internal(ctx, add_input);
     }
@@ -353,8 +361,9 @@ int mbedtls_ctr_drbg_random_with_add(void *p_rng, unsigned char *output,
         /*
          * Crypt counter block
          */
-        cx_aes(&ctx->aes_ctx, CX_LAST | CX_ENCRYPT | CX_PAD_NONE | CX_CHAIN_ECB,
-               ctx->counter, sizeof(ctx->counter), tmp);
+        // PRINTF("4 aes in: %.*H\n", 16, ctx->counter);
+        AES256_ECB_ENC(&ctx->aes_ctx, ctx->counter, tmp);
+        // PRINTF("4 aes out: %.*H\n", 16, tmp);
 
         use_len = (output_len > MBEDTLS_CTR_DRBG_BLOCKSIZE)
                       ? MBEDTLS_CTR_DRBG_BLOCKSIZE
@@ -500,7 +509,7 @@ static int ctr_drbg_self_test_entropy(void *data, unsigned char *buf,
 #define CHK(c)                                                                 \
     if ((c) != 0) {                                                            \
         if (verbose != 0)                                                      \
-            mbedtls_printf("failed\n");                                        \
+            mbedtls_PRINTF("failed\n");                                        \
         return (1);                                                            \
     }
 
@@ -518,7 +527,7 @@ int mbedtls_ctr_drbg_self_test(int verbose, int group) {
          * Based on a NIST CTR_DRBG test vector (PR = True)
          */
         if (verbose != 0)
-            mbedtls_printf("  CTR_DRBG (PR = TRUE) : ");
+            mbedtls_PRINTF("  CTR_DRBG (PR = TRUE) : ");
 
         test_offset = 0;
         CHK(mbedtls_ctr_drbg_seed_entropy_len(&ctx, ctr_drbg_self_test_entropy,
@@ -533,14 +542,14 @@ int mbedtls_ctr_drbg_self_test(int verbose, int group) {
         mbedtls_ctr_drbg_free(&ctx);
 
         if (verbose != 0)
-            mbedtls_printf("passed\n");
+            mbedtls_PRINTF("passed\n");
 
     } else if (group == 1) {
         /*
          * Based on a NIST CTR_DRBG test vector (PR = FALSE)
          */
         if (verbose != 0)
-            mbedtls_printf("  CTR_DRBG (PR = FALSE): ");
+            mbedtls_PRINTF("  CTR_DRBG (PR = FALSE): ");
 
         mbedtls_ctr_drbg_init(&ctx);
 
@@ -556,10 +565,10 @@ int mbedtls_ctr_drbg_self_test(int verbose, int group) {
         mbedtls_ctr_drbg_free(&ctx);
 
         if (verbose != 0)
-            mbedtls_printf("passed\n");
+            mbedtls_PRINTF("passed\n");
 
         if (verbose != 0)
-            mbedtls_printf("\n");
+            mbedtls_PRINTF("\n");
 
     } else {
         return 0xff;

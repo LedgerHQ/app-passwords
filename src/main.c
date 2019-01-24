@@ -1,5 +1,5 @@
 /*******************************************************************************
-*   Password Manager application
+*   Password Manager application 
 *   (c) 2017 Ledger
 *
 *  Licensed under the Apache License, Version 2.0 (the "License");
@@ -28,6 +28,7 @@
 #include "ctr_drbg.h"
 #include "hid_mapping.h"
 #include "password_generation.h"
+#include "usbd_hid_impl.h"
 
 #define META_NONE 0x00
 #define META_ERASED 0xFF
@@ -35,6 +36,7 @@
 #define DERIVE_PASSWORD_PATH 0x80505744
 
 unsigned char G_io_seproxyhal_spi_buffer[IO_SEPROXYHAL_BUFFER_SIZE_B];
+
 
 #define CLA 0xE0
 
@@ -60,6 +62,9 @@ typedef struct internalStorage_t {
 #define STORAGE_MAGIC 0xDEAD1337
     uint32_t magic;
     uint32_t keyboard_layout;
+    /**
+     * A metadata in memory is represented by 1 byte of size (l), 1 byte of type (to disable it if required), 1 byte to select char sets, l bytes of user seed
+     */
     uint8_t metadatas[MAX_METADATAS];
 } internalStorage_t;
 
@@ -68,29 +73,44 @@ WIDE internalStorage_t N_storage_real;
 
 uint8_t write_metadata(uint8_t *data, uint8_t dataSize);
 
-static const uint8_t EMPTY_REPORT[] = {0x00, 0x00, 0x00, 0x00,
-                                       0x00, 0x00, 0x00, 0x00};
-static const uint8_t SPACE_REPORT[] = {0x00, 0x00, 0x2C, 0x00,
-                                       0x00, 0x00, 0x00, 0x00};
-static const uint8_t CAPS_REPORT[] = {0x02, 0x00, 0x00, 0x00,
-                                      0x00, 0x00, 0x00, 0x00};
-static const uint8_t CAPS_LOCK_REPORT[] = {0x00, 0x00, 0x39, 0x00,
-                                           0x00, 0x00, 0x00, 0x00};
+static const uint8_t EMPTY_REPORT[] =       {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+static const uint8_t SPACE_REPORT[] =       {0x00, 0x00, 0x2C, 0x00, 0x00, 0x00, 0x00, 0x00};
+static const uint8_t CAPS_REPORT[] =        {0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+static const uint8_t CAPS_LOCK_REPORT[] =   {0x00, 0x00, 0x39, 0x00, 0x00, 0x00, 0x00, 0x00};
 
 volatile unsigned int G_led_status;
 
-static const uint8_t DEFAULT_MIN_SET[] = {1, 1, 1, 0, 0, 1, 0, 0};
+static const uint8_t DEFAULT_MIN_SET[] = {1,1,1,0,0,1,0,0};
+unsigned char G_create_classes;
 
 uint8_t entropyProvided;
 uint8_t entropy[32];
 
 int entropyProvider2(void *context, unsigned char *buffer, size_t bufferSize) {
     if (entropyProvided) {
+        // PRINTF("no more entropy\n");
         return 1;
     }
     memcpy(buffer, entropy, 32);
+    // PRINTF("entropy: %.*H\n", 32, entropy);
     entropyProvided = 1;
     return 0;
+}
+
+extern struct {
+  unsigned short timeout; // up to 64k milliseconds (6 sec)
+} G_io_usb_ep_timeouts[IO_USB_MAX_ENDPOINTS];
+void io_usb_send_ep_wait(unsigned int ep, unsigned char* buf, unsigned int len, unsigned int timeout_cs) {
+    io_usb_send_ep(ep, buf, len, 20);
+
+    // wait until transfer timeout, or ended
+    while (G_io_usb_ep_timeouts[ep&0x7F].timeout) {
+        if (!io_seproxyhal_spi_is_status_sent()) {
+            io_seproxyhal_general_status();
+        }
+        io_seproxyhal_spi_recv(G_io_seproxyhal_spi_buffer, sizeof(G_io_seproxyhal_spi_buffer), 0);
+        io_seproxyhal_handle_event();
+    }
 }
 
 void type_password(uint8_t *data, uint32_t dataSize, uint8_t *out,
@@ -101,15 +121,17 @@ void type_password(uint8_t *data, uint32_t dataSize, uint8_t *out,
     uint8_t tmp[64];
     uint8_t i;
     uint8_t report[8];
-    cx_hash_sha256(data, dataSize, tmp);
+
+    cx_hash_sha256(data, dataSize, tmp, sizeof(tmp));
     derive[0] = DERIVE_PASSWORD_PATH;
     for (i = 0; i < 8; i++) {
-        derive[i + 1] = (tmp[4 * i] << 24) | (tmp[4 * i + 1] << 16) |
+        derive[i + 1] = 0x80000000 |
+                        (tmp[4 * i] << 24) | (tmp[4 * i + 1] << 16) |
                         (tmp[4 * i + 2] << 8) | (tmp[4 * i + 3]);
-        derive[i + 1] |= 0x80000000;
     }
     os_perso_derive_node_bip32(CX_CURVE_SECP256K1, derive, 9, tmp, tmp + 32);
-    cx_hash_sha256(tmp, 64, entropy);
+    // PRINTF("pwseed %.*H\n", 64, tmp);
+    cx_hash_sha256(tmp, 64, entropy, sizeof(entropy));
     os_memset(tmp, 0, sizeof(tmp));
     entropyProvided = 0;
     mbedtls_ctr_drbg_context ctx;
@@ -121,51 +143,70 @@ void type_password(uint8_t *data, uint32_t dataSize, uint8_t *out,
         out = tmp;
     }
 
+
     generate_password(&ctx, setMask, minFromSet, out, size);
+
+    // PRINTF("%.*H\n", size, out);
+
 #if 0
     out = "A-B_C D\\E\"F#G$H%I&J'K*L+M,N.O/P:Q;R=S?T@U^V`W|X~Y[Z]a{b}c(d)e<f>g!hijklmnopqrstuvwxyz0123456789~e^e'e`e\"e\"\"e";
     size = strlen(out);
 #endif
 
     os_memset(report, 0, sizeof(report));
-    // Insert EMPTY_REPORT CAPS_REPORT EMPTY_REPORT to avoid undesired capital
-    // letter on KONSOLE
+    // Insert EMPTY_REPORT CAPS_REPORT EMPTY_REPORT to avoid undesired capital letter on KONSOLE
     led_status = G_led_status;
-    io_usb_send_ep(1, EMPTY_REPORT, 8, 20);
-    io_usb_send_ep(1, CAPS_REPORT, 8, 20);
-    io_usb_send_ep(1, EMPTY_REPORT, 8, 20);
+    io_usb_send_ep_wait(HID_EPIN_ADDR, EMPTY_REPORT, 8, 20);
+
+    io_usb_send_ep_wait(HID_EPIN_ADDR, CAPS_REPORT, 8, 20);
+    io_usb_send_ep_wait(HID_EPIN_ADDR, EMPTY_REPORT, 8, 20);
 
     // toggle shift if set.
-    if (led_status & 2) {
-        io_usb_send_ep(1, CAPS_LOCK_REPORT, 8, 20);
-        io_usb_send_ep(1, EMPTY_REPORT, 8, 20);
+    if (led_status&2){
+        io_usb_send_ep_wait(HID_EPIN_ADDR, CAPS_LOCK_REPORT, 8, 20);
+        io_usb_send_ep_wait(HID_EPIN_ADDR, EMPTY_REPORT, 8, 20);
     }
     for (i = 0; i < size; i++) {
         // If keyboard layout not initialized, use the default
         map_char(N_storage.keyboard_layout, out[i], report);
-        io_usb_send_ep(1, report, 8, 20);
-        io_usb_send_ep(1, EMPTY_REPORT, 8, 20);
+        io_usb_send_ep_wait(HID_EPIN_ADDR, report, 8, 20);
+        io_usb_send_ep_wait(HID_EPIN_ADDR, EMPTY_REPORT, 8, 20);
 
+        // for international keyboard, make sure to insert space after special symbols
         if (N_storage.keyboard_layout == HID_MAPPING_QWERTY_INTL) {
-            switch (out[i]) {
-            case '\"':
-            case '\'':
-            case '`':
-            case '~':
-            case '^':
-                // insert a extra space to validate the symbol
-                io_usb_send_ep(1, SPACE_REPORT, 8, 20);
-                io_usb_send_ep(1, EMPTY_REPORT, 8, 20);
-                break;
+            switch(out[i]) {
+                case '\"':
+                case '\'':
+                case '`':
+                case '~':
+                case '^':
+                    // insert a extra space to validate the symbol
+                    io_usb_send_ep_wait(HID_EPIN_ADDR, SPACE_REPORT, 8, 20);
+                    io_usb_send_ep_wait(HID_EPIN_ADDR, EMPTY_REPORT, 8, 20);                    
+                    break;
             }
         }
     }
     // restore shift state
-    if (led_status & 2) {
-        io_usb_send_ep(1, CAPS_LOCK_REPORT, 8, 20);
-        io_usb_send_ep(1, EMPTY_REPORT, 8, 20);
+    if (led_status&2){
+        io_usb_send_ep_wait(HID_EPIN_ADDR, CAPS_LOCK_REPORT, 8, 20);
+        io_usb_send_ep_wait(HID_EPIN_ADDR, EMPTY_REPORT, 8, 20);
     }
 }
+
+
+typedef struct {
+    uint8_t len_data;
+    uint8_t kind;
+    uint8_t pw_char_sets;
+    uint8_t pw[1]; // at least one char
+} metadata_t;
+#define METADATA_DATALEN(offset) N_storage.metadatas[offset]
+#define METADATA_KIND(offset) N_storage.metadatas[offset+1]
+#define METADATA_SETS(offset) N_storage.metadatas[offset+2]
+#define METADATA_PWLEN(offset) (N_storage.metadatas[offset]-1)
+#define METADATA_PW(offset) (&N_storage.metadatas[offset+3])
+
 
 void reset_metadatas(void) {
     nvm_write(N_storage.metadatas, NULL, sizeof(N_storage.metadatas));
@@ -173,47 +214,47 @@ void reset_metadatas(void) {
 
 void erase_metadata(uint32_t offset) {
     unsigned char m = META_ERASED;
-    nvm_write(&N_storage.metadatas[offset + 1], &m, 1);
+    nvm_write(&N_storage.metadatas[offset+1], &m, 1);
 }
 
 uint32_t find_free_metadata(void) {
     uint32_t offset = 0;
-    while ((N_storage.metadatas[offset] != 0) && (offset < MAX_METADATAS)) {
-        offset += N_storage.metadatas[offset] + 2;
+    while ((METADATA_DATALEN(offset) != 0) && (offset < MAX_METADATAS)) {
+        offset += METADATA_DATALEN(offset) + 2;
     }
     return offset;
 }
 
 uint32_t find_next_metadata(uint32_t offset) {
     if (!firstMetadataFound) {
-        firstMetadataFound = (N_storage.metadatas[0] != 0);
+        firstMetadataFound = (METADATA_DATALEN(0) != 0);
         return 0;
     }
-    offset += N_storage.metadatas[offset] + 2;
+    offset += METADATA_DATALEN(offset) + 2;
     for (;;) {
-        if (N_storage.metadatas[offset] == 0) {
+        if (METADATA_DATALEN(offset) == 0) {
             return 0; // end of file
         }
-        if (N_storage.metadatas[offset + 1] != META_ERASED) {
+        if (METADATA_KIND(offset) != META_ERASED) {
             return offset; // next entry
         }
-        offset += N_storage.metadatas[offset] + 2;
+        offset += METADATA_DATALEN(offset) + 2;
     }
 }
 
 uint32_t get_metadata(uint32_t nth) {
     unsigned int offset = 0;
     for (;;) {
-        if (N_storage.metadatas[offset] == 0) {
+        if (METADATA_DATALEN(offset) == 0) {
             return -1UL; // end of file
         }
-        if (N_storage.metadatas[offset + 1] != META_ERASED) {
-            if (nth == 0) {
-                return offset;
+        if (METADATA_KIND(offset) != META_ERASED) {
+            if (nth==0) {
+              return offset;  
             }
             nth--;
         }
-        offset += N_storage.metadatas[offset] + 2;
+        offset += METADATA_DATALEN(offset) + 2;
     }
 }
 
@@ -224,10 +265,10 @@ uint32_t find_previous_metadata(uint32_t offset) {
         return 0;
     }
     for (;;) {
-        if (N_storage.metadatas[searchOffset + 1] != META_ERASED) {
+        if (METADATA_KIND(searchOffset) != META_ERASED) {
             lastValidOffset = searchOffset;
         }
-        searchOffset += N_storage.metadatas[searchOffset] + 2;
+        searchOffset += METADATA_DATALEN(searchOffset) + 2;
         if (searchOffset == offset) {
             break;
         }
@@ -259,55 +300,73 @@ void menu_remove_init(unsigned int start);
 
 // change the setting
 void menu_settings_layout_change(uint32_t layout) {
-    nvm_write(&N_storage.keyboard_layout, (void *)&layout, sizeof(uint32_t));
-    // go back to the menu entry
-    UX_MENU_DISPLAY(0, menu_settings, NULL);
+  nvm_write(&N_storage.keyboard_layout, (void*)&layout, sizeof(uint32_t));
+  // go back to the menu entry
+  UX_MENU_DISPLAY(0, menu_settings, NULL);
 }
 
 const ux_menu_entry_t menu_settings_layout[] = {
-    {NULL, menu_settings_layout_change, HID_MAPPING_QWERTY, NULL, "Qwerty",
-     NULL, 0, 0},
-    {NULL, menu_settings_layout_change, HID_MAPPING_QWERTY_INTL, NULL,
-     "Qwerty Int'l", NULL, 0, 0},
-    {NULL, menu_settings_layout_change, HID_MAPPING_AZERTY, NULL, "Azerty",
-     NULL, 0, 0},
-    //  {NULL, menu_settings_layout_change, 3, NULL, "Qwertz", NULL, 0, 0},
-    UX_MENU_END};
+  {NULL, menu_settings_layout_change, HID_MAPPING_QWERTY, NULL, "Qwerty", NULL, 0, 0},
+  {NULL, menu_settings_layout_change, HID_MAPPING_QWERTY_INTL, NULL, "Qwerty Int'l", NULL, 0, 0},
+  {NULL, menu_settings_layout_change, HID_MAPPING_AZERTY, NULL, "Azerty", NULL, 0, 0},
+//  {NULL, menu_settings_layout_change, 3, NULL, "Qwertz", NULL, 0, 0},
+  UX_MENU_END
+};
 
 // show the currently activated entry
 void menu_settings_layout_init(unsigned int ignored) {
-    UNUSED(ignored);
-    UX_MENU_DISPLAY(
-        N_storage.keyboard_layout > 0 ? N_storage.keyboard_layout - 1 : 0,
-        menu_settings_layout, NULL);
+  UNUSED(ignored);
+  UX_MENU_DISPLAY(N_storage.keyboard_layout>0?N_storage.keyboard_layout-1:0, menu_settings_layout, NULL);
 }
-
-const ux_menu_entry_t menu_settings[] = {
-    {NULL, menu_settings_layout_init, 0, NULL, "Keyboard layout", NULL, 0, 0},
-    {menu_main, NULL, 4, &C_icon_back, "Back", NULL, 61, 40},
-    UX_MENU_END};
-
-const ux_menu_entry_t menu_about[] = {
-    {NULL, NULL, 0, NULL, "Version", APPVERSION, 0, 0},
-    {menu_main, NULL, 5, &C_icon_back, "Back", NULL, 61, 40},
-    UX_MENU_END};
 
 void menu_reset_confirm(unsigned int ignored) {
     UNUSED(ignored);
     reset_metadatas();
-    UX_MENU_DISPLAY(3, menu_main, NULL);
+    UX_MENU_DISPLAY(1, menu_settings, NULL);
 }
 
 const ux_menu_entry_t menu_reset_all[] = {
-    {menu_main, NULL, 3, NULL, "No", NULL, 0, 0},
-    {NULL, menu_reset_confirm, 0, NULL, "Yes", NULL, 0, 0},
-    UX_MENU_END};
+  {menu_main, NULL, 3, NULL, "No", NULL , 0, 0},
+  {NULL, menu_reset_confirm, 0, NULL, "Yes", NULL, 0, 0},
+  UX_MENU_END
+};
+
+
+const ux_menu_entry_t menu_settings[] = {
+  {NULL, menu_settings_layout_init, 0, NULL, "Keyboard layout", NULL, 0, 0},
+  {menu_reset_all, NULL, 0, NULL, "Delete all pwds", NULL, 0, 0},
+  {menu_main, NULL, 3, &C_icon_back, "Back", NULL, 61, 40},
+  UX_MENU_END
+};
+
+const ux_menu_entry_t menu_about[] = {
+  {NULL, NULL, 0, NULL, "Version", APPVERSION , 0, 0},
+  {menu_main, NULL, 4, &C_icon_back, "Back", NULL, 61, 40},
+  UX_MENU_END
+};
 
 void menu_entries_type_password(void) {
     unsigned int offset = get_metadata(ux_menu.current_entry);
-    // todo store the set allowed per metadate
-    type_password(&N_storage.metadatas[offset + 2], N_storage.metadatas[offset],
-                  NULL, ALL_SETS, (const uint8_t *)PIC(DEFAULT_MIN_SET), 20);
+    unsigned char enabledSets = METADATA_SETS(offset);
+    if(enabledSets == 0) {
+        enabledSets = ALL_SETS;
+    }
+
+    BEGIN_TRY {
+        TRY {
+            // use the enabled sets for the entry to type
+            type_password(METADATA_PW(offset),
+                          METADATA_PWLEN(offset), NULL,
+                          enabledSets /*ALL_SETS*/, (const uint8_t*)PIC(DEFAULT_MIN_SET), 20);
+        }
+        CATCH_OTHER(e) {
+            PRINTF("caught: %d", e);
+        }
+        FINALLY {
+
+        }
+    }
+    END_TRY;
 }
 
 uint32_t removed_entry;
@@ -321,15 +380,15 @@ void menu_entry_reset_confirm(unsigned int ignored) {
 
 void menu_entry_reset_cancel(unsigned int ignored) {
     UNUSED(ignored);
-    // redisplay the complete remove menu (starting where we DID NOT erased the
-    // entry)
+    // redisplay the complete remove menu (starting where we DID NOT erased the entry)
     menu_remove_init(removed_entry);
 }
 
 const ux_menu_entry_t menu_entry_reset[] = {
-    {NULL, menu_entry_reset_cancel, 0, NULL, "No", NULL, 0, 0},
-    {NULL, menu_entry_reset_confirm, 0, NULL, "Yes", NULL, 0, 0},
-    UX_MENU_END};
+  {NULL, menu_entry_reset_cancel, 0, NULL, "No", NULL , 0, 0},
+  {NULL, menu_entry_reset_confirm, 0, NULL, "Yes", NULL, 0, 0},
+  UX_MENU_END
+};
 
 void menu_entries_remove(void) {
     removed_entry = ux_menu.current_entry;
@@ -346,20 +405,21 @@ const ux_menu_entry_t menu_entries_default[] = {
 };
 ux_menu_entry_t fake_entries[4];
 
-const ux_menu_entry_t *menu_entries_iterator(unsigned int entry_index) {
+const ux_menu_entry_t* menu_entries_iterator(unsigned int entry_index) {
     unsigned int offset;
 
     // the last entry is "back"
-    if (entry_index == ux_menu.menu_entries_count - 1) {
-        os_memmove(&fake_entries[3], &menu_entries_default[3],
-                   sizeof(ux_menu_entry_t));
+    if (entry_index == ux_menu.menu_entries_count-1) {
+        os_memmove(&fake_entries[3], &menu_entries_default[3], sizeof(ux_menu_entry_t));
         switch (mode) {
-        case MODE_TYPE:
-            fake_entries[3].userid = 0;
-            break;
-        case MODE_REMOVE:
-            fake_entries[3].userid = 2;
-            break;
+            /* default values
+            case MODE_TYPE:
+                fake_entries[3].userid = 0;
+                break;
+            */
+            case MODE_REMOVE:
+                fake_entries[3].userid = 2;
+                break;
         }
         return &fake_entries[3];
     }
@@ -367,41 +427,37 @@ const ux_menu_entry_t *menu_entries_iterator(unsigned int entry_index) {
     // get previous
     // not called if no previous element
     if (ux_menu.current_entry > entry_index) {
-        os_memmove(&fake_entries[0], &menu_entries_default[0],
-                   sizeof(ux_menu_entry_t));
+        os_memmove(&fake_entries[0], &menu_entries_default[0], sizeof(ux_menu_entry_t));
         offset = get_metadata(entry_index);
-        os_memmove(metaName_prev, &N_storage.metadatas[offset + 2],
-                   N_storage.metadatas[offset]);
-        metaName_prev[N_storage.metadatas[offset]] = 0;
+        os_memmove(metaName_prev, METADATA_PW(offset), METADATA_PWLEN(offset));
+        metaName_prev[METADATA_PWLEN(offset)] = 0;
         return &fake_entries[0];
     }
     // get current
     if (ux_menu.current_entry == entry_index) {
-        os_memmove(&fake_entries[1], &menu_entries_default[1],
-                   sizeof(ux_menu_entry_t));
+        os_memmove(&fake_entries[1], &menu_entries_default[1], sizeof(ux_menu_entry_t));
         offset = get_metadata(entry_index);
-        os_memmove(metaName, &N_storage.metadatas[offset + 2],
-                   N_storage.metadatas[offset]);
-        metaName[N_storage.metadatas[offset]] = 0;
+        os_memmove(metaName, METADATA_PW(offset), METADATA_PWLEN(offset));
+        metaName[METADATA_PWLEN(offset)] = 0;
         switch (mode) {
-        case MODE_TYPE:
-            fake_entries[1].callback = menu_entries_type_password;
-            break;
-        case MODE_REMOVE:
-            fake_entries[1].callback = menu_entries_remove;
-            break;
+            /* default values
+            case MODE_TYPE:
+                fake_entries[1].callback = menu_entries_type_password;
+                break;
+            */
+            case MODE_REMOVE:
+                fake_entries[1].callback = menu_entries_remove;
+                break;
         }
         return &fake_entries[1];
     }
     // get next
     // not called if no next element
     if (ux_menu.current_entry < entry_index) {
-        os_memmove(&fake_entries[2], &menu_entries_default[2],
-                   sizeof(ux_menu_entry_t));
+        os_memmove(&fake_entries[2], &menu_entries_default[2], sizeof(ux_menu_entry_t));
         offset = get_metadata(entry_index);
-        os_memmove(metaName_next, &N_storage.metadatas[offset + 2],
-                   N_storage.metadatas[offset]);
-        metaName_next[N_storage.metadatas[offset]] = 0;
+        os_memmove(metaName_next, METADATA_PW(offset), METADATA_PWLEN(offset));
+        metaName_next[METADATA_PWLEN(offset)] = 0;
         return &fake_entries[2];
     }
 }
@@ -412,7 +468,7 @@ void menu_entries_init(unsigned int start) {
     UX_MENU_DISPLAY(start, NULL, NULL);
     // count number of entries
     ux_menu.menu_entries_count = 0;
-    while (get_metadata(ux_menu.menu_entries_count) != -1UL) {
+    while(get_metadata(ux_menu.menu_entries_count) != -1UL) {
         ux_menu.menu_entries_count++;
     }
     // the back item
@@ -427,44 +483,94 @@ void menu_remove_init(unsigned int start) {
     mode = MODE_REMOVE;
 }
 
-unsigned int handle_button_push_create_entry(unsigned int button_mask,
-                                             unsigned int button_mask_counter) {
-    switch (button_mask) {
-    case BUTTON_EVT_RELEASED | BUTTON_LEFT | BUTTON_RIGHT:
-        mode = MODE_NONE;
-        write_metadata(bkb_type_buff, bkb_get_type_buff_size());
-        UX_MENU_DISPLAY(1, menu_main, NULL);
-        break;
-    case BUTTON_EVT_RELEASED | BUTTON_LEFT:
-        bkb_choose_left();
-        bkb_draw();
-        bkb_display_ready();
-        break;
-    case BUTTON_EVT_RELEASED | BUTTON_RIGHT:
-        bkb_choose_right();
-        bkb_draw();
-        bkb_display_ready();
-        break;
-    }
-    return 0;
+void menu_new_entry_finish(unsigned char* buffer) {
+    mode = MODE_NONE;
+
+    // use the G_io_seproxyhal_spi_buffer as temp buffer to build the entry (and include the requested set of chars)
+    os_memmove(G_io_seproxyhal_spi_buffer+1, buffer, strlen(buffer));
+    // use the requested classes from the user
+    G_io_seproxyhal_spi_buffer[0] = G_create_classes;
+    // add the metadata
+    write_metadata(G_io_seproxyhal_spi_buffer, 1 + strlen(buffer));
+    // redisplay the main menu, at the new password entry
+    UX_MENU_DISPLAY(1, menu_main, NULL);
 }
 
 void menu_new_entry(void) {
     mode = MODE_CREATE;
-    bkb_init();
-    bkb_draw();
-    bkb_display_ready();
+    os_memset(ux.params.u.keyboard.entered_text, 0, sizeof(ux.params.u.keyboard.entered_text));
+    UX_DISPLAY_KEYBOARD(menu_new_entry_finish);
+}
+
+void ux_check_status(unsigned int status) {
+    if (status == BOLOS_UX_OK && mode == MODE_CREATE) {
+        menu_new_entry_finish(ux.params.u.keyboard.entered_text);
+    }
+} 
+
+void menu_entry_create_next(unsigned int class_to_ask);
+
+const ux_menu_entry_t menu_entry_create_uppercase[] = {
+  {NULL, menu_entry_create_next, 1 | (1 << 16), NULL, "With uppercase", NULL , 0, 0},
+  {NULL, menu_entry_create_next, 0 | (1 << 16), NULL, "No uppercase", NULL, 0, 0},
+  UX_MENU_END
+};
+
+const ux_menu_entry_t menu_entry_create_lowercase[] = {
+  {NULL, menu_entry_create_next, 2 | (2 << 16), NULL, "With lowercase", NULL , 0, 0},
+  {NULL, menu_entry_create_next, 0 | (2 << 16), NULL, "No lowercase", NULL, 0, 0},
+  UX_MENU_END
+};
+
+const ux_menu_entry_t menu_entry_create_numbers[] = {
+  {NULL, menu_entry_create_next, 4 | (3 << 16), NULL, "With numbers", NULL , 0, 0},
+  {NULL, menu_entry_create_next, 0 | (3 << 16), NULL, "No numbers", NULL, 0, 0},
+  UX_MENU_END
+};
+
+const ux_menu_entry_t menu_entry_create_basesymbols[] = {
+  {NULL, menu_entry_create_next, 8|16|32 | (4 << 16), NULL, "With -/ /_", NULL , 0, 0},
+  {NULL, menu_entry_create_next, 0 | (4 << 16), NULL, "No -/ /_", NULL, 0, 0},
+  UX_MENU_END
+};
+
+const ux_menu_entry_t menu_entry_create_extsymbols[] = {
+  {NULL, menu_entry_create_next, 64|128 | (5 << 16), NULL, "With ext symbols", NULL , 0, 0},
+  {NULL, menu_entry_create_next, 0 | (5 << 16), NULL, "No ext symbols", NULL, 0, 0},
+  UX_MENU_END
+};
+
+const ux_menu_entry_t * const menu_entry_create_classes[] = {
+    menu_entry_create_uppercase,
+    menu_entry_create_lowercase,
+    menu_entry_create_numbers,
+    menu_entry_create_basesymbols,
+    menu_entry_create_extsymbols,
+};
+
+void menu_entry_create_next(unsigned int class_to_ask) {
+    // reset classes activated on first call
+    if( class_to_ask>>16 == 0) {
+        G_create_classes = 0;
+    } 
+    G_create_classes |= class_to_ask & 0xFF;
+    if (class_to_ask>>16 >= ARRAYLEN(menu_entry_create_classes)) {
+        // now ask the user's password
+        menu_new_entry();
+        return;
+    }
+    UX_MENU_DISPLAY(0, PIC(menu_entry_create_classes[class_to_ask>>16]), NULL);
 }
 
 const ux_menu_entry_t menu_main[] = {
-    {NULL, menu_entries_init, 0, NULL, "Type password", NULL, 0, 0},
-    {NULL, menu_new_entry, 0, NULL, "New password", NULL, 0, 0},
-    {NULL, menu_remove_init, 0, NULL, "Delete password", NULL, 0, 0},
-    {menu_reset_all, NULL, 0, NULL, "Reset all", NULL, 0, 0},
-    {menu_settings, NULL, 0, NULL, "Settings", NULL, 0, 0},
-    {menu_about, NULL, 0, NULL, "About", NULL, 0, 0},
-    {NULL, os_sched_exit, 0, &C_icon_dashboard, "Quit app", NULL, 50, 29},
-    UX_MENU_END};
+  {NULL, menu_entries_init, 0, NULL, "Type password", NULL, 0, 0},
+  {NULL, menu_entry_create_next, 0, NULL, "New password", NULL, 0, 0},
+  {NULL, menu_remove_init, 0, NULL, "Delete password", NULL, 0, 0},
+  {menu_settings, NULL, 0, NULL, "Settings", NULL, 0, 0},
+  {menu_about, NULL, 0, NULL, "About", NULL, 0, 0},
+  {NULL, os_sched_exit, 0, &C_icon_dashboard, "Quit app", NULL, 50, 29},
+  UX_MENU_END
+};
 #endif // #if defined(TARGET_NANOS)
 
 unsigned short io_exchange_al(unsigned char channel, unsigned short tx_len) {
@@ -526,6 +632,7 @@ void sample_main(void) {
                 }
 
                 switch (G_io_apdu_buffer[1]) {
+
                 case 0x05: {
                     if (!write_metadata(G_io_apdu_buffer + 5,
                                         G_io_apdu_buffer[4])) {
@@ -611,16 +718,7 @@ unsigned char io_event(unsigned char channel) {
         break;
 
     case SEPROXYHAL_TAG_BUTTON_PUSH_EVENT:
-        // switch handle to bkb
-        if (mode == MODE_CREATE) {
-            callback = ux.button_push_handler;
-            ux.button_push_handler = handle_button_push_create_entry;
-        }
         UX_BUTTON_PUSH_EVENT(G_io_seproxyhal_spi_buffer);
-        // rollback
-        if (mode == MODE_CREATE) {
-            ux.button_push_handler = callback;
-        }
         break;
 
     case SEPROXYHAL_TAG_STATUS_EVENT:
@@ -635,18 +733,15 @@ unsigned char io_event(unsigned char channel) {
         break;
 
     case SEPROXYHAL_TAG_DISPLAY_PROCESSED_EVENT:
-        UX_DISPLAYED_EVENT({
-            if (mode == MODE_CREATE) {
-                bkb_display_ready();
-            }
-        });
+        UX_DISPLAYED_EVENT({});
         break;
 
     case SEPROXYHAL_TAG_TICKER_EVENT:
         UX_TICKER_EVENT(G_io_seproxyhal_spi_buffer, {
             // a pin lock is undergoing ?
             if (UX_ALLOWED) {
-                if (mode != MODE_CREATE) {
+                {
+
                     if (ux_step_count) {
                         // prepare next screen
                         ux_step = (ux_step + 1) % ux_step_count;
@@ -654,8 +749,6 @@ unsigned char io_event(unsigned char channel) {
                         UX_REDISPLAY();
                     }
                     break;
-                } else {
-                    bkb_animate(100);
                 }
             }
         });

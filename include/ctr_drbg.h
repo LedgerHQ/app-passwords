@@ -97,6 +97,17 @@
 extern "C" {
 #endif
 
+#ifdef USE_CTAES
+#include "ctaes.h"
+#define AES256_CTX_T AES256_ctx
+#define AES256_CTX_INIT(key,size,ctx) AES256_init(ctx, key)
+#define AES256_ECB_ENC(ctx, in, out) AES256_encrypt(ctx, 1, out, in);
+#else
+#define AES256_CTX_T cx_aes_key_t
+#define AES256_CTX_INIT(key,size,ctx) cx_aes_init_key(key, size, ctx)
+#define AES256_ECB_ENC(ctx, in, out) cx_aes (ctx, CX_LAST | CX_ENCRYPT | CX_PAD_NONE | CX_CHAIN_ECB, in, 16, out, 16);
+#endif
+
 /**
  * \brief          CTR_DRBG context structure
  */
@@ -109,7 +120,7 @@ typedef struct {
                                      (re)seed          */
     int reseed_interval;       /*!<  reseed interval   */
 
-    cx_aes_key_t aes_ctx; /*!<  AES context       */
+    AES256_CTX_T aes_ctx; /*!<  AES context       */
 
     /*
      * Callbacks (Entropy)
