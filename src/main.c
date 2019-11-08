@@ -97,14 +97,11 @@ int entropyProvider2(void *context, unsigned char *buffer, size_t bufferSize) {
     return 0;
 }
 
-extern struct {
-  unsigned short timeout; // up to 64k milliseconds (6 sec)
-} G_io_usb_ep_timeouts[IO_USB_MAX_ENDPOINTS];
 void io_usb_send_ep_wait(unsigned int ep, unsigned char* buf, unsigned int len, unsigned int timeout_cs) {
     io_usb_send_ep(ep, buf, len, 20);
 
     // wait until transfer timeout, or ended
-    while (G_io_usb_ep_timeouts[ep&0x7F].timeout) {
+    while (G_io_app.usb_ep_timeouts[ep&0x7F].timeout) {
         if (!io_seproxyhal_spi_is_status_sent()) {
             io_seproxyhal_general_status();
         }
@@ -483,33 +480,33 @@ void menu_remove_init(unsigned int start) {
     mode = MODE_REMOVE;
 }
 
-void menu_new_entry_finish(unsigned char* buffer) {
+void menu_new_entry_finish(void) {
     mode = MODE_NONE;
 
+    // read parameters from the ux 
+    os_ux_result(&ux.params);
+
     // use the G_io_seproxyhal_spi_buffer as temp buffer to build the entry (and include the requested set of chars)
-    os_memmove(G_io_seproxyhal_spi_buffer+1, buffer, strlen(buffer));
+    os_memmove(G_io_seproxyhal_spi_buffer+1, ux.params.u.keyboard.entered_text, strlen(ux.params.u.keyboard.entered_text));
     // use the requested classes from the user
     G_io_seproxyhal_spi_buffer[0] = G_create_classes;
     // add the metadata
-    write_metadata(G_io_seproxyhal_spi_buffer, 1 + strlen(buffer));
+    write_metadata(G_io_seproxyhal_spi_buffer, 1 + strlen(ux.params.u.keyboard.entered_text));
     // redisplay the main menu, at the new password entry
     UX_MENU_DISPLAY(1, menu_main, NULL);
 }
 
 void menu_new_entry(void) {
     mode = MODE_CREATE;
-    os_memset(ux.params.u.keyboard.entered_text, 0, sizeof(ux.params.u.keyboard.entered_text));
+    // wipe the whole ux to ensure no "fake display" of previous screen could occur
+    os_memset(&ux, 0, sizeof(ux));
     UX_DISPLAY_KEYBOARD(menu_new_entry_finish);
-}
-
-void ux_check_status(unsigned int status) {
-    if (status == BOLOS_UX_OK && mode == MODE_CREATE) {
-        menu_new_entry_finish(ux.params.u.keyboard.entered_text);
-    }
 } 
 
 void menu_entry_create_next(unsigned int class_to_ask);
 
+// value encode the class identifier
+// value>>16 encore the next menu o display (within the _create_classes table)
 const ux_menu_entry_t menu_entry_create_uppercase[] = {
   {NULL, menu_entry_create_next, 1 | (1 << 16), NULL, "With uppercase", NULL , 0, 0},
   {NULL, menu_entry_create_next, 0 | (1 << 16), NULL, "No uppercase", NULL, 0, 0},
@@ -713,9 +710,11 @@ unsigned char io_event(unsigned char channel) {
 
     // can't have more than one tag in the reply, not supported yet.
     switch (G_io_seproxyhal_spi_buffer[0]) {
+#ifdef TARGET_BLUE
     case SEPROXYHAL_TAG_FINGER_EVENT:
         UX_FINGER_EVENT(G_io_seproxyhal_spi_buffer);
         break;
+#endif // TARGET_BLUE
 
     case SEPROXYHAL_TAG_BUTTON_PUSH_EVENT:
         UX_BUTTON_PUSH_EVENT(G_io_seproxyhal_spi_buffer);
@@ -752,6 +751,11 @@ unsigned char io_event(unsigned char channel) {
                 }
             }
         });
+    }
+
+    // check whether or not the ux finalized the KEYBOARD input
+    if (mode == MODE_CREATE && os_sched_last_status(TASK_BOLOS_UX) == BOLOS_UX_OK) {
+        menu_new_entry_finish();
     }
 
     // close the event if not done previously (by a display or whatever)
