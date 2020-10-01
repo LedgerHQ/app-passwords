@@ -42,7 +42,12 @@ unsigned char G_io_seproxyhal_spi_buffer[IO_SEPROXYHAL_BUFFER_SIZE_B];
 
 bagl_element_t tmp_element;
 
+#ifndef HAVE_UX_FLOW
 ux_state_t ux;
+#else // HAVE_UX_FLOW 
+ux_state_t G_ux;
+bolos_ux_params_t G_ux_params;
+#endif // HAVE_UX_FLOW
 // display stepped screens
 unsigned int ux_step;
 unsigned int ux_step_count;
@@ -179,7 +184,7 @@ void type_password(uint8_t *data, uint32_t dataSize, uint8_t *out,
                 case '^':
                     // insert a extra space to validate the symbol
                     io_usb_send_ep_wait(HID_EPIN_ADDR, SPACE_REPORT, 8, 20);
-                    io_usb_send_ep_wait(HID_EPIN_ADDR, EMPTY_REPORT, 8, 20);                    
+                    io_usb_send_ep_wait(HID_EPIN_ADDR, EMPTY_REPORT, 8, 20);
                     break;
             }
         }
@@ -755,7 +760,9 @@ unsigned char io_event(unsigned char channel) {
 
     // check whether or not the ux finalized the KEYBOARD input
     if (mode == MODE_CREATE && os_sched_last_status(TASK_BOLOS_UX) == BOLOS_UX_OK) {
+#ifndef HAVE_UX_FLOW
         menu_new_entry_finish();
+#endif // HAVE_UX_FLOW
     }
 
     // close the event if not done previously (by a display or whatever)
@@ -803,7 +810,9 @@ __attribute__((section(".boot"))) int main(void) {
             USB_power(1);
 
             mode = MODE_NONE;
+#ifndef HAVE_UX_FLOW
             UX_MENU_DISPLAY(0, menu_main, NULL);
+#endif // HAVE_UX_FLOW
 
             currentMetadataOffset = 0;
             firstMetadataFound = 0;

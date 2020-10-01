@@ -58,16 +58,39 @@ DEFINES   += APPVERSION=\"$(APPVERSION)\"
 
 #DEFINES   += CX_COMPLIANCE_141
 
+ifeq ($(TARGET_NAME),TARGET_NANOX)
+DEFINES       += HAVE_GLO096
+DEFINES       += HAVE_BAGL BAGL_WIDTH=128 BAGL_HEIGHT=64
+DEFINES       += HAVE_BAGL_ELLIPSIS # long label truncation feature
+DEFINES       += HAVE_BAGL_FONT_OPEN_SANS_REGULAR_11PX
+DEFINES       += HAVE_BAGL_FONT_OPEN_SANS_EXTRABOLD_11PX
+DEFINES       += HAVE_BAGL_FONT_OPEN_SANS_LIGHT_16PX
+DEFINES       += HAVE_UX_FLOW
+SDK_SOURCE_PATH  += lib_ux
+endif
+
 ##############
-#  Compiler  #
+# Compiler #
 ##############
-#GCCPATH   := $(BOLOS_ENV)/gcc-arm-none-eabi-5_3-2016q1/bin/
-#CLANGPATH := $(BOLOS_ENV)/clang-arm-fropi/bin/
+ifneq ($(BOLOS_ENV),)
+$(info BOLOS_ENV=$(BOLOS_ENV))
+CLANGPATH := $(BOLOS_ENV)/clang-arm-fropi/bin/
+GCCPATH := $(BOLOS_ENV)/gcc-arm-none-eabi-5_3-2016q1/bin/
+else
+$(info BOLOS_ENV is not set: falling back to CLANGPATH and GCCPATH)
+endif
+ifeq ($(CLANGPATH),)
+$(info CLANGPATH is not set: clang will be used from PATH)
+endif
+ifeq ($(GCCPATH),)
+$(info GCCPATH is not set: arm-none-eabi-* will be used from PATH)
+endif
+
 CC       := $(CLANGPATH)clang 
 
 #CFLAGS   += -O0
 CFLAGS   += -O3 -Os
-
+CFLAGS   += -I/usr/include/
 AS     := $(GCCPATH)arm-none-eabi-gcc
 
 LD       := $(GCCPATH)arm-none-eabi-gcc
@@ -79,7 +102,7 @@ include $(BOLOS_SDK)/Makefile.glyphs
 
 ### computed variables
 APP_SOURCE_PATH  += src bui
-SDK_SOURCE_PATH  += lib_stusb lib_stusb_impl_kbd lib_u2f
+SDK_SOURCE_PATH  += lib_stusb lib_stusb_impl_kbd #lib_u2f
 
 
 load: all
@@ -96,3 +119,4 @@ dep/%.d: %.c Makefile
 
 listvariants:
 	@echo VARIANTS NONE pwmgr
+
