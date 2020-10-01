@@ -24,7 +24,7 @@
 
 #include "glyphs.h"
 
-#include "binary_keyboard.h"
+// #include "binary_keyboard.h"
 #include "ctr_drbg.h"
 #include "hid_mapping.h"
 #include "password_generation.h"
