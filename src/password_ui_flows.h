@@ -4,6 +4,7 @@
 #include "ux.h"
 
 void ui_idle(void);
+void ui_setup_keyboard(void);
 
 #define UPPERCASE_BITFLAG 1
 #define LOWERCASE_BITFLAG 2

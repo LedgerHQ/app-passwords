@@ -14,77 +14,12 @@ ux_state_t G_ux;
 bolos_ux_params_t G_ux_params;
 keyboard_ctx_t G_keyboard_ctx;
 
-void display_type_password_flow();
-void display_new_password_flow();
-void display_reset_password_flow();
-void display_settings_flow();
+// void display_type_password_flow();
+// void display_new_password_flow();
+// void display_reset_password_flow();
+// void display_settings_flow();
 
-UX_STEP_CB(
-idle_type_password_step,
-pb,
-display_type_password_flow(),
-{
-    &C_icon_bootloader,
-    "Type password", 
-});
-UX_STEP_CB(
-idle_new_password_step,
-pb,
-display_new_password_flow(),
-{
-    &C_icon_plus,
-    "New password",
-});
-UX_STEP_CB(
-idle_reset_password_step,
-pb,
-display_reset_password_flow(),
-{
-    &C_icon_crossmark,
-    "Delete password",
-});
-UX_STEP_CB(
-idle_settings_step,
-pb,
-display_settings_flow(),
-{
-    &C_icon_coggle,
-    "Settings",
-});
-UX_STEP_NOCB(
-idle_version_step,
-bn,
-{
-    "Version",
-    APPVERSION,
-});
-UX_STEP_CB(
-idle_quit_step,
-pb,
-os_sched_exit(-1),
-{
-    &C_icon_dashboard,
-    "Quit",
-});
-
-UX_FLOW(idle_flow,
-&idle_type_password_step,
-&idle_new_password_step,
-&idle_reset_password_step,
-&idle_settings_step,
-&idle_version_step,
-&idle_quit_step,
-FLOW_LOOP
-);
-
-void ui_idle(void) {
-    if(G_ux.stack_count == 0) {
-        ux_stack_push();
-    }
-    ux_flow_init(0, idle_flow, NULL);
-}
-
-///////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////// TYPE PASSWORD ///////////////////////////////////////////
 
 char current_screen_type[10];
 char current_entry_name[20];
@@ -206,7 +141,7 @@ void reset_password_cb(size_t offset){
     erase_metadata(offset);
 }
 
-///////////////////////////////////////////////////////////////////////////////
+//////////////////////////////// CREATE NEW PASSWORD ///////////////////////////////////////////////
 
 unsigned char G_create_classes;
 char setting_str_buffer[10];
@@ -351,7 +286,7 @@ void display_nickname_explanation(){
 }
 
 
-///////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////// SETTINGS ////////////////////////////////////////////
 
 void display_change_keyboard_flow(const ux_flow_step_t* const start_step);
 void display_reset_password_list_flow();
@@ -395,7 +330,7 @@ void display_settings_flow() {
     ux_flow_init(0, settings_flow, NULL);
 }
 
-///////////////////////////////////////////////////////////////////////////////
+//////////////////////////////// SETTINGS - CHANGE KEYBOARD LAYOUT ///////////////////////////////////////////////
 
 void get_current_keyboard_setting_value(hid_mapping_t mapping);
 void enter_keyboard_setting(uint8_t caller_id, hid_mapping_t mapping);
@@ -462,12 +397,18 @@ void get_current_keyboard_setting_value(hid_mapping_t mapping){
 }
 
 void enter_keyboard_setting(uint8_t caller_id, hid_mapping_t mapping){
-    nvm_write((void*)&N_storage.keyboard_layout, (void*)&mapping, sizeof(hid_mapping_t));
-    display_change_keyboard_flow(change_keyboard_flow[caller_id]);
+    if(N_storage.keyboard_layout != 0){
+        nvm_write((void*)&N_storage.keyboard_layout, (void*)&mapping, sizeof(hid_mapping_t));
+        display_change_keyboard_flow(change_keyboard_flow[caller_id]);
+    }
+    else{
+        // This case only happens at application first launch
+        nvm_write((void*)&N_storage.keyboard_layout, (void*)&mapping, sizeof(hid_mapping_t));
+        ui_idle();
+    }
 }
 
-
-///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////// SETTINGS - RESET ALL PASSWORDS //////////////////////////////////////////////
 
 void reset_password_list();
 
@@ -501,4 +442,91 @@ void display_reset_password_list_flow(){
 void reset_password_list(){
     reset_metadatas();
     ui_idle();
+}
+
+///////////////////////////////// INIT / IDLE //////////////////////////////////////////////
+
+UX_STEP_CB(
+idle_type_password_step,
+pb,
+display_type_password_flow(),
+{
+    &C_icon_bootloader,
+    "Type password", 
+});
+UX_STEP_CB(
+idle_new_password_step,
+pb,
+display_new_password_flow(NULL),
+{
+    &C_icon_plus,
+    "New password",
+});
+UX_STEP_CB(
+idle_reset_password_step,
+pb,
+display_reset_password_flow(),
+{
+    &C_icon_crossmark,
+    "Delete password",
+});
+UX_STEP_CB(
+idle_settings_step,
+pb,
+display_settings_flow(),
+{
+    &C_icon_coggle,
+    "Settings",
+});
+UX_STEP_NOCB(
+idle_version_step,
+bn,
+{
+    "Version",
+    APPVERSION,
+});
+UX_STEP_CB(
+idle_quit_step,
+pb,
+os_sched_exit(-1),
+{
+    &C_icon_dashboard,
+    "Quit",
+});
+
+UX_FLOW(idle_flow,
+&idle_type_password_step,
+&idle_new_password_step,
+&idle_reset_password_step,
+&idle_settings_step,
+&idle_version_step,
+&idle_quit_step,
+FLOW_LOOP
+);
+
+/* Used only when the application is first launched to setup the right keyboard*/
+UX_STEP_NOCB(
+explanation_step,
+nn,
+{
+    "Select the layout",
+    "of your computer",
+});
+UX_FLOW(setup_keyboard_at_init_flow,
+&explanation_step,
+&qwerty_step,
+&qwerty_international_step,
+&azerty_step
+);
+
+void ui_idle(void) {
+    if(G_ux.stack_count == 0) {
+        ux_stack_push();
+    }
+    if(N_storage.keyboard_layout != 0){
+        ux_flow_init(0, idle_flow, NULL);
+    }
+    else{
+        ux_flow_init(0, setup_keyboard_at_init_flow, NULL);
+    }
 }

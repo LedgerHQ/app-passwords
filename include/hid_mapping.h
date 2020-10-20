@@ -22,9 +22,9 @@
 #include <stdint.h>
 
 enum hid_mapping_e {
-    HID_MAPPING_QWERTY = 0,
-    HID_MAPPING_QWERTY_INTL = 1,
-    HID_MAPPING_AZERTY = 2,
+    HID_MAPPING_QWERTY = 1,
+    HID_MAPPING_QWERTY_INTL = 2,
+    HID_MAPPING_AZERTY = 3,
 };
 typedef enum hid_mapping_e hid_mapping_t;
 
