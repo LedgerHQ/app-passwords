@@ -12,6 +12,7 @@ static const uint8_t EMPTY_REPORT[] =       {0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 static const uint8_t SPACE_REPORT[] =       {0x00, 0x00, 0x2C, 0x00, 0x00, 0x00, 0x00, 0x00};
 static const uint8_t CAPS_REPORT[] =        {0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 static const uint8_t CAPS_LOCK_REPORT[] =   {0x00, 0x00, 0x39, 0x00, 0x00, 0x00, 0x00, 0x00};
+static const uint8_t ENTER_REPORT[] =       {0x00, 0x00, 0x28, 0x00, 0x00, 0x00, 0x00, 0x00};
 
 uint8_t entropyProvided;
 uint8_t entropy[32];
@@ -118,6 +119,12 @@ void type_password(uint8_t *data, uint32_t dataSize, uint8_t *out,
     // restore shift state
     if (led_status&2){
         io_usb_send_ep_wait(HID_EPIN_ADDR, (uint8_t*)CAPS_LOCK_REPORT, 8, 20);
+        io_usb_send_ep_wait(HID_EPIN_ADDR, (uint8_t*)EMPTY_REPORT, 8, 20);
+    }
+
+    if(N_storage.press_enter_after_typing){
+        // press enter
+        io_usb_send_ep_wait(HID_EPIN_ADDR, (uint8_t*)ENTER_REPORT, 8, 20);
         io_usb_send_ep_wait(HID_EPIN_ADDR, (uint8_t*)EMPTY_REPORT, 8, 20);
     }
 }

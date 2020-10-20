@@ -14,11 +14,6 @@ ux_state_t G_ux;
 bolos_ux_params_t G_ux_params;
 keyboard_ctx_t G_keyboard_ctx;
 
-// void display_type_password_flow();
-// void display_new_password_flow();
-// void display_reset_password_flow();
-// void display_settings_flow();
-
 //////////////////////////////////// TYPE PASSWORD ///////////////////////////////////////////
 
 char current_screen_type[10];
@@ -144,7 +139,7 @@ void reset_password_cb(size_t offset){
 //////////////////////////////// CREATE NEW PASSWORD ///////////////////////////////////////////////
 
 unsigned char G_create_classes;
-char setting_str_buffer[10];
+char setting_str_buffer[18];
 
 void get_current_charset_setting_value(uint8_t symbols_bitflag);
 void toggle_password_setting(uint8_t caller_id, uint8_t symbols_bitflag);
@@ -290,6 +285,8 @@ void display_nickname_explanation(){
 
 void display_change_keyboard_flow(const ux_flow_step_t* const start_step);
 void display_reset_password_list_flow();
+void get_current_pressEnterAfterTyping_setting_value();
+void switch_setting_pressEnterAfterTyping();
 
 UX_STEP_CB(
 settings_change_keyboard_step,
@@ -307,6 +304,15 @@ display_reset_password_list_flow(),
     "Erase the list",
     "of passwords",
 });
+UX_STEP_CB_INIT(
+settings_pressEnterAfterTyping_step,
+nn,
+get_current_pressEnterAfterTyping_setting_value(),
+switch_setting_pressEnterAfterTyping(),
+{
+    setting_str_buffer,
+    "after typing",
+});
 UX_STEP_CB(
 settings_cancel_step,
 pb,
@@ -319,52 +325,70 @@ ui_idle(),
 UX_FLOW(settings_flow,
 &settings_change_keyboard_step,
 &settings_reset_password_list_step,
+&settings_pressEnterAfterTyping_step,
 &settings_cancel_step,
 FLOW_LOOP
 );
 
-void display_settings_flow() {
+void display_settings_flow(const ux_flow_step_t* const start_step) {
     if(G_ux.stack_count == 0) {
         ux_stack_push();
     }
-    ux_flow_init(0, settings_flow, NULL);
+    ux_flow_init(0, settings_flow, start_step);
+}
+
+void get_current_pressEnterAfterTyping_setting_value(){
+    if(N_storage.press_enter_after_typing){
+        strcpy(setting_str_buffer, "Press Enter");
+    }
+    else{
+        strcpy(setting_str_buffer, "Don't press Enter");
+    }
+}
+
+void switch_setting_pressEnterAfterTyping(){
+    bool new_value = !N_storage.press_enter_after_typing;
+    nvm_write((void*)&N_storage.press_enter_after_typing, (void*)&new_value, sizeof(new_value));
+    display_settings_flow(&settings_pressEnterAfterTyping_step);
 }
 
 //////////////////////////////// SETTINGS - CHANGE KEYBOARD LAYOUT ///////////////////////////////////////////////
+
+bagl_icon_details_t is_selected_icon;
 
 void get_current_keyboard_setting_value(hid_mapping_t mapping);
 void enter_keyboard_setting(uint8_t caller_id, hid_mapping_t mapping);
 
 UX_STEP_CB_INIT(
 qwerty_step,
-nn,
+pb,
 get_current_keyboard_setting_value(HID_MAPPING_QWERTY),
 enter_keyboard_setting(0, HID_MAPPING_QWERTY),
 {
+    &is_selected_icon,
     "Qwerty",
-    setting_str_buffer,
 });
 UX_STEP_CB_INIT(
 qwerty_international_step,
-nn,
+pb,
 get_current_keyboard_setting_value(HID_MAPPING_QWERTY_INTL),
 enter_keyboard_setting(1, HID_MAPPING_QWERTY_INTL),
 {
+    &is_selected_icon,
     #if defined(TARGET_NANOS)
     "Qwerty Intl",
     #elif defined(TARGET_NANOX)
     "Qwerty International",
     #endif
-    setting_str_buffer,
 });
 UX_STEP_CB_INIT(
 azerty_step,
-nn,
+pb,
 get_current_keyboard_setting_value(HID_MAPPING_AZERTY),
 enter_keyboard_setting(2, HID_MAPPING_AZERTY),
 {
+    &is_selected_icon,
     "Azerty",
-    setting_str_buffer,
 });
 UX_STEP_CB(
 change_keyboard_cancel_step,
@@ -389,10 +413,10 @@ void display_change_keyboard_flow(const ux_flow_step_t* const start_step) {
 
 void get_current_keyboard_setting_value(hid_mapping_t mapping){
     if(N_storage.keyboard_layout == mapping){
-        strcpy(setting_str_buffer, "ACTIVE");
+        is_selected_icon = C_icon_validate_14;
     }
     else{
-        strcpy(setting_str_buffer, "");
+        memset(&is_selected_icon, 0, sizeof(is_selected_icon));
     }
 }
 
@@ -473,7 +497,7 @@ display_reset_password_flow(),
 UX_STEP_CB(
 idle_settings_step,
 pb,
-display_settings_flow(),
+display_settings_flow(NULL),
 {
     &C_icon_coggle,
     "Settings",
