@@ -19,6 +19,7 @@
 #define BOLOS_UX_H
 
 #include "os_io_seproxyhal.h"
+#include "ux.h"
 
 #define KEYBOARD_ITEM_VALIDATED                                                \
     1 // callback is called with the entered item index, tmp_element is

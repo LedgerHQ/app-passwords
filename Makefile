@@ -53,6 +53,8 @@ DEFINES   += USE_CTAES
 
 DEFINES   += APPVERSION=\"$(APPVERSION)\"
 
+DEFINES   += HAVE_WEBUSB WEBUSB_URL_SIZE_B=0 WEBUSB_URL=""
+
 ifneq ($(TARGET_NAME), TARGET_BLUE)
 	DEFINES		  += HAVE_UX_FLOW
 endif
@@ -114,7 +116,7 @@ include $(BOLOS_SDK)/Makefile.glyphs
 
 ### computed variables
 APP_SOURCE_PATH  += src
-SDK_SOURCE_PATH  += lib_stusb lib_stusb_impl_kbd
+SDK_SOURCE_PATH  += lib_stusb lib_stusb_impl
 
 
 load: all

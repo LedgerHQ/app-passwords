@@ -93,6 +93,8 @@ void app_main(void) {
                     THROW(0x6982);
                 }
 
+                PRINTF("New APDU received:\n%.*H\n", rx, G_io_apdu_buffer);
+
                 if (G_io_apdu_buffer[0] != CLA) {
                     THROW(0x6E00);
                 }
@@ -133,6 +135,10 @@ void app_main(void) {
                     reset_metadatas();
                     break;
                 }
+
+                default:
+                    THROW(0x6D00);
+                    break;
                 }
                 // default no error
                 THROW(0x9000);
