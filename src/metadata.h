@@ -11,5 +11,4 @@ uint32_t find_next_metadata(uint32_t offset);
 uint32_t get_metadata(uint32_t nth);
 uint32_t find_previous_metadata(uint32_t offset);
 
-
 #endif

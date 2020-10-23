@@ -9,19 +9,19 @@ uint8_t write_metadata(uint8_t *data, uint8_t dataSize) {
     if ((offset + dataSize + 2 + 2) > MAX_METADATAS) {
         return 0;
     }
-    nvm_write((void*)&N_storage.metadatas[offset + 2], data, dataSize);
+    nvm_write((void *) &N_storage.metadatas[offset + 2], data, dataSize);
     tmp[0] = 0;
     tmp[1] = META_NONE;
-    nvm_write((void*)&N_storage.metadatas[offset + 2 + dataSize], tmp, 2);
+    nvm_write((void *) &N_storage.metadatas[offset + 2 + dataSize], tmp, 2);
     tmp[0] = dataSize;
     tmp[1] = META_NONE;
-    nvm_write((void*)&N_storage.metadatas[offset], tmp, 2);
-    nvm_write((void*)&N_storage.metadata_count, &metadata_count, 4);
+    nvm_write((void *) &N_storage.metadatas[offset], tmp, 2);
+    nvm_write((void *) &N_storage.metadata_count, &metadata_count, 4);
     return 1;
 }
 
 void reset_metadatas(void) {
-    nvm_write((void*)N_storage.metadatas, NULL, sizeof(N_storage.metadatas));
+    nvm_write((void *) N_storage.metadatas, NULL, sizeof(N_storage.metadatas));
 }
 
 uint8_t erase_metadata(uint32_t offset) {
@@ -30,8 +30,8 @@ uint8_t erase_metadata(uint32_t offset) {
     }
     size_t metadata_count = N_storage.metadata_count - 1;
     unsigned char m = META_ERASED;
-    nvm_write((void*)&N_storage.metadatas[offset+1], &m, 1);
-    nvm_write((void*)&N_storage.metadata_count, &metadata_count, 4);
+    nvm_write((void *) &N_storage.metadatas[offset + 1], &m, 1);
+    nvm_write((void *) &N_storage.metadata_count, &metadata_count, 4);
     return 1;
 }
 
@@ -51,10 +51,10 @@ uint32_t find_next_metadata(uint32_t offset) {
     offset += METADATA_DATALEN(offset) + 2;
     for (;;) {
         if (METADATA_DATALEN(offset) == 0) {
-            return 0; // end of file
+            return 0;  // end of file
         }
         if (METADATA_KIND(offset) != META_ERASED) {
-            return offset; // next entry
+            return offset;  // next entry
         }
         offset += METADATA_DATALEN(offset) + 2;
     }
@@ -64,11 +64,11 @@ uint32_t get_metadata(uint32_t nth) {
     unsigned int offset = 0;
     for (;;) {
         if (METADATA_DATALEN(offset) == 0) {
-            return -1UL; // end of file
+            return -1UL;  // end of file
         }
         if (METADATA_KIND(offset) != META_ERASED) {
-            if (nth==0) {
-            return offset;  
+            if (nth == 0) {
+                return offset;
             }
             nth--;
         }
