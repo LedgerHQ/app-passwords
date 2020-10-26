@@ -180,9 +180,10 @@ const bagl_element_t screen_common_keyboard_elements[] = {
       0},
      NULL},
     //{{BAGL_LABELINE                       , 0x02,  57,  12,  14,  13, 0, 4, BAGL_FILL, 0x000000,
-    //0xFFFFFF,
-    //BAGL_FONT_OPEN_SANS_EXTRABOLD_11px|BAGL_FONT_ALIGNMENT_CENTER|BAGL_FONT_ALIGNMENT_MIDDLE, 0 },
-    //NULL },
+    // 0xFFFFFF,
+    // BAGL_FONT_OPEN_SANS_EXTRABOLD_11px|BAGL_FONT_ALIGNMENT_CENTER|BAGL_FONT_ALIGNMENT_MIDDLE, 0
+    // },
+    // NULL },
 
     // next element
     {{BAGL_LABELINE,

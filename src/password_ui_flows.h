@@ -2,9 +2,13 @@
 #define _PASSWORD_UI_H_
 
 #include "ux.h"
+#include "types.h"
 
-void ui_idle(void);
-void ui_setup_keyboard(void);
+extern const message_pair_t const ERR_MESSAGES[];
+
+void ui_idle();
+void ui_request_user_approval(message_pair_t *msg);
+void ui_error(message_pair_t err);
 
 #define UPPERCASE_BITFLAG   1
 #define LOWERCASE_BITFLAG   2

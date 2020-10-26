@@ -4,7 +4,7 @@
 #include "os_io_seproxyhal.h"
 #include "usbd_hid_impl.h"
 
-#include "shared_context.h"
+#include "globals.h"
 #include "hid_mapping.h"
 
 static const uint8_t EMPTY_REPORT[] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};

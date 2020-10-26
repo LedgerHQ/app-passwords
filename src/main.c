@@ -29,181 +29,76 @@
 #include "hid_mapping.h"
 #include "password_generation.h"
 #include "usbd_hid_impl.h"
+#include "io.h"
+#include "sw.h"
 
 #include "password_ui_flows.h"
 #include "password_typing.h"
-#include "shared_context.h"
+#include "globals.h"
 #include "metadata.h"
+#include "dispatcher.h"
 
 unsigned char G_io_seproxyhal_spi_buffer[IO_SEPROXYHAL_BUFFER_SIZE_B];
+const internalStorage_t N_storage_real;
+app_state_t app_state;
+volatile unsigned int G_led_status;
 
-#define CLA 0xE0
-
-unsigned short io_exchange_al(unsigned char channel, unsigned short tx_len) {
-    switch (channel & ~(IO_FLAGS)) {
-        case CHANNEL_KEYBOARD:
-            break;
-
-        // multiplexed io exchange over a SPI channel and TLV encapsulated protocol
-        case CHANNEL_SPI:
-            if (tx_len) {
-                io_seproxyhal_spi_send(G_io_apdu_buffer, tx_len);
-
-                if (channel & IO_RESET_AFTER_REPLIED) {
-                    reset();
-                }
-                return 0;  // nothing received from the master so far (it's a tx
-                           // transaction)
-            } else {
-                return io_seproxyhal_spi_recv(G_io_apdu_buffer, sizeof(G_io_apdu_buffer), 0);
-            }
-
-        default:
-            THROW(INVALID_PARAMETER);
+void app_init() {
+    if (N_storage.magic != STORAGE_MAGIC) {
+        uint32_t tmp = STORAGE_MAGIC;
+        nvm_write((void *) &N_storage.magic, (void *) &tmp, sizeof(uint32_t));
+        tmp = 0;
+        nvm_write((void *) &N_storage.press_enter_after_typing,
+                  (void *) &tmp,
+                  sizeof(N_storage.press_enter_after_typing));
+        nvm_write((void *) &N_storage.keyboard_layout,
+                  (void *) &tmp,
+                  sizeof(N_storage.keyboard_layout));
+        nvm_write((void *) &N_storage.metadata_count,
+                  (void *) &tmp,
+                  sizeof(N_storage.metadata_count));
+        nvm_write((void *) N_storage.metadatas, (void *) &tmp, 2);
     }
-    return 0;
+    memset(&app_state, 0, sizeof(app_state));
 }
 
-void app_main(void) {
-    volatile unsigned int rx = 0;
-    volatile unsigned int tx = 0;
-    volatile unsigned int flags = 0;
+void app_main() {
+    int input_len = 0;
 
-    // DESIGN NOTE: the bootloader ignores the way APDU are fetched. The only
-    // goal is to retrieve APDU.
-    // When APDU are to be fetched from multiple IOs, like NFC+USB+BLE, make
-    // sure the io_event is called with a
-    // switch event, before the apdu is replied to the bootloader. This avoid
-    // APDU injection faults.
+    app_state.io.output_len = 0;
+    app_state.io.state = READY;
+
     for (;;) {
-        volatile unsigned short sw = 0;
-
         BEGIN_TRY {
             TRY {
-                rx = tx;
-                tx = 0;  // ensure no race in catch_other if io_exchange throws
-                         // an error
-                rx = io_exchange(CHANNEL_APDU | flags, rx);
-                flags = 0;
+                input_len = recv();
 
-                // no apdu received, well, reset the session, and reset the
-                // bootloader configuration
-                if (rx == 0) {
-                    THROW(0x6982);
+                if (input_len == -1) {
+                    return;
                 }
 
-                PRINTF("New APDU received:\n%.*H\n", rx, G_io_apdu_buffer);
+                PRINTF("=> %.*H\n", input_len, G_io_apdu_buffer);
 
-                if (G_io_apdu_buffer[0] != CLA) {
-                    THROW(0x6E00);
+                if (input_len < OFFSET_CDATA ||
+                    input_len - OFFSET_CDATA != G_io_apdu_buffer[OFFSET_LC]) {
+                    send_sw(SW_WRONG_DATA_LENGTH);
+                    continue;
                 }
-
-                switch (G_io_apdu_buffer[1]) {
-                    case 0x05: {
-                        if (!write_metadata(G_io_apdu_buffer + 5, G_io_apdu_buffer[4])) {
-                            THROW(EXCEPTION);
-                        }
-                        break;
-                    }
-
-                    case 0x06: {
-                        uint32_t offset;
-                        offset = find_next_metadata(currentMetadataOffset);
-                        currentMetadataOffset = offset;
-                        os_memmove(G_io_apdu_buffer,
-                                   (void *) &N_storage.metadatas[offset + 2],
-                                   N_storage.metadatas[offset]);
-                        tx = N_storage.metadatas[offset];
-                        break;
-                    }
-
-                    case 0x07: {
-                        uint32_t offset;
-                        offset = find_previous_metadata(currentMetadataOffset);
-                        currentMetadataOffset = offset;
-                        os_memmove(G_io_apdu_buffer,
-                                   (void *) &N_storage.metadatas[offset + 2],
-                                   N_storage.metadatas[offset]);
-                        tx = N_storage.metadatas[offset];
-                        break;
-                    }
-
-                    case 0x08: {
-                        reset_metadatas();
-                        break;
-                    }
-
-                    default:
-                        THROW(0x6D00);
-                        break;
+                if (dispatch() < 0) {
+                    return;
                 }
-                // default no error
-                THROW(0x9000);
+            }
+            CATCH(EXCEPTION_IO_RESET) {
+                THROW(EXCEPTION_IO_RESET);
             }
             CATCH_OTHER(e) {
-                switch (e & 0xFFFFF000) {
-                    case 0x6000:
-                        // Wipe the transaction context and report the exception
-                        sw = e;
-                        // TODO here: error processing, memory wipes ?
-                        break;
-                    case 0x9000:
-                        // ok
-                        sw = e;
-                        break;
-                    default:
-                        // Internal error
-                        sw = 0x6800 | (e & 0x7FF);
-                        break;
-                }
-                G_io_apdu_buffer[tx] = sw >> 8;
-                G_io_apdu_buffer[tx + 1] = sw;
-                tx += 2;
+                send_sw(e);
             }
             FINALLY {
             }
+            END_TRY;
         }
-        END_TRY;
     }
-
-    // return_to_dashboard:
-    return;
-}
-
-void io_seproxyhal_display(const bagl_element_t *element) {
-    io_seproxyhal_display_default((bagl_element_t *) element);
-}
-
-unsigned char io_event(unsigned char channel) {
-    // can't have more than one tag in the reply, not supported yet.
-    switch (G_io_seproxyhal_spi_buffer[0]) {
-        case SEPROXYHAL_TAG_BUTTON_PUSH_EVENT:
-            UX_BUTTON_PUSH_EVENT(G_io_seproxyhal_spi_buffer);
-            break;
-
-        case SEPROXYHAL_TAG_STATUS_EVENT:
-            if (G_io_apdu_media == IO_APDU_MEDIA_USB_HID &&
-                !(U4BE(G_io_seproxyhal_spi_buffer, 3) &
-                  SEPROXYHAL_TAG_STATUS_EVENT_FLAG_USB_POWERED)) {
-                THROW(EXCEPTION_IO_RESET);
-            }
-        // no break is intentional
-        default:
-            UX_DEFAULT_EVENT();
-            break;
-
-        case SEPROXYHAL_TAG_DISPLAY_PROCESSED_EVENT:
-            UX_DISPLAYED_EVENT({});
-            break;
-
-            // close the event if not done previously (by a display or whatever)
-            if (!io_seproxyhal_spi_is_status_sent()) {
-                io_seproxyhal_general_status();
-            }
-    }
-
-    // command has been processed, DO NOT reset the current APDU transport
-    return 1;
 }
 
 void app_exit(void) {

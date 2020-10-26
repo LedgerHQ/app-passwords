@@ -6,19 +6,60 @@
 #include "stdbool.h"
 #include "keyboard.h"
 
-#include "shared_context.h"
+#include "globals.h"
 #include "password_typing.h"
 #include "metadata.h"
+#include "dispatcher.h"
+#include "sw.h"
+#include "io.h"
 
 ux_state_t G_ux;
 bolos_ux_params_t G_ux_params;
 keyboard_ctx_t G_keyboard_ctx;
 
+const message_pair_t const ERR_MESSAGES[] = {
+    {"", ""},                             // OK
+    {"Write Error", "Database is full"},  // ERR_NO_MORE_SPACE_AVAILABLE
+    {"Write Error",
+     "Database should be repaired, please contact Ledger Support"},  // ERR_CORRUPTED_METADATA
+    {"Erase Error", "Database already empty"}};                      // ERR_NO_METADATA
+
+char line_buffer_1[16];
+char line_buffer_2[21];
+
+///////////////////////////////// USER APPROVAL //////////////////////////////////////////////
+
+// clang-format off
+UX_STEP_CB(
+request_user_approval_step,
+pnn,
+app_state.user_approval = true; dispatch(),
+{
+    &C_icon_validate_14,
+    line_buffer_1,
+    line_buffer_2,
+});
+UX_STEP_CB(
+generic_cancel_step,
+pb,
+send_sw(SW_CONDITIONS_OF_USE_NOT_SATISFIED); ui_idle(),
+{
+    &C_icon_back,
+    "Cancel",
+});
+// clang-format on
+
+UX_FLOW(request_user_approval_flow, &request_user_approval_step, &generic_cancel_step);
+
+void ui_request_user_approval(message_pair_t* msg) {
+    strncpy(line_buffer_1, (char*) PIC(msg->first), sizeof(line_buffer_1));
+    strncpy(line_buffer_2, (char*) PIC(msg->second), sizeof(line_buffer_2));
+    ux_flow_init(0, request_user_approval_flow, NULL);
+}
+
 //////////////////////////////////// TYPE PASSWORD ///////////////////////////////////////////
 
-char current_screen_type[10];
-char current_entry_name[20];
-uint8_t current_entry_index;
+uint16_t current_entry_index;
 int8_t previous_location;  // max left: -1, middle: 0, max right: 1
 void (*selector_callback)();
 
@@ -42,8 +83,8 @@ bn,
 get_current_entry_name(),
 select_password_and_apply_cb(),
 {
-    current_screen_type,
-    current_entry_name,
+    line_buffer_1,
+    line_buffer_2,
 });
 UX_STEP_INIT(
 select_password_lower_border_step,
@@ -97,14 +138,13 @@ void display_next_entry(bool is_upper_border) {
 void get_current_entry_name() {
     size_t offset = get_metadata(current_entry_index);
     if (offset == -1UL) {
-        strcpy(current_screen_type, "");
-        strcpy(current_entry_name, "Cancel");
+        strcpy(line_buffer_1, "");
+        strcpy(line_buffer_2, "Cancel");
         previous_location = 1;
     } else {
-        strcpy(current_screen_type, "Name");
-        memcpy(current_entry_name, (void*) METADATA_PW(offset), METADATA_PWLEN(offset));
-        current_entry_name[METADATA_PWLEN(offset) >= MAX_METANAME ? MAX_METANAME - 1
-                                                                  : METADATA_PWLEN(offset)] = '\0';
+        SPRINTF(line_buffer_1, "Password %d/%d", current_entry_index + 1, N_storage.metadata_count);
+        memcpy(line_buffer_2, (void*) METADATA_PW(offset), METADATA_PWLEN(offset));
+        line_buffer_2[METADATA_PWLEN(offset)] = '\0';
         previous_location = 0;
     }
 }
@@ -132,13 +172,16 @@ void type_password_cb(size_t offset) {
 }
 
 void reset_password_cb(size_t offset) {
-    erase_metadata(offset);
+    error_type_t err = erase_metadata(offset);
+    if (err != OK) {
+        ui_error(ERR_MESSAGES[err]);
+        return;
+    }
 }
 
 //////////////////////////////// CREATE NEW PASSWORD ///////////////////////////////////////////////
 
 unsigned char G_create_classes;
-char setting_str_buffer[18];
 
 void get_current_charset_setting_value(uint8_t symbols_bitflag);
 void toggle_password_setting(uint8_t caller_id, uint8_t symbols_bitflag);
@@ -153,7 +196,7 @@ nn,
 get_current_charset_setting_value(UPPERCASE_BITFLAG),
 toggle_password_setting(0, UPPERCASE_BITFLAG),
 {
-    setting_str_buffer,
+    line_buffer_2,
     "uppercase",
 });
 UX_STEP_CB_INIT(
@@ -162,7 +205,7 @@ nn,
 get_current_charset_setting_value(LOWERCASE_BITFLAG),
 toggle_password_setting(1, LOWERCASE_BITFLAG),
 {
-    setting_str_buffer,
+    line_buffer_2,
     "lowercase",
 });
 UX_STEP_CB_INIT(
@@ -171,7 +214,7 @@ nn,
 get_current_charset_setting_value(NUMBERS_BITFLAG),
 toggle_password_setting(2, NUMBERS_BITFLAG),
 {
-    setting_str_buffer,
+    line_buffer_2,
     "numbers",
 });
 UX_STEP_CB_INIT(
@@ -180,7 +223,7 @@ nn,
 get_current_charset_setting_value(BARS_BITFLAG),
 toggle_password_setting(3, BARS_BITFLAG),
 {
-    setting_str_buffer,
+    line_buffer_2,
     "-/ /_",
 });
 UX_STEP_CB_INIT(
@@ -189,7 +232,7 @@ nn,
 get_current_charset_setting_value(EXT_SYMBOLS_BITFLAG),
 toggle_password_setting(4, EXT_SYMBOLS_BITFLAG),
 {
-    setting_str_buffer,
+    line_buffer_2,
     "ext symbols",
 });
 UX_STEP_CB(
@@ -204,14 +247,6 @@ enter_password_nickname(),
     &C_icon_validate_14,
     "Create password",
 });
-UX_STEP_CB(
-new_password_cancel_step,
-pb,
-ui_idle(),
-{
-    &C_icon_back,
-    "Cancel",
-});
 // clang-format on
 
 UX_FLOW(new_password_flow,
@@ -221,7 +256,7 @@ UX_FLOW(new_password_flow,
         &new_password_bars_step,
         &new_password_ext_step,
         &new_password_approve_step,
-        &new_password_cancel_step);
+        &generic_cancel_step);
 
 void display_new_password_flow(const ux_flow_step_t* const start_step) {
     if (start_step == NULL) {
@@ -232,9 +267,9 @@ void display_new_password_flow(const ux_flow_step_t* const start_step) {
 
 void get_current_charset_setting_value(uint8_t symbols_bitflag) {
     if (G_create_classes & symbols_bitflag) {
-        strcpy(setting_str_buffer, "With");
+        strcpy(line_buffer_2, "With");
     } else {
-        strcpy(setting_str_buffer, "Without");
+        strcpy(line_buffer_2, "Without");
     }
 }
 
@@ -252,8 +287,12 @@ void create_password_entry() {
     // use the requested classes from the user
     G_io_seproxyhal_spi_buffer[0] = G_create_classes;
     // add the metadata
-    write_metadata(G_io_seproxyhal_spi_buffer, 1 + strlen(G_keyboard_ctx.words_buffer));
-
+    error_type_t err =
+        write_metadata(G_io_seproxyhal_spi_buffer, 1 + strlen(G_keyboard_ctx.words_buffer));
+    if (err != OK) {
+        ui_error(ERR_MESSAGES[err]);
+        return;
+    }
     ui_idle();
 }
 
@@ -262,7 +301,7 @@ void enter_password_nickname() {
     strcpy(G_keyboard_ctx.title, "Enter nickname");
 #endif
     os_memset(G_keyboard_ctx.words_buffer, 0, sizeof(G_keyboard_ctx.words_buffer));
-    screen_text_keyboard_init(G_keyboard_ctx.words_buffer, 20, create_password_entry);
+    screen_text_keyboard_init(G_keyboard_ctx.words_buffer, MAX_METANAME, create_password_entry);
 }
 
 // clang-format off
@@ -280,6 +319,24 @@ UX_FLOW(explain_password_nickname_flow, &explain_password_nickname_step);
 
 void display_nickname_explanation() {
     ux_flow_init(0, explain_password_nickname_flow, NULL);
+}
+
+// clang-format off
+UX_STEP_NOCB(
+err_corrupted_memory_step,
+bnnn_paging,
+{
+    line_buffer_1,
+    line_buffer_2,
+});
+// clang-format on
+
+UX_FLOW(err_corrupted_memory_flow, &err_corrupted_memory_step, &generic_cancel_step);
+
+void ui_error(message_pair_t err) {
+    strcpy(line_buffer_1, (char*) PIC(err.first));
+    strcpy(line_buffer_2, (char*) PIC(err.second));
+    ux_flow_init(0, err_corrupted_memory_flow, NULL);
 }
 
 /////////////////////////////////// SETTINGS ////////////////////////////////////////////
@@ -312,16 +369,8 @@ nn,
 get_current_pressEnterAfterTyping_setting_value(),
 switch_setting_pressEnterAfterTyping(),
 {
-    setting_str_buffer,
+    line_buffer_2,
     "after typing",
-});
-UX_STEP_CB(
-settings_cancel_step,
-pb,
-ui_idle(),
-{
-    &C_icon_back,
-    "Cancel",
 });
 // clang-format on
 
@@ -329,7 +378,7 @@ UX_FLOW(settings_flow,
         &settings_change_keyboard_step,
         &settings_reset_password_list_step,
         &settings_pressEnterAfterTyping_step,
-        &settings_cancel_step,
+        &generic_cancel_step,
         FLOW_LOOP);
 
 void display_settings_flow(const ux_flow_step_t* const start_step) {
@@ -341,9 +390,9 @@ void display_settings_flow(const ux_flow_step_t* const start_step) {
 
 void get_current_pressEnterAfterTyping_setting_value() {
     if (N_storage.press_enter_after_typing) {
-        strcpy(setting_str_buffer, "Press Enter");
+        strcpy(line_buffer_2, "Press Enter");
     } else {
-        strcpy(setting_str_buffer, "Don't press Enter");
+        strcpy(line_buffer_2, "Don't press Enter");
     }
 }
 
@@ -353,8 +402,7 @@ void switch_setting_pressEnterAfterTyping() {
     display_settings_flow(&settings_pressEnterAfterTyping_step);
 }
 
-//////////////////////////////// SETTINGS - CHANGE KEYBOARD LAYOUT
-//////////////////////////////////////////////////
+////////////////////////// SETTINGS - CHANGE KEYBOARD LAYOUT //////////////////////////////////////
 
 bagl_icon_details_t is_selected_icon;
 
@@ -393,21 +441,13 @@ enter_keyboard_setting(2, HID_MAPPING_AZERTY),
     &is_selected_icon,
     "Azerty",
 });
-UX_STEP_CB(
-change_keyboard_cancel_step,
-pb,
-ui_idle(),
-{
-    &C_icon_back,
-    "Back",
-});
 // clang-format on
 
 UX_FLOW(change_keyboard_flow,
         &qwerty_step,
         &qwerty_international_step,
         &azerty_step,
-        &change_keyboard_cancel_step,
+        &generic_cancel_step,
         FLOW_LOOP);
 
 void display_change_keyboard_flow(const ux_flow_step_t* const start_step) {
@@ -433,8 +473,7 @@ void enter_keyboard_setting(uint8_t caller_id, hid_mapping_t mapping) {
     }
 }
 
-///////////////////////////////// SETTINGS - RESET ALL PASSWORDS
-/////////////////////////////////////////////////
+////////////////// SETTINGS - RESET ALL PASSWORDS //////////////////////////////////////
 
 void reset_password_list();
 
@@ -448,17 +487,9 @@ reset_password_list(),
     "Reset the",
     "password list ?",
 });
-UX_STEP_CB(
-delete_all_password_cancel_step,
-pb,
-ui_idle(),
-{
-    &C_icon_back,
-    "Cancel",
-});
 // clang-format on
 
-UX_FLOW(reset_password_list_flow, &reset_password_list_step, &delete_all_password_cancel_step);
+UX_FLOW(reset_password_list_flow, &reset_password_list_step, &generic_cancel_step);
 
 void display_reset_password_list_flow() {
     ux_flow_init(0, reset_password_list_flow, NULL);
@@ -547,7 +578,7 @@ UX_FLOW(setup_keyboard_at_init_flow,
         &qwerty_international_step,
         &azerty_step);
 
-void ui_idle(void) {
+void ui_idle() {
     if (G_ux.stack_count == 0) {
         ux_stack_push();
     }

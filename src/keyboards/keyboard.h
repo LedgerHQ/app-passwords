@@ -32,7 +32,7 @@
 #define KEYBOARD_RENDER_WORD \
     3  // callback is called with a -1 when requesting complete word, or the char
        // index else, returnin 0 implies no char is to be displayed
-typedef const bagl_element_t *(*keyboard_callback_t)(unsigned int event, unsigned int value);
+typedef const bagl_element_t* (*keyboard_callback_t)(unsigned int event, unsigned int value);
 
 // bolos ux context (not mandatory if redesigning a bolos ux)
 typedef struct keyboard_ctx {
@@ -76,6 +76,6 @@ void screen_common_keyboard_init(unsigned int stack_slot,
                                  unsigned int current_element,
                                  unsigned int nb_elements,
                                  keyboard_callback_t callback);
-void screen_text_keyboard_init();
+void screen_text_keyboard_init(char* buffer, unsigned int maxsize, appmain_t validation_callback);
 
 #endif  // BOLOS_UX_H
