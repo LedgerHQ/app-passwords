@@ -34,10 +34,7 @@ int get_app_name(uint8_t p1, uint8_t p2, const buf_t *input) {
 
     strncpy((char *) response, APPNAME, n);
 
-    response[n] = 0x90;
-    response[n + 1] = 0x00;
-
-    const buf_t buf = {.bytes = response, .size = n + 2};
+    const buf_t buf = {.bytes = response, .size = n};
 
     return send(&buf, SW_OK);
 }

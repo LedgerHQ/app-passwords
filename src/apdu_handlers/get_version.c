@@ -31,14 +31,12 @@ int get_version(uint8_t p1, uint8_t p2, const buf_t *input) {
     }
 
     const buf_t buf = {.bytes =
-                           (uint8_t[5]){
+                           (uint8_t[3]){
                                (uint8_t) MAJOR_VERSION,  //
                                (uint8_t) MINOR_VERSION,  //
                                (uint8_t) PATCH_VERSION,  //
-                               (uint8_t) 0x90,           //
-                               (uint8_t) 0x00            //
                            },                            //
-                       .size = 5};
+                       .size = 3};
 
     return send(&buf, SW_OK);
 }
