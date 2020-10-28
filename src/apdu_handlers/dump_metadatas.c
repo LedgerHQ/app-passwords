@@ -13,12 +13,13 @@ int dump_metadatas() {
     }
 
     size_t remaining_bytes_count = sizeof(N_storage.metadatas) - app_state.bytes_transferred;
-    uint8_t payload_size;
+    size_t payload_size;
 
     if (remaining_bytes_count < MAX_PAYLOAD_SIZE) {
         app_state.user_approval = false;
         payload_size = remaining_bytes_count;
         G_io_apdu_buffer[TRANSFER_FLAG_OFFSET] = LAST_CHUNK;
+        ui_idle();
     } else {
         payload_size = MAX_PAYLOAD_SIZE;
         G_io_apdu_buffer[TRANSFER_FLAG_OFFSET] = MORE_DATA_INCOMING;
@@ -29,8 +30,6 @@ int dump_metadatas() {
               payload_size);
 
     app_state.bytes_transferred += payload_size;
-
-    ui_idle();
 
     const buf_t response = {.bytes = G_io_apdu_buffer,
                             .size = payload_size + TRANSFER_PAYLOAD_OFFSET};

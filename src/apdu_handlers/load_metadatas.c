@@ -26,6 +26,7 @@ int load_metadatas(uint8_t p1, uint8_t p2, const buf_t *input) {
 
     if (app_state.bytes_transferred >= sizeof(N_storage.metadatas) || p1 == P1_LAST_CHUNK) {
         app_state.user_approval = false;
+        ui_idle();
     }
 
     return send_sw(SW_OK);
