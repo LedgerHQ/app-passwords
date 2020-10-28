@@ -25,6 +25,9 @@ typedef enum {
     GET_APP_NAME = 0x04,
     DUMP_METADATAS = 0x05,
     LOAD_METADATAS = 0x06,
+#ifdef TESTING
+    RUN_TEST = 0x99
+#endif
 } cmd_e;
 
 typedef struct app_state_s {

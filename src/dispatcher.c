@@ -26,6 +26,7 @@
 #include "apdu_handlers/load_metadatas.h"
 #include "apdu_handlers/get_version.h"
 #include "apdu_handlers/get_app_name.h"
+#include "tests/tests.h"
 
 int dispatch() {
     if (G_io_apdu_buffer[OFFSET_CLA] != CLA) {
@@ -52,6 +53,12 @@ int dispatch() {
             return dump_metadatas();
         case LOAD_METADATAS:
             return load_metadatas(p1, p2, &input);
+
+#ifdef TESTING
+        case RUN_TEST:
+            return test_dispatcher(p1, p2, &input);
+            break;
+#endif
         default:
             return send_sw(SW_INS_NOT_SUPPORTED);
     }

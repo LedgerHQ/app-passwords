@@ -71,17 +71,12 @@ void type_password(uint8_t *data,
     if (mbedtls_ctr_drbg_seed(&ctx, entropyProvider2, NULL, NULL, 0) != 0) {
         THROW(EXCEPTION);
     }
-    if (out == NULL) {
-        out = tmp;
+    if (out != NULL) {
+        generate_password(&ctx, setMask, minFromSet, out, size);
+        return;
     }
 
-    generate_password(&ctx, setMask, minFromSet, out, size);
-
-    // PRINTF("out: %.*H\n", size, out);
-#if 0
-    out = "A-B_C D\\E\"F#G$H%I&J'K*L+M,N.O/P:Q;R=S?T@U^V`W|X~Y[Z]a{b}c(d)e<f>g!hijklmnopqrstuvwxyz0123456789~e^e'e`e\"e\"\"e";
-    size = strlen(out);
-#endif
+    generate_password(&ctx, setMask, minFromSet, tmp, size);
 
     os_memset(report, 0, sizeof(report));
     // Insert EMPTY_REPORT CAPS_REPORT EMPTY_REPORT to avoid undesired capital letter on KONSOLE
@@ -98,13 +93,13 @@ void type_password(uint8_t *data,
     }
     for (i = 0; i < size; i++) {
         // If keyboard layout not initialized, use the default
-        map_char(N_storage.keyboard_layout, out[i], report);
+        map_char(N_storage.keyboard_layout, tmp[i], report);
         io_usb_send_ep_wait(HID_EPIN_ADDR, report, 8, 20);
         io_usb_send_ep_wait(HID_EPIN_ADDR, (uint8_t *) EMPTY_REPORT, 8, 20);
 
         // for international keyboard, make sure to insert space after special symbols
         if (N_storage.keyboard_layout == HID_MAPPING_QWERTY_INTL) {
-            switch (out[i]) {
+            switch (tmp[i]) {
                 case '\"':
                 case '\'':
                 case '`':
