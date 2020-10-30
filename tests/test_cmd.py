@@ -9,15 +9,12 @@ def test_app_name(cmd):
     assert cmd.get_app_name() == "Passwords"
 
 
-# @pytest.mark.parametrize("charset,seed,expected", test_vector)
 def test_generate_password(cmd, test_vector):
     charset, seed, expected = test_vector
     assert cmd.generate_password(charset, seed) == expected
 
 
 def test_dump_metadatas(cmd, test_vector):
-    # reset app state between runs
-    test_version(cmd)
     size, expected = test_vector
     assert cmd.dump_metadatas(size) == expected
 

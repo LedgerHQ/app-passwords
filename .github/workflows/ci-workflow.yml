@@ -16,7 +16,7 @@ jobs:
 
       - name: Build
         run: |
-          make DEBUG=1
+          make DEBUG=1 TESTING=1
 
       - name: Upload app binary
         uses: actions/upload-artifact@v2
@@ -52,11 +52,11 @@ jobs:
 
       - name: Run test
         run: |
-          nohup bash -c "python /speculos/speculos.py bin/app.elf --sdk 1.6 --apdu-port 9999 --button-port 42000 --automation-port 43000 --display headless" > speculos.log 2<&1 &
           pip install -r tests/requirements.txt
           pytest
 
       - name: Upload Speculos log
+        if: always()
         uses: actions/upload-artifact@v2
         with:
           name: speculos-log
