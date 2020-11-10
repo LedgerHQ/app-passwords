@@ -11,13 +11,14 @@ int test_generate_password(const buf_t *input) {
     }
     uint8_t *seed_ptr = input->bytes + 1;
     size_t seed_len = input->size - 1;
+    uint8_t out_buffer[20];
     type_password(seed_ptr,
                   seed_len,
-                  G_io_apdu_buffer,
+                  out_buffer,
                   enabledSets,
                   (const uint8_t *) PIC(DEFAULT_MIN_SET),
-                  20);
-    const buf_t response = {.bytes = G_io_apdu_buffer, .size = 20};
+                  sizeof(out_buffer));
+    const buf_t response = {.bytes = out_buffer, .size = 20};
     return send(&response, SW_OK);
 }
 
