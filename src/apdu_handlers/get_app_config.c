@@ -15,26 +15,35 @@
  *  limitations under the License.
  *****************************************************************************/
 
-#include <stddef.h>
 #include <stdint.h>
-#include <string.h>
+#include <limits.h>
+#include <math.h>
+#include <stdlib.h>
 
-#include "get_version.h"
+#include "get_app_config.h"
 #include "io.h"
 #include "sw.h"
 #include "types.h"
+#include "globals.h"
 
-int get_app_name(uint8_t p1, uint8_t p2, const buf_t *input) {
+int get_app_config(uint8_t p1, uint8_t p2, const buf_t* input) {
     if (p1 != 0 || p2 != 0) {
         return send_sw(SW_WRONG_P1P2);
     }
 
-    uint8_t response[64];
-    size_t n = strlen(APPNAME);
+    uint8_t* config = G_io_apdu_buffer;
+    size_t offset = 0;
 
-    strncpy((char *) response, APPNAME, n);
+    config[offset++] = ((size_t) MAX_METADATAS) >> 8 * 3;
+    config[offset++] = ((size_t) MAX_METADATAS) >> 8 * 2;
+    config[offset++] = ((size_t) MAX_METADATAS) >> 8 * 1;
+    config[offset++] = ((size_t) MAX_METADATAS) & 0xFF;
 
-    const buf_t buf = {.bytes = response, .size = n};
+    config[offset++] = N_storage.keyboard_layout;
+    config[offset++] = N_storage.press_enter_after_typing;
 
+    const buf_t buf = {.bytes = config, .size = offset};
+
+    ui_idle();
     return send(&buf, SW_OK);
 }

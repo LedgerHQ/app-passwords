@@ -24,8 +24,7 @@
 #include "sw.h"
 #include "apdu_handlers/dump_metadatas.h"
 #include "apdu_handlers/load_metadatas.h"
-#include "apdu_handlers/get_version.h"
-#include "apdu_handlers/get_app_name.h"
+#include "apdu_handlers/get_app_config.h"
 #include "tests/tests.h"
 
 int dispatch() {
@@ -45,10 +44,8 @@ int dispatch() {
     uint8_t p2 = G_io_apdu_buffer[OFFSET_P2];
 
     switch (ins) {
-        case GET_VERSION:
-            return get_version(p1, p2, &input);
-        case GET_APP_NAME:
-            return get_app_name(p1, p2, &input);
+        case GET_APP_CONFIG:
+            return get_app_config(p1, p2, &input);
         case DUMP_METADATAS:
             return dump_metadatas();
         case LOAD_METADATAS:

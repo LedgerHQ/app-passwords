@@ -21,10 +21,9 @@ typedef struct internalStorage_t {
 typedef enum { READY, RECEIVED, WAITING } io_state_e;
 
 typedef enum {
-    GET_VERSION = 0x03,
-    GET_APP_NAME = 0x04,
-    DUMP_METADATAS = 0x05,
-    LOAD_METADATAS = 0x06,
+    GET_APP_CONFIG = 0x03,
+    DUMP_METADATAS = 0x04,
+    LOAD_METADATAS = 0x05,
 #ifdef TESTING
     RUN_TEST = 0x99
 #endif
