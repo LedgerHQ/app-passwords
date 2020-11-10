@@ -68,8 +68,11 @@ uint32_t get_metadata(uint32_t nth) {
 error_type_t compact_metadata() {
     uint32_t offset = 0;
     uint32_t shift_offset = 0;
-    uint8_t copy_buffer[MAX_METANAME];
+    uint8_t copy_buffer[2 + 1 + MAX_METANAME];
     while ((METADATA_DATALEN(offset) != 0) && (offset < MAX_METADATAS)) {
+        if (METADATA_TOTAL_LEN(offset) >= sizeof(copy_buffer)) {
+            return ERR_METADATA_ENTRY_TOO_BIG;
+        }
         switch (METADATA_KIND(offset)) {
             case META_NONE:
                 if (shift_offset != 0) {
@@ -79,8 +82,8 @@ error_type_t compact_metadata() {
                     nvm_write((void *) &N_storage.metadatas[shift_offset],
                               copy_buffer,
                               METADATA_TOTAL_LEN(offset));
-                    offset += METADATA_DATALEN(shift_offset) + 2;
-                    shift_offset += METADATA_DATALEN(shift_offset) + 2;
+                    offset += METADATA_TOTAL_LEN(shift_offset);
+                    shift_offset += METADATA_TOTAL_LEN(shift_offset);
                 } else {
                     offset += METADATA_TOTAL_LEN(offset);
                 }
@@ -103,5 +106,15 @@ error_type_t compact_metadata() {
         copy_buffer[1] = META_NONE;
         nvm_write((void *) &N_storage.metadatas[shift_offset], copy_buffer, 2);
     }
+    // count metadatas
+    offset = 0;
+    size_t count = 0;
+    while ((METADATA_DATALEN(offset) != 0) && (offset < MAX_METADATAS)) {
+        offset += METADATA_TOTAL_LEN(offset);
+        count++;
+    }
+    nvm_write((void *) &N_storage.metadata_count,
+              (void *) &count,
+              sizeof(N_storage.metadata_count));
     return OK;
 }

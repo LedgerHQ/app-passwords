@@ -8,5 +8,6 @@
 #define SW_INS_NOT_SUPPORTED               0x6D00
 #define SW_CLA_NOT_SUPPORTED               0x6E00
 #define SW_APPNAME_TOO_LONG                0xB000
+#define SW_METADATAS_PARSING_ERROR         0x6F10
 
 #endif  // _ERRORS_H_

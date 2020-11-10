@@ -18,7 +18,8 @@ typedef enum error_type_e {
     OK = 0,
     ERR_NO_MORE_SPACE_AVAILABLE,
     ERR_CORRUPTED_METADATA,
-    ERR_NO_METADATA
+    ERR_NO_METADATA,
+    ERR_METADATA_ENTRY_TOO_BIG
 } error_type_t;
 
 error_type_t write_metadata(uint8_t *data, uint8_t dataSize);
