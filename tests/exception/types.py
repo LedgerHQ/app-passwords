@@ -20,3 +20,11 @@ class ClaNotSupportedError(Exception):
 
 class AppNameTooLongError(Exception):
     pass
+
+
+class ActionCancelledError(Exception):
+    pass
+
+
+class MetadatasParsingError(Exception):
+    pass

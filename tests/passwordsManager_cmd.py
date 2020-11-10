@@ -6,14 +6,15 @@ from ledgercomm import Transport
 from exception import DeviceException
 
 
+CLA_SDK: int = 0xb0
 CLA: int = 0xe0
 
 
 class InsType(enum.IntEnum):
-    INS_GET_VERSION = 0x03
-    INS_GET_APP_NAME = 0x04
-    INS_DUMP_METADATAS = 0x05
-    INS_LOAD_METADATAS = 0x06
+    INS_GET_APP_INFO = 0x01
+    INS_GET_APP_CONFIG = 0x03
+    INS_DUMP_METADATAS = 0x04
+    INS_LOAD_METADATAS = 0x05
     INS_RUN_TEST = 0x99
 
 
@@ -28,8 +29,34 @@ class PasswordsManagerCommand:
         self.transport = transport
         self.debug = debug
 
-    def get_version(self) -> str:
-        ins: InsType = InsType.INS_GET_VERSION
+    def get_app_info(self) -> str:
+        ins: InsType = InsType.INS_GET_APP_INFO
+
+        self.transport.send(cla=CLA_SDK,
+                            ins=ins,
+                            p1=0x00,
+                            p2=0x00,
+                            payload=b"")
+
+        sw, response = self.transport.recv()
+
+        if not sw & 0x9000:
+            raise DeviceException(error_code=sw, ins=ins)
+
+        offset = 1
+        app_name_length = response[offset]
+        offset += 1
+        app_name = response[offset:offset+app_name_length].decode("ascii")
+        offset += app_name_length
+        app_version_length = response[offset]
+        offset += 1
+        app_version = response[offset:offset +
+                               app_version_length].decode("ascii")
+
+        return app_name, app_version
+
+    def get_app_config(self) -> str:
+        ins: InsType = InsType.INS_GET_APP_CONFIG
 
         self.transport.send(cla=CLA,
                             ins=ins,
@@ -37,35 +64,22 @@ class PasswordsManagerCommand:
                             p2=0x00,
                             payload=b"")
 
-        sw, response = self.transport.recv()  # type: int, bytes
+        sw, response = self.transport.recv()
 
         if not sw & 0x9000:
             raise DeviceException(error_code=sw, ins=ins)
 
-        assert len(response) == 3
+        assert len(response) == 6
 
-        major, minor, patch = struct.unpack(
-            "BBB",
-            response
-        )  # type: int, int, int
+        storage_size = int.from_bytes(response[:4], "big")
+        keyboard_type = response[4]
+        press_enter_after_typing = response[5]
 
-        return f"{major}.{minor}.{patch}"
+        return storage_size, keyboard_type, press_enter_after_typing
 
-    def get_app_name(self) -> str:
-        ins: InsType = InsType.INS_GET_APP_NAME
-
-        self.transport.send(cla=CLA,
-                            ins=ins,
-                            p1=0x00,
-                            p2=0x00,
-                            payload=b"")
-
-        sw, response = self.transport.recv()  # type: int, bytes
-
-        if not sw & 0x9000:
-            raise DeviceException(error_code=sw, ins=ins)
-
-        return response.decode("ascii")
+    def reset_approval_state(self):
+        # dummy call just to reset internal approval state
+        self.get_app_config()
 
     def generate_password(self, charsets: int, seed: str) -> str:
         assert charsets <= 0xFF
@@ -134,5 +148,5 @@ class PasswordsManagerCommand:
         chunks = [metadatas[i:i+255] for i in range(0, len(metadatas), 255)]
 
         for i, chunk in enumerate(chunks):
-            is_last_chunk = True if i == len(chunks) else False
+            is_last_chunk = True if i+1 == len(chunks) else False
             self.load_metadatas_chunk(chunk, is_last_chunk)
