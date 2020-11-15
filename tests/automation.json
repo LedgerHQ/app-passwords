@@ -1,0 +1,29 @@
+{
+    "version": 1,
+    "rules": [
+        {
+            "regexp": "Transfer|Overwrite",
+            "conditions": [
+                [ "seen", false ]
+            ],
+            "actions": [
+                [ "setbool", "seen", true ]
+            ]
+        },
+        {
+            "text": "metadatas ?",
+            "conditions": [
+                [ "seen", true ]
+            ],
+            "actions": [
+                [ "button", 1, true ],
+                [ "button", 2, true ],
+                [ "button", 1, false ],
+                [ "button", 2, false ],
+                [ "setbool", "seen", false ]
+            ]
+        }
+    ]
+}
+
+

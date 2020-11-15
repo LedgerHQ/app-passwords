@@ -1,38 +1,38 @@
 /*******************************************************************************
-*   Ledger Blue - Secure firmware
-*   (c) 2016, 2017 Ledger
-*
-*  Licensed under the Apache License, Version 2.0 (the "License");
-*  you may not use this file except in compliance with the License.
-*  You may obtain a copy of the License at
-*
-*      http://www.apache.org/licenses/LICENSE-2.0
-*
-*  Unless required by applicable law or agreed to in writing, software
-*  distributed under the License is distributed on an "AS IS" BASIS,
-*  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-*  See the License for the specific language governing permissions and
-*  limitations under the License.
-********************************************************************************/
+ *   Ledger Blue - Secure firmware
+ *   (c) 2016, 2017 Ledger
+ *
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ ********************************************************************************/
 
 #ifndef BOLOS_UX_H
 #define BOLOS_UX_H
 
 #include "os_io_seproxyhal.h"
+#include "ux.h"
 
-#define KEYBOARD_ITEM_VALIDATED                                                \
-    1 // callback is called with the entered item index, tmp_element is
-      // precharged with element to be displayed and using the common string
-      // buffer as string parameter
-#define KEYBOARD_RENDER_ITEM                                                   \
-    2 // callback is called the element index, tmp_element is precharged with
-      // element to be displayed and using the common string buffer as string
-      // parameter
-#define KEYBOARD_RENDER_WORD                                                   \
-    3 // callback is called with a -1 when requesting complete word, or the char
-      // index else, returnin 0 implies no char is to be displayed
-typedef const bagl_element_t *(*keyboard_callback_t)(unsigned int event,
-                                                     unsigned int value);
+#define KEYBOARD_ITEM_VALIDATED \
+    1  // callback is called with the entered item index, tmp_element is
+       // precharged with element to be displayed and using the common string
+       // buffer as string parameter
+#define KEYBOARD_RENDER_ITEM \
+    2  // callback is called the element index, tmp_element is precharged with
+       // element to be displayed and using the common string buffer as string
+       // parameter
+#define KEYBOARD_RENDER_WORD \
+    3  // callback is called with a -1 when requesting complete word, or the char
+       // index else, returnin 0 implies no char is to be displayed
+typedef const bagl_element_t* (*keyboard_callback_t)(unsigned int event, unsigned int value);
 
 // bolos ux context (not mandatory if redesigning a bolos ux)
 typedef struct keyboard_ctx {
@@ -46,9 +46,9 @@ typedef struct keyboard_ctx {
 
     char words_buffer[25];
 
-    #ifdef TARGET_NANOX
-      char title[20];
-    #endif
+#ifdef TARGET_NANOX
+    char title[20];
+#endif
 
     // slider management
     unsigned int hslider3_before;
@@ -72,7 +72,10 @@ void bolos_ux_hslider3_previous(void);
 
 #define COMMON_KEYBOARD_INDEX_UNCHANGED (-1UL)
 
-void screen_common_keyboard_init(unsigned int stack_slot, unsigned int current_element, unsigned int nb_elements, keyboard_callback_t callback);
-void screen_text_keyboard_init();
+void screen_common_keyboard_init(unsigned int stack_slot,
+                                 unsigned int current_element,
+                                 unsigned int nb_elements,
+                                 keyboard_callback_t callback);
+void screen_text_keyboard_init(char* buffer, unsigned int maxsize, appmain_t validation_callback);
 
-#endif // BOLOS_UX_H
+#endif  // BOLOS_UX_H
