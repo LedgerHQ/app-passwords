@@ -52,6 +52,24 @@ These nicknames are not confidential (meaning, someone who finds them will not b
 
 - If the keyboard is not recognized by your computer, have a look [here](https://support.ledger.com/hc/en-us/articles/115005165269-Fix-connection-issues)
 
+## Tests
+
+Tests are written with Pytest. Before running them, you first need to compile the application with env variable `TESTING=1`:
+
+`make all TESTING=1 `
+
+Then you can execute tests on speculos with:
+
+`pytest`
+
+To run tests on a real device, load the app on it:
+
+`make load TESTING=1 `
+
+Then open the app on your device and run:
+
+`pytest --hid`
+
 ## Future work
 
 This release is an early alpha - among the missing parts :

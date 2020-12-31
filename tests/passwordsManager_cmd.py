@@ -36,7 +36,7 @@ class PasswordsManagerCommand:
                             ins=ins,
                             p1=0x00,
                             p2=0x00,
-                            payload=b"")
+                            cdata=b"")
 
         sw, response = self.transport.recv()
 
@@ -62,7 +62,7 @@ class PasswordsManagerCommand:
                             ins=ins,
                             p1=0x00,
                             p2=0x00,
-                            payload=b"")
+                            cdata=b"")
 
         sw, response = self.transport.recv()
 
@@ -95,7 +95,7 @@ class PasswordsManagerCommand:
                             ins=ins,
                             p1=testIns,
                             p2=0x00,
-                            payload=payload)
+                            cdata=payload)
 
         sw, response = self.transport.recv()  # type: int, bytes
 
@@ -114,7 +114,7 @@ class PasswordsManagerCommand:
                                 ins=ins,
                                 p1=0x00,
                                 p2=0x00,
-                                payload=b"")
+                                cdata=b"")
 
             sw, response = self.transport.recv()  # type: int, bytes
 
@@ -136,7 +136,7 @@ class PasswordsManagerCommand:
                             ins=ins,
                             p1=0xFF if is_last else 0x00,
                             p2=0x00,
-                            payload=chunk)
+                            cdata=chunk)
 
         sw, response = self.transport.recv()  # type: int, bytes
 

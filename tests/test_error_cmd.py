@@ -9,7 +9,7 @@ def test_bad_cla(cmd):
                                    ins=0x03,
                                    p1=0x00,
                                    p2=0x00,
-                                   payload=b"")
+                                   cdata=b"")
 
     raise DeviceException(error_code=sw)
 
@@ -20,7 +20,7 @@ def test_bad_ins(cmd):
                                    ins=0xAA,  # INS 0xAA is not supported
                                    p1=0x00,
                                    p2=0x00,
-                                   payload=b"")
+                                   cdata=b"")
 
     raise DeviceException(error_code=sw)
 
@@ -31,7 +31,7 @@ def test_wrong_p1p2(cmd):
                                    ins=0x03,
                                    p1=0x01,  # 0x01 instead of 0x00
                                    p2=0x00,
-                                   payload=b"")
+                                   cdata=b"")
 
     raise DeviceException(error_code=sw)
 
