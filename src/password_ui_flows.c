@@ -67,6 +67,7 @@ void display_next_entry(bool is_upper_border);
 void get_current_entry_name();
 void select_password_and_apply_cb();
 void type_password_cb(size_t offset);
+void show_password_cb(size_t offset);
 void reset_password_cb(size_t offset);
 
 // clang-format off
@@ -107,6 +108,13 @@ void display_type_password_flow() {
     ux_flow_init(0, select_password_flow, NULL);
 }
 
+void display_show_password_flow() {
+    current_entry_index = 0;
+    previous_location = -1;
+    selector_callback = show_password_cb;
+    ux_flow_init(0, select_password_flow, NULL);
+}
+
 void display_reset_password_flow() {
     current_entry_index = 0;
     previous_location = -1;
@@ -143,8 +151,8 @@ void get_current_entry_name() {
         previous_location = 1;
     } else {
         SPRINTF(line_buffer_1, "Password %d/%d", current_entry_index + 1, N_storage.metadata_count);
-        memcpy(line_buffer_2, (void*) METADATA_PW(offset), METADATA_PWLEN(offset));
-        line_buffer_2[METADATA_PWLEN(offset)] = '\0';
+        memcpy(line_buffer_2, (void*) METADATA_NICKNAME(offset), METADATA_NICKNAME_LEN(offset));
+        line_buffer_2[METADATA_NICKNAME_LEN(offset)] = '\0';
         previous_location = 0;
     }
 }
@@ -154,8 +162,9 @@ void select_password_and_apply_cb() {
     // Check if user didn't click on "cancel"
     if (offset != -1UL) {
         selector_callback(offset);
+    } else {
+        ui_idle();
     }
-    ui_idle();
 }
 
 void type_password_cb(size_t offset) {
@@ -163,12 +172,13 @@ void type_password_cb(size_t offset) {
     if (enabledSets == 0) {
         enabledSets = ALL_SETS;
     }
-    type_password((uint8_t*) METADATA_PW(offset),
-                  METADATA_PWLEN(offset),
+    type_password((uint8_t*) METADATA_NICKNAME(offset),
+                  METADATA_NICKNAME_LEN(offset),
                   NULL,
                   enabledSets,
                   (const uint8_t*) PIC(DEFAULT_MIN_SET),
                   20);
+    ui_idle();
 }
 
 void reset_password_cb(size_t offset) {
@@ -177,6 +187,39 @@ void reset_password_cb(size_t offset) {
         ui_error(ERR_MESSAGES[err]);
         return;
     }
+    ui_idle();
+}
+
+//////////////////////////////// SHOW PASSWORD ///////////////////////////////////////////////
+
+// clang-format off
+UX_STEP_CB(
+show_password_step,
+bnnn_paging,
+ui_idle(),
+{
+    line_buffer_1,
+    line_buffer_2,
+});
+
+UX_FLOW(show_password_flow,
+        &show_password_step);
+// clang-format on
+
+void show_password_cb(size_t offset) {
+    memcpy(line_buffer_1, (void*) METADATA_NICKNAME(offset), METADATA_NICKNAME_LEN(offset));
+    line_buffer_1[METADATA_NICKNAME_LEN(offset)] = '\0';
+    unsigned char enabledSets = METADATA_SETS(offset);
+    if (enabledSets == 0) {
+        enabledSets = ALL_SETS;
+    }
+    type_password((uint8_t*) METADATA_NICKNAME(offset),
+                  METADATA_NICKNAME_LEN(offset),
+                  (uint8_t*) line_buffer_2,
+                  enabledSets,
+                  (const uint8_t*) PIC(DEFAULT_MIN_SET),
+                  20);
+    ux_flow_init(0, show_password_flow, NULL);
 }
 
 //////////////////////////////// CREATE NEW PASSWORD ///////////////////////////////////////////////
@@ -512,6 +555,14 @@ display_type_password_flow(),
     "Type password", 
 });
 UX_STEP_CB(
+idle_show_password_step,
+pb,
+display_show_password_flow(),
+{
+    &C_icon_eye,
+    "Show password", 
+});
+UX_STEP_CB(
 idle_new_password_step,
 pb,
 display_new_password_flow(NULL),
@@ -554,6 +605,7 @@ os_sched_exit(-1),
 
 UX_FLOW(idle_flow,
         &idle_type_password_step,
+        &idle_show_password_step,
         &idle_new_password_step,
         &idle_reset_password_step,
         &idle_settings_step,

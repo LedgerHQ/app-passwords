@@ -8,8 +8,10 @@
 #define METADATA_DATALEN(offset)   N_storage.metadatas[offset]  // charsets(1) + pwd seed(n)
 #define METADATA_KIND(offset)      N_storage.metadatas[offset + 1]
 #define METADATA_SETS(offset)      N_storage.metadatas[offset + 2]
-#define METADATA_PWLEN(offset)     (METADATA_DATALEN(offset) - 1)
-#define METADATA_PW(offset)        (&N_storage.metadatas[offset + 3])
+/* even if the database is corrupted, this garantees we never overflow buffers of size
+ * MAX_METANAME */
+#define METADATA_NICKNAME_LEN(offset) ((METADATA_DATALEN(offset) - 1) % (MAX_METANAME + 1))
+#define METADATA_NICKNAME(offset)     (&N_storage.metadatas[offset + 3])
 
 #define META_NONE   0x00
 #define META_ERASED 0xFF
