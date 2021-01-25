@@ -2,6 +2,7 @@
 #define __GLOABALS_H__
 
 #include "os.h"
+#include "os_io_seproxyhal.h"
 #include "types.h"
 
 extern const internalStorage_t N_storage_real;
