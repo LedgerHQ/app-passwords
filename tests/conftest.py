@@ -39,7 +39,7 @@ def speculos(pytestconfig, speculos_logfile):
         else:
             speculos_path = "speculos.py"
 
-        speculos_handler = subprocess.Popen([speculos_path, "bin/app.elf", "--sdk", "1.6", "--apdu-port",
+        speculos_handler = subprocess.Popen([speculos_path, "bin/app.elf", "--apdu-port",
                                              "9999", "--button-port", "42000", "--automation-port", "43000", "--display", "headless", "--automation", "file:tests/automation.json"], stdout=speculos_logfile, stderr=speculos_logfile)
         yield True
         speculos_handler.kill()
