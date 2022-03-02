@@ -8,7 +8,7 @@
 
 #include "glyphs.h"
 
-#ifdef TARGET_NANOX
+#if defined(TARGET_NANOX) || defined(TARGET_NANOS2)
 
 const bagl_element_t screen_common_keyboard_elements[] = {
 

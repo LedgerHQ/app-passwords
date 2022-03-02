@@ -33,7 +33,7 @@ DEFINES += MAJOR_VERSION=$(APPVERSION_M) MINOR_VERSION=$(APPVERSION_N) PATCH_VER
 
 ifeq ($(TARGET_NAME),TARGET_NANOS)
 	ICONNAME=nanos_icon_password_manager.gif
-else ifeq ($(TARGET_NAME),TARGET_NANOX)
+else
 	ICONNAME=nanox_icon_password_manager.gif
 endif
 
@@ -67,7 +67,7 @@ ifneq ($(TARGET_NAME), TARGET_BLUE)
 	DEFINES		  += HAVE_UX_FLOW
 endif
 
-ifeq ($(TARGET_NAME),TARGET_NANOX)
+ifneq ($(TARGET_NAME),TARGET_NANOS)
 DEFINES       += HAVE_GLO096
 DEFINES       += HAVE_BAGL BAGL_WIDTH=128 BAGL_HEIGHT=64
 DEFINES       += HAVE_BAGL_ELLIPSIS # long label truncation feature
@@ -82,10 +82,10 @@ endif
 DEBUG:=0
 ifneq ($(DEBUG),0)
 DEFINES += HAVE_STACK_OVERFLOW_CHECK
-ifeq ($(TARGET_NAME),TARGET_NANOX)
-DEFINES   += HAVE_PRINTF PRINTF=mcu_usb_printf
-else
+ifeq ($(TARGET_NAME),TARGET_NANOS)
 DEFINES   += HAVE_PRINTF PRINTF=screen_printf
+else
+DEFINES   += HAVE_PRINTF PRINTF=mcu_usb_printf
 endif
 else
 DEFINES   += PRINTF\(...\)=
@@ -108,7 +108,7 @@ ifeq ($(GCCPATH),)
 $(info GCCPATH is not set: arm-none-eabi-* will be used from PATH)
 endif
 
-CC       := $(CLANGPATH)clang 
+CC       := $(CLANGPATH)clang
 
 #CFLAGS   += -O0
 CFLAGS   += -O3 -Os
@@ -116,7 +116,7 @@ AS     := $(GCCPATH)arm-none-eabi-gcc
 
 LD       := $(GCCPATH)arm-none-eabi-gcc
 LDFLAGS  += -O3 -Os
-LDLIBS   += -lm -lgcc -lc 
+LDLIBS   += -lm -lgcc -lc
 
 # import rules to compile glyphs(/pone)
 include $(BOLOS_SDK)/Makefile.glyphs

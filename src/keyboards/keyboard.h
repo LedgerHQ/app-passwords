@@ -46,7 +46,7 @@ typedef struct keyboard_ctx {
 
     char words_buffer[25];
 
-#ifdef TARGET_NANOX
+#if defined(TARGET_NANOX) || defined(TARGET_NANOS2)
     char title[20];
 #endif
 

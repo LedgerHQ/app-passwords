@@ -26,7 +26,7 @@ const bagl_icon_details_t* const screen_keyboard_classes_icons[] = {
     &C_icon_backspace,
     &C_icon_validate,
     &C_icon_classes,
-#if defined(TARGET_NANOX)
+#if defined(TARGET_NANOX) || defined(TARGET_NANOS2)
     &C_icon_lowercase_invert,
     &C_icon_uppercase_invert,
     &C_icon_digits_invert,
@@ -48,7 +48,7 @@ void screen_keyboard_render_icon(unsigned int value) {
 #if defined(TARGET_NANOS)
     icon = (bagl_icon_details_t*) PIC(screen_keyboard_classes_icons[value]);
     G_ux.tmp_element.component.y = 5;
-#elif defined(TARGET_NANOX)
+#elif defined(TARGET_NANOX) || defined(TARGET_NANOS2)
     uint8_t inverted = G_ux.tmp_element.component.userid == 0x02;
     icon = (bagl_icon_details_t*) PIC(screen_keyboard_classes_icons[value + (inverted ? 6 : 0)]);
     G_ux.tmp_element.component.y -= 7;

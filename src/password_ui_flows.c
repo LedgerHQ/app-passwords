@@ -283,7 +283,7 @@ new_password_approve_step,
 pb,
 #if defined(TARGET_NANOS)
 display_nickname_explanation(),
-#elif defined(TARGET_NANOX)
+#elif defined(TARGET_NANOX) || defined(TARGET_NANOS2)
 enter_password_nickname(),
 #endif
 {
@@ -340,7 +340,7 @@ void create_password_entry() {
 }
 
 void enter_password_nickname() {
-#if defined(TARGET_NANOX)
+#if defined(TARGET_NANOX) || defined(TARGET_NANOS2)
     strcpy(G_keyboard_ctx.title, "Enter nickname");
 #endif
     os_memset(G_keyboard_ctx.words_buffer, 0, sizeof(G_keyboard_ctx.words_buffer));
@@ -471,7 +471,7 @@ enter_keyboard_setting(1, HID_MAPPING_QWERTY_INTL),
     &is_selected_icon,
     #if defined(TARGET_NANOS)
     "Qwerty Intl",
-    #elif defined(TARGET_NANOX)
+    #elif defined(TARGET_NANOX) || defined(TARGET_NANOS2)
     "Qwerty International",
     #endif
 });
