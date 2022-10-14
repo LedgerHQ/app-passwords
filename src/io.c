@@ -16,17 +16,16 @@
  *****************************************************************************/
 
 #include <stdint.h>
+#include <os.h>
 
-#include "os.h"
 #include "io.h"
-
 #include "globals.h"
 
 void io_seproxyhal_display(const bagl_element_t *element) {
     io_seproxyhal_display_default((bagl_element_t *) element);
 }
 
-uint8_t io_event(uint8_t channel) {
+uint8_t io_event(__attribute__((unused)) uint8_t channel) {
     switch (G_io_seproxyhal_spi_buffer[0]) {
         case SEPROXYHAL_TAG_FINGER_EVENT:
             UX_FINGER_EVENT(G_io_seproxyhal_spi_buffer);
@@ -107,7 +106,7 @@ int send(const buf_t *buf, uint16_t sw) {
     int ret;
 
     if (buf != NULL) {
-        os_memmove(G_io_apdu_buffer, buf->bytes, buf->size);
+        memmove(G_io_apdu_buffer, buf->bytes, buf->size);
         app_state.io.output_len = buf->size;
         PRINTF("<= %.*H %02X%02X\n", buf->size, buf->bytes, sw >> 8, sw & 0xFF);
     } else {

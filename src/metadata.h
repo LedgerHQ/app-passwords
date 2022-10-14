@@ -1,5 +1,4 @@
-#ifndef __METADATA_H__
-#define __METADATA_H__
+#pragma once
 
 #include "stdint.h"
 
@@ -30,5 +29,3 @@ error_type_t erase_metadata(uint32_t offset);
 uint32_t find_free_metadata(void);
 uint32_t get_metadata(uint32_t nth);
 error_type_t compact_metadata();
-
-#endif

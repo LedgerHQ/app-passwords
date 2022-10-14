@@ -1,5 +1,4 @@
-#ifndef _IO_H_
-#define _IO_H_
+#pragma once
 
 #include <stdint.h>
 
@@ -18,5 +17,3 @@ int recv(void);
 int send(const buf_t *buf, uint16_t sw);
 
 int send_sw(uint16_t sw);
-
-#endif  // _IO_H_

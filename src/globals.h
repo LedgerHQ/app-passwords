@@ -1,5 +1,4 @@
-#ifndef __GLOABALS_H__
-#define __GLOABALS_H__
+#pragma once
 
 #include "os.h"
 #include "os_io_seproxyhal.h"
@@ -18,5 +17,3 @@ extern volatile unsigned int G_led_status;
 
 #define CLA       0xE0
 #define N_storage (*(volatile internalStorage_t*) PIC(&N_storage_real))
-
-#endif

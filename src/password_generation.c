@@ -16,8 +16,9 @@
  ********************************************************************************/
 
 #include <string.h>
-#include "os.h"
-#include "cx.h"
+#include <os.h>
+#include <cx.h>
+
 #include "password_generation.h"
 
 static const char *SETS[] = {"ABCDEFGHIJKLMNOPQRSTUVWXYZ",  // 26
@@ -31,6 +32,9 @@ static const char *SETS[] = {"ABCDEFGHIJKLMNOPQRSTUVWXYZ",  // 26
                              NULL};
 
 uint8_t rng_u8_modulo(mbedtls_ctr_drbg_context *drbg, uint8_t modulo) {
+    if (modulo == 0) {
+        THROW(EXCEPTION);
+    }
     uint32_t rng_max = 256 % modulo;
     uint32_t rng_limit = 256 - rng_max;
     uint8_t candidate = 0;
@@ -80,7 +84,7 @@ uint32_t generate_password(mbedtls_ctr_drbg_context *drbg,
         if (setMask & 1) {
             const uint8_t *set = (const uint8_t *) PIC(SETS[i]);
             uint32_t setSize = strlen((const char *) set);
-            os_memcpy(setChars + setCharsOffset, set, setSize);
+            memcpy(setChars + setCharsOffset, set, setSize);
             setCharsOffset += setSize;
 
             // for at least requested minimum chars from that set

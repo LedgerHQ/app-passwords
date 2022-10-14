@@ -1,3 +1,4 @@
+#include <string.h>
 #include "metadata.h"
 #include "globals.h"
 
@@ -76,9 +77,9 @@ error_type_t compact_metadata() {
         switch (METADATA_KIND(offset)) {
             case META_NONE:
                 if (shift_offset != 0) {
-                    os_memcpy(copy_buffer,
-                              (const void *) METADATA_PTR(offset),
-                              METADATA_TOTAL_LEN(offset));
+                    memcpy(copy_buffer,
+                           (const void *) METADATA_PTR(offset),
+                           METADATA_TOTAL_LEN(offset));
                     nvm_write((void *) &N_storage.metadatas[shift_offset],
                               copy_buffer,
                               METADATA_TOTAL_LEN(offset));

@@ -22,7 +22,7 @@ int test_generate_password(const buf_t *input) {
     return send(&response, SW_OK);
 }
 
-int test_dispatcher(uint8_t p1, uint8_t p2, const buf_t *input) {
+int test_dispatcher(uint8_t p1, __attribute__((unused)) uint8_t p2, const buf_t *input) {
     switch (p1) {
         case GENERATE_PASSWORD:
             return test_generate_password(input);

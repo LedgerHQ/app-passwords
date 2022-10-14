@@ -7,7 +7,7 @@
 int dump_metadatas() {
     if (app_state.user_approval == false) {
         app_state.bytes_transferred = 0;
-        message_pair_t msg = {"Transfer", "metadatas ?"};
+        message_pair_t msg = {"Transfer", 9, "metadatas ?", 12};
         ui_request_user_approval(&msg);
         return 0;
     }
@@ -25,9 +25,9 @@ int dump_metadatas() {
         G_io_apdu_buffer[TRANSFER_FLAG_OFFSET] = MORE_DATA_INCOMING;
     }
 
-    os_memcpy(&G_io_apdu_buffer[TRANSFER_PAYLOAD_OFFSET],
-              (const void*) N_storage.metadatas + app_state.bytes_transferred,
-              payload_size);
+    memcpy(&G_io_apdu_buffer[TRANSFER_PAYLOAD_OFFSET],
+           (const void*) N_storage.metadatas + app_state.bytes_transferred,
+           payload_size);
 
     app_state.bytes_transferred += payload_size;
 

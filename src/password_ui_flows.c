@@ -1,11 +1,10 @@
-#include "password_ui_flows.h"
+#include <usbd_hid_impl.h>
+#include <hid_mapping.h>
+#include <string.h>
+#include <stdbool.h>
 
-#include "usbd_hid_impl.h"
-#include "hid_mapping.h"
-#include "string.h"
-#include "stdbool.h"
 #include "keyboard.h"
-
+#include "password_ui_flows.h"
 #include "globals.h"
 #include "password_typing.h"
 #include "metadata.h"
@@ -17,12 +16,14 @@ ux_state_t G_ux;
 bolos_ux_params_t G_ux_params;
 keyboard_ctx_t G_keyboard_ctx;
 
-const message_pair_t const ERR_MESSAGES[] = {
-    {"", ""},                             // OK
-    {"Write Error", "Database is full"},  // ERR_NO_MORE_SPACE_AVAILABLE
+const message_pair_t ERR_MESSAGES[] = {
+    {"", 1, "", 1},                               // OK
+    {"Write Error", 12, "Database is full", 17},  // ERR_NO_MORE_SPACE_AVAILABLE
     {"Write Error",
-     "Database should be repaired, please contact Ledger Support"},  // ERR_CORRUPTED_METADATA
-    {"Erase Error", "Database already empty"}};                      // ERR_NO_METADATA
+     12,
+     "Database should be repaired, please contact Ledger Support",
+     59},                                                // ERR_CORRUPTED_METADATA
+    {"Erase Error", 12, "Database already empty", 23}};  // ERR_NO_METADATA
 
 char line_buffer_1[16];
 char line_buffer_2[21];
@@ -324,9 +325,9 @@ void toggle_password_setting(uint8_t caller_id, uint8_t symbols_bitflag) {
 void create_password_entry() {
     // use the G_io_seproxyhal_spi_buffer as temp buffer to build the entry (and include the
     // requested set of chars)
-    os_memmove(G_io_seproxyhal_spi_buffer + 1,
-               G_keyboard_ctx.words_buffer,
-               strlen(G_keyboard_ctx.words_buffer));
+    memmove(G_io_seproxyhal_spi_buffer + 1,
+            G_keyboard_ctx.words_buffer,
+            strlen(G_keyboard_ctx.words_buffer));
     // use the requested classes from the user
     G_io_seproxyhal_spi_buffer[0] = G_create_classes;
     // add the metadata
@@ -343,7 +344,7 @@ void enter_password_nickname() {
 #if defined(TARGET_NANOX) || defined(TARGET_NANOS2)
     strcpy(G_keyboard_ctx.title, "Enter nickname");
 #endif
-    os_memset(G_keyboard_ctx.words_buffer, 0, sizeof(G_keyboard_ctx.words_buffer));
+    memset(G_keyboard_ctx.words_buffer, 0, sizeof(G_keyboard_ctx.words_buffer));
     screen_text_keyboard_init(G_keyboard_ctx.words_buffer, MAX_METANAME, create_password_entry);
 }
 
@@ -377,8 +378,8 @@ bnnn_paging,
 UX_FLOW(err_corrupted_memory_flow, &err_corrupted_memory_step, &generic_cancel_step);
 
 void ui_error(message_pair_t err) {
-    strcpy(line_buffer_1, (char*) PIC(err.first));
-    strcpy(line_buffer_2, (char*) PIC(err.second));
+    strlcpy(line_buffer_1, (char*) PIC(err.first), err.first_len);
+    strlcpy(line_buffer_2, (char*) PIC(err.second), err.second_len);
     ux_flow_init(0, err_corrupted_memory_flow, NULL);
 }
 
@@ -552,7 +553,7 @@ pb,
 display_type_password_flow(),
 {
     &C_icon_bootloader,
-    "Type password", 
+    "Type password",
 });
 UX_STEP_CB(
 idle_show_password_step,
@@ -560,7 +561,7 @@ pb,
 display_show_password_flow(),
 {
     &C_icon_eye,
-    "Show password", 
+    "Show password",
 });
 UX_STEP_CB(
 idle_new_password_step,

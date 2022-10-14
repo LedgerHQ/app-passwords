@@ -140,4 +140,3 @@ dep/%.d: %.c Makefile
 
 listvariants:
 	@echo VARIANTS NONE pwmgr
-

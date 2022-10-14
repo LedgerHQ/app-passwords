@@ -15,8 +15,7 @@
  *  limitations under the License.
  ********************************************************************************/
 
-#ifndef BOLOS_UX_H
-#define BOLOS_UX_H
+#pragma once
 
 #include "os_io_seproxyhal.h"
 #include "ux.h"
@@ -77,5 +76,3 @@ void screen_common_keyboard_init(unsigned int stack_slot,
                                  unsigned int nb_elements,
                                  keyboard_callback_t callback);
 void screen_text_keyboard_init(char* buffer, unsigned int maxsize, appmain_t validation_callback);
-
-#endif  // BOLOS_UX_H

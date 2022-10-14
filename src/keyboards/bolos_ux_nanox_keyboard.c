@@ -334,7 +334,7 @@ const bagl_element_t screen_common_keyboard_elements[] = {
 const bagl_element_t* screen_common_keyboard_before_element_display_callback(
     const bagl_element_t* element) {
     // copy element to be displayed
-    os_memmove(&G_ux.tmp_element, (void*) PIC(element), sizeof(G_ux.tmp_element));
+    memmove(&G_ux.tmp_element, (void*) PIC(element), sizeof(G_ux.tmp_element));
 
     switch (element->component.userid) {
         case 0x01:
