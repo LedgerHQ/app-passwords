@@ -1,10 +1,7 @@
 import enum
-import struct
-
-from ledgercomm import Transport
 
 from exception import DeviceException
-
+from ragger.backend import BackendInterface
 
 CLA_SDK: int = 0xb0
 CLA: int = 0xe0
@@ -24,21 +21,17 @@ class TestInsType(enum.IntEnum):
 
 class PasswordsManagerCommand:
     def __init__(self,
-                 transport: Transport,
+                 transport: BackendInterface,
                  debug: bool = False) -> None:
         self.transport = transport
         self.debug = debug
+        self.approved: bool = False
 
     def get_app_info(self) -> str:
         ins: InsType = InsType.INS_GET_APP_INFO
 
-        self.transport.send(cla=CLA_SDK,
-                            ins=ins,
-                            p1=0x00,
-                            p2=0x00,
-                            cdata=b"")
-
-        sw, response = self.transport.recv()
+        response = self.transport.exchange(cla=CLA_SDK, ins=ins)
+        sw, response = response.status, response.data
 
         if not sw & 0x9000:
             raise DeviceException(error_code=sw, ins=ins)
@@ -58,13 +51,8 @@ class PasswordsManagerCommand:
     def get_app_config(self) -> str:
         ins: InsType = InsType.INS_GET_APP_CONFIG
 
-        self.transport.send(cla=CLA,
-                            ins=ins,
-                            p1=0x00,
-                            p2=0x00,
-                            cdata=b"")
-
-        sw, response = self.transport.recv()
+        response =self.transport.exchange(cla=CLA, ins=ins)
+        sw, response = response.status, response.data
 
         if not sw & 0x9000:
             raise DeviceException(error_code=sw, ins=ins)
@@ -91,13 +79,11 @@ class PasswordsManagerCommand:
         payload = charsets.to_bytes(
             1, "big") + bytes(seed, "utf-8")
 
-        self.transport.send(cla=CLA,
-                            ins=ins,
-                            p1=testIns,
-                            p2=0x00,
-                            cdata=payload)
-
-        sw, response = self.transport.recv()  # type: int, bytes
+        response = self.transport.exchange(cla=CLA,
+                                           ins=ins,
+                                           p1=testIns,
+                                           data=payload)
+        sw, response = response.status, response.data
 
         if not sw & 0x9000:
             raise DeviceException(error_code=sw, ins=ins)
@@ -108,16 +94,16 @@ class PasswordsManagerCommand:
         ins: InsType = InsType.INS_DUMP_METADATAS
 
         metadatas = b""
-
+        self.approved = False
         while len(metadatas) < size:
-            self.transport.send(cla=CLA,
-                                ins=ins,
-                                p1=0x00,
-                                p2=0x00,
-                                cdata=b"")
-
-            sw, response = self.transport.recv()  # type: int, bytes
-
+            if not self.approved:
+                with self.transport.exchange_async(cla=CLA, ins=ins):
+                    self.transport.both_click()
+                response = self.transport.last_async_response
+                self.approved = True
+            else:
+                response = self.transport.exchange(cla=CLA, ins=ins)
+            sw, response = response.status, response.data
             if not sw & 0x9000:
                 raise DeviceException(error_code=sw, ins=ins)
 
@@ -131,13 +117,20 @@ class PasswordsManagerCommand:
 
     def load_metadatas_chunk(self, chunk, is_last):
         ins: InsType = InsType.INS_LOAD_METADATAS
-
-        self.transport.send(cla=CLA,
-                            ins=ins,
-                            p1=0xFF if is_last else 0x00,
-                            p2=0x00,
-                            cdata=chunk)
-        sw, response = self.transport.recv()  # type: int, bytes
+        if not self.approved:
+            with self.transport.exchange_async(cla=CLA,
+                                               ins=ins,
+                                               p1=0xFF if is_last else 0x00,
+                                               data=chunk):
+                self.transport.both_click()
+            response = self.transport.last_async_response
+            self.approved = True
+        else:
+            response = self.transport.exchange(cla=CLA,
+                                               ins=ins,
+                                               p1=0xFF if is_last else 0x00,
+                                               data=chunk)
+        sw, response = response.status, response.data
 
         if not sw & 0x9000:
             raise DeviceException(error_code=sw, ins=ins)
@@ -146,6 +139,7 @@ class PasswordsManagerCommand:
 
         chunks = [metadatas[i:i+255] for i in range(0, len(metadatas), 255)]
 
+        self.approved = False
         for i, chunk in enumerate(chunks):
             is_last_chunk = True if i+1 == len(chunks) else False
             self.load_metadatas_chunk(chunk, is_last_chunk)

@@ -147,8 +147,8 @@ void display_next_entry(bool is_upper_border) {
 void get_current_entry_name() {
     size_t offset = get_metadata(current_entry_index);
     if (offset == -1UL) {
-        strcpy(line_buffer_1, "");
-        strcpy(line_buffer_2, "Cancel");
+        strlcpy(line_buffer_1, "", 1);
+        strlcpy(line_buffer_2, "Cancel", 7);
         previous_location = 1;
     } else {
         SPRINTF(line_buffer_1, "Password %d/%d", current_entry_index + 1, N_storage.metadata_count);
@@ -311,9 +311,9 @@ void display_new_password_flow(const ux_flow_step_t* const start_step) {
 
 void get_current_charset_setting_value(uint8_t symbols_bitflag) {
     if (G_create_classes & symbols_bitflag) {
-        strcpy(line_buffer_2, "With");
+        strlcpy(line_buffer_2, "With", 5);
     } else {
-        strcpy(line_buffer_2, "Without");
+        strlcpy(line_buffer_2, "Without", 8);
     }
 }
 
@@ -342,7 +342,7 @@ void create_password_entry() {
 
 void enter_password_nickname() {
 #if defined(TARGET_NANOX) || defined(TARGET_NANOS2)
-    strcpy(G_keyboard_ctx.title, "Enter nickname");
+    strlcpy(G_keyboard_ctx.title, "Enter nickname", 15);
 #endif
     memset(G_keyboard_ctx.words_buffer, 0, sizeof(G_keyboard_ctx.words_buffer));
     screen_text_keyboard_init(G_keyboard_ctx.words_buffer, MAX_METANAME, create_password_entry);
@@ -434,9 +434,9 @@ void display_settings_flow(const ux_flow_step_t* const start_step) {
 
 void get_current_pressEnterAfterTyping_setting_value() {
     if (N_storage.press_enter_after_typing) {
-        strcpy(line_buffer_2, "Press Enter");
+        strlcpy(line_buffer_2, "Press Enter", 12);
     } else {
-        strcpy(line_buffer_2, "Don't press Enter");
+        strlcpy(line_buffer_2, "Don't press Enter", 18);
     }
 }
 

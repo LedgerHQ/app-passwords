@@ -6,3 +6,5 @@ src/glyphs.c
 src/glyphs.h
 *.pyc
 speculos.log
+
+tests/elfs

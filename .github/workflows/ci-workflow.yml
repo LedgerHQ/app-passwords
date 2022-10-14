@@ -30,24 +30,17 @@ jobs:
         run: |
           git config --global --add safe.directory "$GITHUB_WORKSPACE"
           make TESTING=1 BOLOS_SDK=${{ matrix.SDK }}
-          mv bin/app.elf bin/passwords-app-${{ matrix.model }}
+          mv bin/app.elf bin/passwords-${{ matrix.model }}.elf
       - name: Upload app binary
         uses: actions/upload-artifact@v2
         with:
           name: apps
-          path: bin
+          path: bin/*elf
 
   job_test:
     name: Test
     needs: build
     runs-on: ubuntu-latest
-    container:
-      image: ghcr.io/ledgerhq/speculos:latest
-      ports:
-        - 9999:9999
-        - 42000:42000
-        - 43000:43000
-      options: --entrypoint /bin/bash
     steps:
       - name: Clone
         uses: actions/checkout@v2
@@ -55,11 +48,13 @@ jobs:
         uses: actions/download-artifact@v2
         with:
           name: apps
-          path: bin
+          path: tests/elfs
+      - name: Install APT dependencies
+        run: sudo apt-get update && sudo apt-get install -y qemu-user-static
+      - name: Install Python dependencies
+        run: pip install --extra-index-url https://test.pypi.org/simple/ -r tests/requirements.txt
       - name: Run test
-        run: |
-          pip install --extra-index-url https://test.pypi.org/simple/ -r tests/requirements.txt
-          pytest
+        run: pytest --tb=short -v tests/
       - name: Upload Speculos log
         if: always()
         uses: actions/upload-artifact@v2
