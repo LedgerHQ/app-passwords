@@ -137,7 +137,6 @@ class PasswordsManagerCommand:
                             p1=0xFF if is_last else 0x00,
                             p2=0x00,
                             cdata=chunk)
-
         sw, response = self.transport.recv()  # type: int, bytes
 
         if not sw & 0x9000:

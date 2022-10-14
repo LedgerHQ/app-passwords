@@ -15,11 +15,11 @@ jobs:
       matrix:
         include:
           - SDK: "$NANOS_SDK"
-            artifact: password-app-nanos
+            model: nanos
           - SDK: "$NANOX_SDK"
-            artifact: password-app-nanox
+            model: nanox
           - SDK: "$NANOSP_SDK"
-            artifact: password-app-nanosp
+            model: nanosp
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/ledgerhq/ledger-app-builder/ledger-app-builder:latest
@@ -30,7 +30,7 @@ jobs:
         run: |
           git config --global --add safe.directory "$GITHUB_WORKSPACE"
           make TESTING=1 BOLOS_SDK=${{ matrix.SDK }}
-          mv bin/app.elf bin/${{ artifact }}
+          mv bin/app.elf bin/passwords-app-${{ matrix.model }}
       - name: Upload app binary
         uses: actions/upload-artifact@v2
         with:
@@ -58,7 +58,7 @@ jobs:
           path: bin
       - name: Run test
         run: |
-          pip install -r tests/requirements.txt
+          pip install --extra-index-url https://test.pypi.org/simple/ -r tests/requirements.txt
           pytest
       - name: Upload Speculos log
         if: always()

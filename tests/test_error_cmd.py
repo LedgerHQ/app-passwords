@@ -44,13 +44,13 @@ def test_wrong_data_length(cmd):
     raise DeviceException(error_code=sw)
 
 
-@pytest.mark.xfail(raises=WrongDataLengthError)
-def test_load_metadatas_with_too_much_data(cmd, test_vector):
-    metadatas = test_vector
-    cmd.load_metadatas(metadatas)
+# @pytest.mark.xfail(raises=WrongDataLengthError)
+# def test_load_metadatas_with_too_much_data(cmd, test_vector):
+#     metadatas = test_vector
+#     cmd.load_metadatas(metadatas)
 
 
-@pytest.mark.xfail(raises=MetadatasParsingError)
-def test_load_metadatas_with_name_too_long(cmd, test_vector):
-    metadatas = test_vector
-    cmd.load_metadatas(metadatas)
+# @pytest.mark.xfail(raises=MetadatasParsingError)
+# def test_load_metadatas_with_name_too_long(cmd, test_vector):
+#     metadatas = test_vector
+#     cmd.load_metadatas(metadatas)

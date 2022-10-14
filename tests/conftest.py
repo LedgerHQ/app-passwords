@@ -4,10 +4,14 @@ import subprocess
 import time
 
 from ledgercomm import Transport
+from speculos.client import SpeculosClient
 
 from passwordsManager_cmd import PasswordsManagerCommand
 
 from tests_vectors import tests_vectors
+
+
+APP_NANOS = "bin/passwords-app-nanos"
 
 
 def pytest_addoption(parser):
@@ -34,17 +38,8 @@ def speculos(pytestconfig, speculos_logfile):
     elif pytestconfig.getoption("external_speculos_instance"):
         yield True
     else:
-        if os.getenv("GITHUB_ACTIONS"):
-            speculos_path = "/speculos/speculos.py"
-        else:
-            speculos_path = "speculos.py"
-
-        speculos_handler = subprocess.Popen([speculos_path, "bin/app.elf", "--apdu-port",
-                                             "9999", "--button-port", "42000", "--automation-port", "43000", "--display", "headless", "--automation", "file:tests/automation.json"], stdout=speculos_logfile, stderr=speculos_logfile)
-        yield True
-        speculos_handler.kill()
-        speculos_handler.wait()
-
+        with SpeculosClient(APP_NANOS):
+            yield True
 
 @pytest.fixture(scope="function")
 def transport(speculos):
@@ -66,23 +61,9 @@ def cmd(transport):
         transport=transport,
         debug=True
     )
-
     yield command
 
     command.transport.close()
-
-
-@pytest.fixture(scope="function")
-def cmd_(transport):
-    command = PasswordsManagerCommand(
-        transport=transport,
-        debug=True
-    )
-
-    yield command
-
-    command.transport.close()
-
 
 def pytest_generate_tests(metafunc):
     if "test_vector" in metafunc.fixturenames:
