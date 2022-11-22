@@ -64,6 +64,16 @@ jobs:
 
   job_scan_build:
     name: Clang Static Analyzer
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - SDK: "$NANOS_SDK"
+            model: nanos
+          - SDK: "$NANOX_SDK"
+            model: nanox
+          - SDK: "$NANOSP_SDK"
+            model: nanosp
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/ledgerhq/ledger-app-builder/ledger-app-builder:latest
@@ -73,7 +83,7 @@ jobs:
       - name: Build with Clang Static Analyzer
         run: |
           make clean
-          scan-build --use-cc=clang -analyze-headers -enable-checker security -enable-checker unix -enable-checker valist -o scan-build --status-bugs make default
+          scan-build --use-cc=clang -analyze-headers -enable-checker security -enable-checker unix -enable-checker valist -o scan-build --status-bugs --exclude ${{ matrix.SDK }} make default BOLOS_SDK=${{ matrix.SDK }}
       - name: Upload scan result
         uses: actions/upload-artifact@v2
         if: failure()

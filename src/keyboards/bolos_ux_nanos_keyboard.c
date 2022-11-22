@@ -7,7 +7,7 @@
 
 #include "keyboard.h"
 
-#ifdef TARGET_NANOS
+#if defined(TARGET_NANOS)
 
 const bagl_element_t screen_common_keyboard_elements[] = {
 
