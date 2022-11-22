@@ -116,10 +116,14 @@ __attribute__((section(".boot"))) int main(void) {
     // exit critical section
     __asm volatile("cpsie i");
 
-    UX_INIT();
-
     // ensure exception will work as planned
     os_boot();
+
+#if defined(HAVE_NBGL)
+    nbgl_objInit();
+#elif defined(HAVE_BAGL)
+    UX_INIT();
+#endif
 
     BEGIN_TRY {
         TRY {

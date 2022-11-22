@@ -1,7 +1,10 @@
-#include "os.h"
-#include "ux.h"
-#include "string.h"
-#include "stdint.h"
+#include <os.h>
+#include <string.h>
+#include <stdint.h>
+#include <ux.h>
+
+#if !defined(TARGET_FATSTACKS)
+
 #include "keyboard.h"
 
 const char* const screen_keyboard_classes_elements[] = {
@@ -214,3 +217,5 @@ void screen_text_keyboard_init(char* buffer, unsigned int maxsize, appmain_t val
     screen_keyboard_validation = validation_callback;
     screen_common_keyboard_init(0, 0, 3, screen_keyboard_class_callback);
 }
+
+#endif

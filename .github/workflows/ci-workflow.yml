@@ -37,6 +37,32 @@ jobs:
           name: apps
           path: bin/*elf
 
+  fatstacks_build:
+    name: Build application for Fatstacks
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/ledgerhq/ledger-app-builder/ledger-app-builder:latest
+    steps:
+      - name: Clone application
+        uses: actions/checkout@v3
+      - name: Clone SDK
+        uses: actions/checkout@v3
+        with:
+          repository: LedgerHQ/ledger-secure-sdk
+          path: ./stax-sdk
+          ref: v0.4.5-ci
+          token: ${{ secrets.STAX_RO }}
+      - name: Build
+        run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          make BOLOS_SDK=./stax-sdk TARGET=fatstacks
+          mv bin/app.elf "bin/passwords-fatstacks.elf"
+      - name: Upload app binary
+        uses: actions/upload-artifact@v3
+        with:
+          name: apps
+          path: bin/*.elf
+
   job_test:
     name: Test
     needs: build

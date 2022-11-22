@@ -3,7 +3,6 @@
 #include <string.h>
 #include <stdbool.h>
 
-#include "keyboard.h"
 #include "password_ui_flows.h"
 #include "globals.h"
 #include "password_typing.h"
@@ -22,7 +21,6 @@
 
 ux_state_t G_ux;
 bolos_ux_params_t G_ux_params;
-keyboard_ctx_t G_keyboard_ctx;
 
 const message_pair_t ERR_MESSAGES[] = {
     {"", ""},                             // OK
@@ -33,6 +31,17 @@ const message_pair_t ERR_MESSAGES[] = {
 
 char line_buffer_1[16];
 char line_buffer_2[21];
+
+#if defined(TARGET_FATSTACKS)
+
+void ui_idle() {}
+void ui_request_user_approval(message_pair_t* msg) { (void) msg; }
+
+#else
+
+#include "keyboard.h"
+
+keyboard_ctx_t G_keyboard_ctx;
 
 ///////////////////////////////// USER APPROVAL //////////////////////////////////////////////
 
@@ -647,3 +656,5 @@ void ui_idle() {
         ux_flow_init(0, setup_keyboard_at_init_flow, NULL);
     }
 }
+
+#endif

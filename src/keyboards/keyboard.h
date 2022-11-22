@@ -17,8 +17,10 @@
 
 #pragma once
 
-#include "os_io_seproxyhal.h"
-#include "ux.h"
+#if !defined(TARGET_FATSTACKS)
+
+#include <os_io_seproxyhal.h>
+#include <ux.h>
 
 #define KEYBOARD_ITEM_VALIDATED \
     1  // callback is called with the entered item index, tmp_element is
@@ -76,3 +78,5 @@ void screen_common_keyboard_init(unsigned int stack_slot,
                                  unsigned int nb_elements,
                                  keyboard_callback_t callback);
 void screen_text_keyboard_init(char* buffer, unsigned int maxsize, appmain_t validation_callback);
+
+#endif

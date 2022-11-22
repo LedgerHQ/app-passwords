@@ -36,6 +36,8 @@ DEFINES += APPVERSION=\"$(APPVERSION)\"
 
 ifeq ($(TARGET_NAME),TARGET_NANOS)
     ICONNAME=icons/nanos_icon_password_manager.gif
+else ifeq ($(TARGET_NAME), TARGET_FATSTACKS)
+    ICONNAME=icons/nanox_icon_password_manager.gif
 else
     ICONNAME=icons/nanox_icon_password_manager.gif
 endif
@@ -46,8 +48,8 @@ DEFINES += HAVE_IO_USB HAVE_L4_USBLIB IO_USB_MAX_ENDPOINTS=4 IO_HID_EP_LENGTH=64
 DEFINES += MAX_METADATAS=4096 MAX_METANAME=20
 DEFINES += USE_CTAES
 DEFINES += HAVE_WEBUSB WEBUSB_URL_SIZE_B=0 WEBUSB_URL=""
+DEFINES += UNUSED\(x\)=\(void\)x
 DEFINES += HAVE_UX_FLOW
-DEFINES += HAVE_BAGL
 DEFINES += HAVE_SPRINTF
 
 TESTING:=0
@@ -59,14 +61,18 @@ else
     DEFINES   += TESTING
 endif
 
-ifneq ($(TARGET_NAME),TARGET_NANOS)
-    DEFINES       += HAVE_GLO096
-    DEFINES       += BAGL_WIDTH=128 BAGL_HEIGHT=64
-    DEFINES       += HAVE_BAGL_ELLIPSIS # long label truncation feature
-    DEFINES       += HAVE_BAGL_FONT_OPEN_SANS_REGULAR_11PX
-    DEFINES       += HAVE_BAGL_FONT_OPEN_SANS_EXTRABOLD_11PX
-    DEFINES       += HAVE_BAGL_FONT_OPEN_SANS_LIGHT_16PX
-    SDK_SOURCE_PATH  += lib_ux
+ifneq ($(TARGET_NAME), TARGET_FATSTACKS)
+    $(info BAGL activated)
+    DEFINES += HAVE_BAGL
+    DEFINES += HAVE_UX_FLOW
+    ifneq ($(TARGET_NAME), TARGET_NANOS)
+        DEFINES += HAVE_GLO096
+        DEFINES += BAGL_WIDTH=128 BAGL_HEIGHT=64
+        DEFINES += HAVE_BAGL_ELLIPSIS # long label truncation feature
+        DEFINES += HAVE_BAGL_FONT_OPEN_SANS_REGULAR_11PX
+        DEFINES += HAVE_BAGL_FONT_OPEN_SANS_EXTRABOLD_11PX
+        DEFINES += HAVE_BAGL_FONT_OPEN_SANS_LIGHT_16PX
+    endif
 endif
 
 # Enabling debug PRINTF
@@ -84,7 +90,7 @@ else
 endif
 
 ##############
-# Compiler #
+#  Compiler  #
 ##############
 ifneq ($(BOLOS_ENV),)
     $(info BOLOS_ENV=$(BOLOS_ENV))
@@ -100,15 +106,12 @@ ifeq ($(GCCPATH),)
     $(info GCCPATH is not set: arm-none-eabi-* will be used from PATH)
 endif
 
-CC       := $(CLANGPATH)clang
-
-#CFLAGS   += -O0
-CFLAGS   += -O3 -Os
-AS     := $(GCCPATH)arm-none-eabi-gcc
-
-LD       := $(GCCPATH)arm-none-eabi-gcc
-LDFLAGS  += -O3 -Os
-LDLIBS   += -lm -lgcc -lc
+CC      := $(CLANGPATH)clang
+CFLAGS  += -O3 -Os
+AS      := $(GCCPATH)arm-none-eabi-gcc
+LD      := $(GCCPATH)arm-none-eabi-gcc
+LDFLAGS += -O3 -Os
+LDLIBS  += -lm -lgcc -lc
 
 # import rules to compile glyphs(/pone)
 include $(BOLOS_SDK)/Makefile.glyphs
@@ -116,6 +119,13 @@ include $(BOLOS_SDK)/Makefile.glyphs
 ### computed variables
 APP_SOURCE_PATH  += src
 SDK_SOURCE_PATH  += lib_stusb lib_stusb_impl
+
+ifeq ($(TARGET_NAME), TARGET_FATSTACKS)
+    SDK_SOURCE_PATH += lib_nbgl/src
+    SDK_SOURCE_PATH += lib_ux_fatstacks
+else ifneq ($(TARGET_NAME), TARGET_NANOS)
+    SDK_SOURCE_PATH  += lib_ux
+endif
 
 
 load: all
