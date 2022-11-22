@@ -16,41 +16,39 @@
 #*******************************************************************************
 
 ifeq ($(BOLOS_SDK),)
-$(error Environment variable BOLOS_SDK is not set)
+    $(error Environment variable BOLOS_SDK is not set)
 endif
 include $(BOLOS_SDK)/Makefile.defines
 
-APPNAME ="Passwords"
-APP_LOAD_PARAMS=--appFlags 0x40 --path "" --curve secp256k1 $(COMMON_LOAD_PARAMS)
+all: default
 
+APPNAME ="Passwords"
 APPVERSION_M=1
 APPVERSION_N=0
 APPVERSION_P=2
 APPVERSION=$(APPVERSION_M).$(APPVERSION_N).$(APPVERSION_P)
 
+APP_LOAD_PARAMS=--appFlags 0x40 --path "" --curve secp256k1 $(COMMON_LOAD_PARAMS)
+
 DEFINES += APPNAME=\"$(APPNAME)\"
 DEFINES += MAJOR_VERSION=$(APPVERSION_M) MINOR_VERSION=$(APPVERSION_N) PATCH_VERSION=$(APPVERSION_P)
+DEFINES += APPVERSION=\"$(APPVERSION)\"
 
 ifeq ($(TARGET_NAME),TARGET_NANOS)
-	ICONNAME=nanos_icon_password_manager.gif
+    ICONNAME=icons/nanos_icon_password_manager.gif
 else
-	ICONNAME=nanox_icon_password_manager.gif
+    ICONNAME=icons/nanox_icon_password_manager.gif
 endif
 
-################
-# Default rule #
-################
-all: default
 
-############
-# Platform #
-############
-
-DEFINES   += OS_IO_SEPROXYHAL IO_SEPROXYHAL_BUFFER_SIZE_B=300
-DEFINES   += HAVE_BAGL HAVE_SPRINTF
-DEFINES   += HAVE_IO_USB HAVE_L4_USBLIB IO_USB_MAX_ENDPOINTS=4 IO_HID_EP_LENGTH=64 HAVE_USB_APDU
-DEFINES   += MAX_METADATAS=4096 MAX_METANAME=20
-DEFINES   += USE_CTAES
+DEFINES += OS_IO_SEPROXYHAL IO_SEPROXYHAL_BUFFER_SIZE_B=300
+DEFINES += HAVE_IO_USB HAVE_L4_USBLIB IO_USB_MAX_ENDPOINTS=4 IO_HID_EP_LENGTH=64 HAVE_USB_APDU
+DEFINES += MAX_METADATAS=4096 MAX_METANAME=20
+DEFINES += USE_CTAES
+DEFINES += HAVE_WEBUSB WEBUSB_URL_SIZE_B=0 WEBUSB_URL=""
+DEFINES += HAVE_UX_FLOW
+DEFINES += HAVE_BAGL
+DEFINES += HAVE_SPRINTF
 
 TESTING:=0
 ifeq ($(TESTING),0)
@@ -61,53 +59,45 @@ else
     DEFINES   += TESTING
 endif
 
-DEFINES   += APPVERSION=\"$(APPVERSION)\"
-
-DEFINES   += HAVE_WEBUSB WEBUSB_URL_SIZE_B=0 WEBUSB_URL=""
-
-ifneq ($(TARGET_NAME), TARGET_BLUE)
-	DEFINES		  += HAVE_UX_FLOW
-endif
-
 ifneq ($(TARGET_NAME),TARGET_NANOS)
-DEFINES       += HAVE_GLO096
-DEFINES       += HAVE_BAGL BAGL_WIDTH=128 BAGL_HEIGHT=64
-DEFINES       += HAVE_BAGL_ELLIPSIS # long label truncation feature
-DEFINES       += HAVE_BAGL_FONT_OPEN_SANS_REGULAR_11PX
-DEFINES       += HAVE_BAGL_FONT_OPEN_SANS_EXTRABOLD_11PX
-DEFINES       += HAVE_BAGL_FONT_OPEN_SANS_LIGHT_16PX
-DEFINES       += HAVE_UX_FLOW
-SDK_SOURCE_PATH  += lib_ux
+    DEFINES       += HAVE_GLO096
+    DEFINES       += BAGL_WIDTH=128 BAGL_HEIGHT=64
+    DEFINES       += HAVE_BAGL_ELLIPSIS # long label truncation feature
+    DEFINES       += HAVE_BAGL_FONT_OPEN_SANS_REGULAR_11PX
+    DEFINES       += HAVE_BAGL_FONT_OPEN_SANS_EXTRABOLD_11PX
+    DEFINES       += HAVE_BAGL_FONT_OPEN_SANS_LIGHT_16PX
+    SDK_SOURCE_PATH  += lib_ux
 endif
 
 # Enabling debug PRINTF
 DEBUG:=0
 ifneq ($(DEBUG),0)
-DEFINES += HAVE_STACK_OVERFLOW_CHECK
-ifeq ($(TARGET_NAME),TARGET_NANOS)
-DEFINES   += HAVE_PRINTF PRINTF=screen_printf
+    $(info DEBUG enabled)
+    DEFINES += HAVE_STACK_OVERFLOW_CHECK HAVE_PRINTF
+    ifeq ($(TARGET_NAME),TARGET_NANOS)
+        DEFINES   += PRINTF=screen_printf
+    else
+        DEFINES   += PRINTF=mcu_usb_printf
+    endif
 else
-DEFINES   += HAVE_PRINTF PRINTF=mcu_usb_printf
-endif
-else
-DEFINES   += PRINTF\(...\)=
+    DEFINES   += PRINTF\(...\)=
 endif
 
 ##############
 # Compiler #
 ##############
 ifneq ($(BOLOS_ENV),)
-$(info BOLOS_ENV=$(BOLOS_ENV))
-CLANGPATH := $(BOLOS_ENV)/clang-arm-fropi/bin/
-GCCPATH := $(BOLOS_ENV)/gcc-arm-none-eabi-5_3-2016q1/bin/
+    $(info BOLOS_ENV=$(BOLOS_ENV))
+    CLANGPATH := $(BOLOS_ENV)/clang-arm-fropi/bin/
+    GCCPATH := $(BOLOS_ENV)/gcc-arm-none-eabi-5_3-2016q1/bin/
 else
-$(info BOLOS_ENV is not set: falling back to CLANGPATH and GCCPATH)
+    $(info BOLOS_ENV is not set: falling back to CLANGPATH and GCCPATH)
 endif
 ifeq ($(CLANGPATH),)
-$(info CLANGPATH is not set: clang will be used from PATH)
+    $(info CLANGPATH is not set: clang will be used from PATH)
 endif
 ifeq ($(GCCPATH),)
-$(info GCCPATH is not set: arm-none-eabi-* will be used from PATH)
+    $(info GCCPATH is not set: arm-none-eabi-* will be used from PATH)
 endif
 
 CC       := $(CLANGPATH)clang
