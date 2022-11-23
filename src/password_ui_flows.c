@@ -34,12 +34,18 @@ char line_buffer_2[21];
 
 #if defined(TARGET_FATSTACKS)
 
-void ui_idle() {}
+#include "ui_fatstacks.h"
+
+void ui_idle() {
+    /* display_keyboard_page(); */
+    display_home_page();
+}
 void ui_request_user_approval(message_pair_t* msg) { (void) msg; }
 
 #else
 
 #include "keyboard.h"
+#include "password_options.h"
 
 keyboard_ctx_t G_keyboard_ctx;
 
@@ -198,6 +204,7 @@ void type_password_cb(size_t offset) {
 }
 
 void reset_password_cb(size_t offset) {
+    PRINTF("reset_password_cb\n");
     error_type_t err = erase_metadata(offset);
     if (err != OK) {
         ui_error(ERR_MESSAGES[err]);
@@ -239,8 +246,6 @@ void show_password_cb(size_t offset) {
 }
 
 //////////////////////////////// CREATE NEW PASSWORD ///////////////////////////////////////////////
-
-unsigned char G_create_classes;
 
 void get_current_charset_setting_value(uint8_t symbols_bitflag);
 void toggle_password_setting(uint8_t caller_id, uint8_t symbols_bitflag);
@@ -319,13 +324,13 @@ UX_FLOW(new_password_flow,
 
 void display_new_password_flow(const ux_flow_step_t* const start_step) {
     if (start_step == NULL) {
-        G_create_classes = 0x07;  // default: lowercase, uppercase, numbers only
+        init_charset_options();
     }
     ux_flow_init(0, new_password_flow, start_step);
 }
 
 void get_current_charset_setting_value(uint8_t symbols_bitflag) {
-    if (G_create_classes & symbols_bitflag) {
+    if (get_charset_options() & symbols_bitflag) {
         strlcpy(line_buffer_2, TXT_WITH, sizeof(TXT_WITH));
     } else {
         strlcpy(line_buffer_2, TXT_WITHOUT, sizeof(TXT_WITHOUT));
@@ -333,7 +338,7 @@ void get_current_charset_setting_value(uint8_t symbols_bitflag) {
 }
 
 void toggle_password_setting(uint8_t caller_id, uint8_t symbols_bitflag) {
-    G_create_classes ^= symbols_bitflag;
+    set_charset_option(symbols_bitflag);
     display_new_password_flow(new_password_flow[caller_id]);
 }
 
@@ -344,7 +349,7 @@ void create_password_entry() {
             G_keyboard_ctx.words_buffer,
             strlen(G_keyboard_ctx.words_buffer));
     // use the requested classes from the user
-    G_io_seproxyhal_spi_buffer[0] = G_create_classes;
+    G_io_seproxyhal_spi_buffer[0] = get_charset_options();
     // add the metadata
     error_type_t err =
         write_metadata(G_io_seproxyhal_spi_buffer, 1 + strlen(G_keyboard_ctx.words_buffer));

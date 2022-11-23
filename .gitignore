@@ -5,6 +5,7 @@ obj
 src/glyphs.c
 src/glyphs.h
 *.pyc
+*~
 speculos.log
 scan-build
 
