@@ -37,7 +37,6 @@ char line_buffer_2[21];
 #include "ui_fatstacks.h"
 
 void ui_idle() {
-    /* display_keyboard_page(); */
     display_home_page();
 }
 void ui_request_user_approval(message_pair_t* msg) { (void) msg; }

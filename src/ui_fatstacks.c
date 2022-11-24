@@ -20,6 +20,8 @@ enum {
     CHOOSE_ACTION_TOKEN,
     INFO_TOKEN,
     QUIT_APP_TOKEN,
+    CREATE_NAVIGATION_TOKEN,
+    CREATE_TOKEN,
     UPPERCASE_TOKEN,
     LOWERCASE_TOKEN,
     NUMBERS_TOKEN,
@@ -41,7 +43,8 @@ static void release_context(void) {
     }
 }
 
-static void display_keyboard_page(void);
+static void display_choice_page(void);
+static void display_name_pwd_page(void);
 
 /*
  * About menu
@@ -49,24 +52,6 @@ static void display_keyboard_page(void);
 static const char *const infoTypes[] = {"Version", "Passwords"};
 static const char *const infoContents[] = {APPVERSION, "(c) 2022 Ledger"};
 
-static void display_choose_pwd_options_page(void);
-static void display_name_pwd_page(void);
-
-static bool onInfos(uint8_t page, nbgl_pageContent_t *content) {
-    if (page == 0) {
-        content->type = INFOS_LIST;
-        content->infosList.nbInfos = 2;
-        content->infosList.infoTypes = (const char **) infoTypes;
-        content->infosList.infoContents = (const char **) infoContents;
-    } else {
-        return false;
-    }
-    return true;
-}
-
-/*
- * Charset options page & callback
- */
 static const nbgl_layoutSwitch_t switches[] = {
     {
         .initState = true,
@@ -105,7 +90,23 @@ static const nbgl_layoutSwitch_t switches[] = {
     }
 };
 
-static void charset_settings_callback(const int token) {
+static bool display_settings_navigation(uint8_t page, nbgl_pageContent_t *content) {
+    if (page == 0) {
+        content->type = SWITCHES_LIST;
+        content->switchesList.nbSwitches = 5;
+        content->switchesList.switches = (nbgl_layoutSwitch_t*)switches;
+    } else if (page == 1) {
+        content->type = INFOS_LIST;
+        content->infosList.nbInfos = 2;
+        content->infosList.infoTypes = (const char **) infoTypes;
+        content->infosList.infoContents = (const char **) infoContents;
+    } else {
+        return false;
+    }
+    return true;
+}
+
+static void charset_settings_callback(const int token, const uint8_t index __attribute__((unused))) {
     PRINTF("Settings callback TOKEN %d triggered\n", token);
     switch (token) {
         case UPPERCASE_TOKEN:
@@ -127,94 +128,33 @@ static void charset_settings_callback(const int token) {
     PRINTF("Changed the mapping, now is: 0x%0x\n", get_charset_options());
 }
 
-static void page_callback(const int token, const uint8_t index) {
-    PRINTF("Create password callback: token %d - index %d\n", token, index);
-    if (token == 0) {
-        // navigation case
-        switch (index) {
-            case 0:
-                // first page, no token: choosing the charset option
-                display_choose_pwd_options_page();
-                break;
-            case 1:
-                // second page: naming the password
-                display_name_pwd_page();
-                break;
-            case (uint8_t)-1:
-                // quit button: go back to home page
-                display_home_page();
-                break;
-            default:
-                break;
-        }
-    } else {
+/*
+ * Charset options page & callback
+ */
 
-        charset_settings_callback(token);
+static void create_password(void) {
+    release_context();
+    nbgl_useCaseStatus("NEW PASSWORD\nCREATED", true, &display_home_page);
+}
+
+static void page_callback(const int token, const uint8_t index __attribute__((unused))) {
+    switch (token) {
+        case BACK_BUTTON_TOKEN:
+            display_choice_page();
+            break;
+        case CREATE_TOKEN:
+            create_password();
+            break;
+        default:
+            break;
     }
 };
-
-
-static void display_choose_pwd_options_page() {
-    PRINTF("Choose pwd options\n");
-    release_context();
-    nbgl_pageContent_t content = {
-        .title = "Password options",
-        .isTouchableTitle = false,
-        .tuneId = TUNE_TAP_CASUAL,
-        .type = SWITCHES_LIST,
-        .switchesList = {
-            .switches = (nbgl_layoutSwitch_t*)switches,
-            .nbSwitches = 5
-        }
-    };
-    nbgl_pageNavigationInfo_t navigation = {
-        .navType = NAV_WITH_BUTTONS,
-        .activePage = 0,
-        .nbPages = 2,
-        .tuneId = TUNE_TAP_CASUAL,
-        .navWithButtons = {
-            .quitButton = true,
-        },
-    };
-    nbgl_pageDrawGenericContent(&page_callback, &navigation, &content);
-    nbgl_refresh();
-}
-
-
-static void display_name_pwd_page() {
-    PRINTF("Name pwd\n");
-    release_context();
-    nbgl_pageContent_t content = {
-        .title = "Password options",
-        .isTouchableTitle = false,
-        .tuneId = TUNE_TAP_CASUAL,
-    };
-    nbgl_pageNavigationInfo_t navigation = {
-        .navType = NAV_WITH_BUTTONS,
-        .activePage = 1,
-        .nbPages = 2,
-        .tuneId = TUNE_TAP_CASUAL,
-        .navWithButtons = {
-            .quitButton = true,
-        },
-    };
-    nbgl_pageDrawGenericContent(&page_callback, &navigation, &content);
-    nbgl_refresh();
-}
 
 /*
  * Keyboard page & callback
  */
 static char password_name[120] = {0};
 static int textIndex, keyboardIndex = 0;
-
-static void keyboard_dispatcher(const int token, uint8_t index __attribute__((unused))) {
-    PRINTF("keyboard dispatcher, with %d\n", token);
-    if (token == BACK_BUTTON_TOKEN) {
-        release_context();
-        display_choose_pwd_options_page();
-    }
-}
 
 static void key_press_callback(const char touchedKey) {
     size_t textLen = 0;
@@ -237,32 +177,32 @@ static void key_press_callback(const char touchedKey) {
     nbgl_refresh();
 }
 
-// TODO: add static
-void display_keyboard_page() {
-    nbgl_layoutDescription_t layoutDescription = {.modal = false,
-                                                  .onActionCallback = &keyboard_dispatcher};
-    nbgl_layoutKbd_t kbdInfo = {.lettersOnly = false,   // use only letters
-                                .upperCase = false,   // start with lower case letters
-                                .mode = MODE_LETTERS,  // start in letters mode
-                                .keyMask = 0,          // no inactive key
+static void display_name_pwd_page() {
+    release_context();
+    nbgl_layoutDescription_t layoutDescription = {.modal = false, .onActionCallback = &page_callback};
+    nbgl_layoutKbd_t kbdInfo = {.lettersOnly = false,
+                                .upperCase = false,
+                                .mode = MODE_LETTERS,
+                                .keyMask = 0,
                                 .callback = &key_press_callback};
-    nbgl_layoutCenteredInfo_t centeredInfo = {.text1 = NULL,
-                                              .text2 = "Enter a nickname for\nthis new password",
-                                              .text3 = NULL,
-                                              .style = LARGE_CASE_INFO,
-                                              .icon = NULL,
-                                              .offsetY = 0,
-                                              .onTop = true};
-    strlcpy(password_name, "", 1);
+    nbgl_layoutCenteredInfo_t centeredInfo = {
+        .text1 = NULL,
+        .text2 = "New password nickname",
+        .text3 = NULL,
+        .style = LARGE_CASE_INFO,
+        .icon = NULL,
+        .offsetY = 0,
+        .onTop = true
+    };
     layoutContext = nbgl_layoutGet(&layoutDescription);
     nbgl_layoutAddProgressIndicator(layoutContext, 0, 0, true, BACK_BUTTON_TOKEN, TUNE_TAP_CASUAL);
     nbgl_layoutAddCenteredInfo(layoutContext, &centeredInfo);
     keyboardIndex = nbgl_layoutAddKeyboard(layoutContext, &kbdInfo);
+    nbgl_layoutAddConfirmationButton(layoutContext, true, "Create password", CREATE_TOKEN, TUNE_TAP_CASUAL);
+    strlcpy(password_name, "", 1);
     textIndex = nbgl_layoutAddEnteredText(layoutContext, false, 0, password_name, false, 32);
-    nbgl_layoutAddFooter(layoutContext, "Use this name", CREATE_2_TOKEN, TUNE_TAP_CASUAL);
     nbgl_layoutDraw(layoutContext);
 }
-
 
 /*
  * Choice page (create, print, display) & dispatcher
@@ -291,7 +231,7 @@ static void choice_callback(const int token, const uint8_t index __attribute__((
             break;
         case CHOICE_CREATE_TOKEN:
             PRINTF("Create new password option\n");
-            display_choose_pwd_options_page();
+            display_name_pwd_page();
             break;
     }
 }
@@ -318,7 +258,7 @@ static void home_dispatcher(int token, uint8_t index __attribute__((unused))) {
         os_sched_exit(-1);
     } else if (token == INFO_TOKEN) {
         release_context();
-        nbgl_useCaseSettings("Passwords infos", 0, 1, false, display_home_page, onInfos, NULL);
+        nbgl_useCaseSettings("Passwords infos", 0, 2, false, display_home_page, display_settings_navigation, charset_settings_callback);
     } else if (token == CHOOSE_ACTION_TOKEN) {
         display_choice_page();
     } else if (token == BACK_HOME_TOKEN) {
