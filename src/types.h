@@ -2,7 +2,7 @@
 
 #include <stddef.h>
 #include <stdint.h>
-#include "stdbool.h"
+#include <stdbool.h>
 
 typedef struct internalStorage_t {
 #define STORAGE_MAGIC 0xDEAD1337
@@ -15,6 +15,9 @@ typedef struct internalStorage_t {
      */
     size_t metadata_count;
     uint8_t metadatas[MAX_METADATAS];
+#if defined(TARGET_FATSTACKS)
+    uint8_t charset_options;
+#endif
 } internalStorage_t;
 
 typedef enum { READY, RECEIVED, WAITING } io_state_e;

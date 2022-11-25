@@ -12,5 +12,6 @@ enum {
 
 
 void init_charset_options(void);
+bool has_charset_option(const uint8_t bitflag);
 uint8_t get_charset_options(void);
 void set_charset_option(const uint8_t bitflag);
