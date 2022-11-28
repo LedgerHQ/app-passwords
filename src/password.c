@@ -10,5 +10,5 @@ error_type_t create_new_password(const char* const pwd_name, const size_t pwd_si
     // use the requested classes from the user
     G_io_seproxyhal_spi_buffer[0] = get_charset_options();
     // add the metadata
-     return write_metadata(G_io_seproxyhal_spi_buffer, 1 + pwd_size);
+    return write_metadata(G_io_seproxyhal_spi_buffer, 1 + pwd_size);
 }

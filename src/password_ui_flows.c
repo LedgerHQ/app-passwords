@@ -35,7 +35,9 @@ char line_buffer_2[21];
 void ui_idle() {
     display_home_page();
 }
-void ui_request_user_approval(message_pair_t* msg) { (void) msg; }
+void ui_request_user_approval(message_pair_t *msg) {
+    (void) msg;
+}
 
 #else
 
@@ -211,7 +213,6 @@ static void reset_password_cb(size_t offset) {
 
 //////////////////////////////// SHOW PASSWORD ///////////////////////////////////////////////
 
-
 // clang-format off
 UX_STEP_CB(
 show_password_step,
@@ -342,8 +343,8 @@ static void toggle_password_setting(uint8_t caller_id, uint8_t symbols_bitflag) 
 }
 
 static void create_password_entry() {
-    error_type_t err = create_new_password(G_keyboard_ctx.words_buffer,
-                                           strlen(G_keyboard_ctx.words_buffer));
+    error_type_t err =
+        create_new_password(G_keyboard_ctx.words_buffer, strlen(G_keyboard_ctx.words_buffer));
     if (err != OK) {
         ui_error(get_error(err));
         return;

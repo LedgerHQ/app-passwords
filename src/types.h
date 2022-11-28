@@ -51,7 +51,6 @@ typedef struct message_pair_s {
     const char* second;
 } message_pair_t;
 
-
 typedef enum error_type_e {
     OK = 0,
     ERR_NO_MORE_SPACE_AVAILABLE = 1,

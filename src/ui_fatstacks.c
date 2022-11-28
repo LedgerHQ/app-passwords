@@ -63,8 +63,8 @@ static void display_error_page(error_type_t error) {
     snprintf(&errorMessage[0],
              msg_length > MAX_ERROR_MSG_SIZE ? MAX_ERROR_MSG_SIZE : msg_length,
              "%s\n%s",
-             (char*) PIC(msg.first),
-             (char*) PIC(msg.second));
+             (char *) PIC(msg.first),
+             (char *) PIC(msg.second));
     nbgl_useCaseStatus(&errorMessage[0], false, &display_home_page);
 }
 
@@ -76,44 +76,33 @@ static const char *const infoContents[] = {APPVERSION, "(c) 2022 Ledger"};
 
 static nbgl_layoutSwitch_t switches[5];
 
-
 static bool display_settings_navigation(uint8_t page, nbgl_pageContent_t *content) {
     if (page == 0) {
-        switches[0] = (nbgl_layoutSwitch_t) {
-            .initState = has_charset_option(UPPERCASE_BITFLAG),
-            .text = "Enable uppercase",
-            .subText = NULL,
-            .token = UPPERCASE_TOKEN,
-            .tuneId = TUNE_TAP_CASUAL
-        };
-        switches[1] = (nbgl_layoutSwitch_t) {
-            .initState = has_charset_option(LOWERCASE_BITFLAG),
-            .text = "Enable lowecase",
-            .subText = NULL,
-            .token = LOWERCASE_TOKEN,
-            .tuneId = TUNE_TAP_CASUAL
-        };
-        switches[2] = (nbgl_layoutSwitch_t) {
-            .initState = has_charset_option(NUMBERS_BITFLAG),
-            .text = "Enable numbers",
-            .subText = NULL,
-            .token = NUMBERS_TOKEN,
-            .tuneId = TUNE_TAP_CASUAL
-        };
-        switches[3] = (nbgl_layoutSwitch_t) {
-            .initState = has_charset_option(BARS_BITFLAG),
-            .text = "Enable separators",
-            .subText = "('-', ' ', '_')",
-            .token = BARS_TOKEN,
-            .tuneId = TUNE_TAP_CASUAL
-        };
-        switches[4] = (nbgl_layoutSwitch_t) {
-            .initState = has_charset_option(EXT_SYMBOLS_BITFLAG),
-            .text = "Enable special characters",
-            .subText = NULL,
-            .token = EXT_SYMBOLS_TOKEN,
-            .tuneId = TUNE_TAP_CASUAL
-        };
+        switches[0] = (nbgl_layoutSwitch_t){.initState = has_charset_option(UPPERCASE_BITFLAG),
+                                            .text = "Enable uppercase",
+                                            .subText = NULL,
+                                            .token = UPPERCASE_TOKEN,
+                                            .tuneId = TUNE_TAP_CASUAL};
+        switches[1] = (nbgl_layoutSwitch_t){.initState = has_charset_option(LOWERCASE_BITFLAG),
+                                            .text = "Enable lowecase",
+                                            .subText = NULL,
+                                            .token = LOWERCASE_TOKEN,
+                                            .tuneId = TUNE_TAP_CASUAL};
+        switches[2] = (nbgl_layoutSwitch_t){.initState = has_charset_option(NUMBERS_BITFLAG),
+                                            .text = "Enable numbers",
+                                            .subText = NULL,
+                                            .token = NUMBERS_TOKEN,
+                                            .tuneId = TUNE_TAP_CASUAL};
+        switches[3] = (nbgl_layoutSwitch_t){.initState = has_charset_option(BARS_BITFLAG),
+                                            .text = "Enable separators",
+                                            .subText = "('-', ' ', '_')",
+                                            .token = BARS_TOKEN,
+                                            .tuneId = TUNE_TAP_CASUAL};
+        switches[4] = (nbgl_layoutSwitch_t){.initState = has_charset_option(EXT_SYMBOLS_BITFLAG),
+                                            .text = "Enable special characters",
+                                            .subText = NULL,
+                                            .token = EXT_SYMBOLS_TOKEN,
+                                            .tuneId = TUNE_TAP_CASUAL};
 
         content->type = SWITCHES_LIST;
         content->switchesList.nbSwitches = 5;
@@ -129,7 +118,8 @@ static bool display_settings_navigation(uint8_t page, nbgl_pageContent_t *conten
     return true;
 }
 
-static void charset_settings_callback(const int token, const uint8_t index __attribute__((unused))) {
+static void charset_settings_callback(const int token,
+                                      const uint8_t index __attribute__((unused))) {
     switch (token) {
         case UPPERCASE_TOKEN:
             set_charset_option(UPPERCASE_BITFLAG);
@@ -231,26 +221,29 @@ static void key_press_callback(const char touchedKey) {
 
 static void display_create_pwd_page() {
     release_context();
-    nbgl_layoutDescription_t layoutDescription = {.modal = false, .onActionCallback = &page_callback};
+    nbgl_layoutDescription_t layoutDescription = {.modal = false,
+                                                  .onActionCallback = &page_callback};
     nbgl_layoutKbd_t kbdInfo = {.lettersOnly = false,
                                 .upperCase = false,
                                 .mode = MODE_LETTERS,
                                 .keyMask = 0,
                                 .callback = &key_press_callback};
-    nbgl_layoutCenteredInfo_t centeredInfo = {
-        .text1 = NULL,
-        .text2 = "New password nickname",
-        .text3 = NULL,
-        .style = LARGE_CASE_INFO,
-        .icon = NULL,
-        .offsetY = 0,
-        .onTop = true
-    };
+    nbgl_layoutCenteredInfo_t centeredInfo = {.text1 = NULL,
+                                              .text2 = "New password nickname",
+                                              .text3 = NULL,
+                                              .style = LARGE_CASE_INFO,
+                                              .icon = NULL,
+                                              .offsetY = 0,
+                                              .onTop = true};
     layoutContext = nbgl_layoutGet(&layoutDescription);
     nbgl_layoutAddProgressIndicator(layoutContext, 0, 0, true, BACK_BUTTON_TOKEN, TUNE_TAP_CASUAL);
     nbgl_layoutAddCenteredInfo(layoutContext, &centeredInfo);
     keyboardIndex = nbgl_layoutAddKeyboard(layoutContext, &kbdInfo);
-    nbgl_layoutAddConfirmationButton(layoutContext, true, "Create password", CREATE_TOKEN, TUNE_TAP_CASUAL);
+    nbgl_layoutAddConfirmationButton(layoutContext,
+                                     true,
+                                     "Create password",
+                                     CREATE_TOKEN,
+                                     TUNE_TAP_CASUAL);
     strlcpy(password_name, "", 1);
     textIndex = nbgl_layoutAddEnteredText(layoutContext, false, 0, password_name, false, 32);
     nbgl_layoutDraw(layoutContext);
@@ -275,8 +268,8 @@ static bool display_password_list_navigation(uint8_t page, nbgl_pageContent_t *c
             break;
         }
         const size_t pwdLength = METADATA_NICKNAME_LEN(pwdOffset);
-        char* nextBufferOffset = &pwdBuffer[0] + bufferOffset;
-        strlcpy(nextBufferOffset, (void*) METADATA_NICKNAME(pwdOffset), pwdLength + 1);
+        char *nextBufferOffset = &pwdBuffer[0] + bufferOffset;
+        strlcpy(nextBufferOffset, (void *) METADATA_NICKNAME(pwdOffset), pwdLength + 1);
         bufferOffset += (pwdLength + 1);
         PRINTF("Password %d/%d (name: %s)\n",
                pwdIndex + 1,
@@ -289,7 +282,7 @@ static bool display_password_list_navigation(uint8_t page, nbgl_pageContent_t *c
     }
 
     content->type = CHOICES_LIST;
-    content->choicesList.names = (char **)passwordList;
+    content->choicesList.names = (char **) passwordList;
     content->choicesList.localized = false;
     content->choicesList.nbChoices = localNb;
     content->choicesList.initChoice = 0;
@@ -318,16 +311,21 @@ static void display_password_list_page() {
  * Choice page (create, print, display) & dispatcher
  */
 
-static const char* const bars[] = {
-    "Type a password", "Show a password", "Create a new password", "Reset a password"
-};
-static const uint8_t barsToken[] = {CHOICE_WRITE_TOKEN, CHOICE_DISPLAY_TOKEN, CHOICE_CREATE_TOKEN, CHOICE_RESET_TOKEN};
+static const char *const bars[] = {"Type a password",
+                                   "Show a password",
+                                   "Create a new password",
+                                   "Reset a password"};
+static const uint8_t barsToken[] = {CHOICE_WRITE_TOKEN,
+                                    CHOICE_DISPLAY_TOKEN,
+                                    CHOICE_CREATE_TOKEN,
+                                    CHOICE_RESET_TOKEN};
 
-static bool choice_navigation_callback(const uint8_t page __attribute__((unused)), nbgl_pageContent_t *content) {
+static bool choice_navigation_callback(const uint8_t page __attribute__((unused)),
+                                       nbgl_pageContent_t *content) {
     content->type = BARS_LIST;
     content->barsList.nbBars = 4;
-    content->barsList.barTexts = (const char** const)bars;
-    content->barsList.tokens = (uint8_t* const)barsToken;
+    content->barsList.barTexts = (const char **const) bars;
+    content->barsList.tokens = (uint8_t *const) barsToken;
     return true;
 }
 
@@ -355,15 +353,13 @@ static void choice_callback(const int token, const uint8_t index __attribute__((
 static void display_choice_page() {
     release_context();
     nbgl_useCaseSettings("What do you want to do?",
-                         0,     // first page index
-                         1,     // page number
-                         false, // touchable title
+                         0,      // first page index
+                         1,      // page number
+                         false,  // touchable title
                          display_home_page,
                          choice_navigation_callback,
-                         choice_callback
-        );
+                         choice_callback);
 }
-
 
 /*
  * Home page & dispatcher

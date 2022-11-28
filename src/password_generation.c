@@ -59,10 +59,10 @@ static void shuffle_array(mbedtls_ctr_drbg_context *drbg, uint8_t *buffer, uint3
 
 /* Sample from set with replacement */
 static void sample(mbedtls_ctr_drbg_context *drbg,
-            const uint8_t *set,
-            uint32_t setSize,
-            uint8_t *out,
-            uint32_t size) {
+                   const uint8_t *set,
+                   uint32_t setSize,
+                   uint8_t *out,
+                   uint32_t size) {
     uint32_t i;
     for (i = 0; i < size; i++) {
         uint32_t index = rng_u8_modulo(drbg, setSize);

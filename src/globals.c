@@ -1,6 +1,5 @@
 #include "globals.h"
 
-
 void init_storage() {
     if (N_storage.magic == STORAGE_MAGIC) {
         // already initialized
@@ -15,12 +14,10 @@ void init_storage() {
     nvm_write((void *) &N_storage.keyboard_layout,
               (void *) &tmp,
               sizeof(N_storage.keyboard_layout));
-    nvm_write((void *) &N_storage.metadata_count,
-              (void *) &tmp,
-              sizeof(N_storage.metadata_count));
+    nvm_write((void *) &N_storage.metadata_count, (void *) &tmp, sizeof(N_storage.metadata_count));
     nvm_write((void *) N_storage.metadatas, (void *) &tmp, 2);
 #if defined(TARGET_FATSTACKS)
-    #include "options.h"
+#include "options.h"
     init_charset_options();
 #endif
 }
