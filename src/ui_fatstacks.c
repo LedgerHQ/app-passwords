@@ -1,8 +1,10 @@
 #include <os.h>
 #include <string.h>
 
-#include "ui_fatstacks.h"
+#include "error.h"
 #include "options.h"
+#include "password.h"
+#include "ui_fatstacks.h"
 
 #if defined(TARGET_FATSTACKS)
 
@@ -11,6 +13,7 @@
 
 static nbgl_page_t *pageContext;
 static nbgl_layout_t *layoutContext = 0;
+static char errorMessage[100] = {0};
 
 enum {
     BACK_BUTTON_TOKEN = FIRST_USER_TOKEN,
@@ -47,6 +50,19 @@ static void release_context(void) {
 static void display_choice_page(void);
 static void display_name_pwd_page(void);
 static void display_settings_page(void);
+
+/*
+ * Error display
+ */
+static void display_error_page(error_type_t error) {
+    message_pair_t msg = get_error(error);
+    snprintf(&errorMessage[0],
+             msg.first_len + msg.second_len + 1,
+             "%s\n%s",
+             (char*) PIC(msg.first),
+             (char*) PIC(msg.second));
+    nbgl_useCaseStatus(&errorMessage[0], false, &display_home_page);
+}
 
 /*
  * About menu
@@ -154,10 +170,18 @@ static int textIndex, keyboardIndex = 0;
 static void create_password(void) {
     PRINTF("Creating new password '%s'\n", password_name);
     release_context();
-    if (strlen(password_name) == 0) {
+    const size_t password_size = strlen(password_name);
+    if (password_size == 0) {
         nbgl_useCaseStatus("The nickname\ncan't be empty", false, &display_name_pwd_page);
     } else {
-        nbgl_useCaseStatus("NEW PASSWORD\nCREATED", true, &display_home_page);
+        PRINTF("ok\n");
+        error_type_t error = create_new_password(password_name, password_size);
+        if (error == OK) {
+            nbgl_useCaseStatus("NEW PASSWORD\nCREATED", true, &display_home_page);
+        } else {
+            PRINTF("The error nb %d occured\n", error);
+            display_error_page(error);
+        }
     }
 }
 
