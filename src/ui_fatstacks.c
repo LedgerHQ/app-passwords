@@ -2,6 +2,8 @@
 #include <string.h>
 
 #include "error.h"
+#include "globals.h"
+#include "metadata.h"
 #include "options.h"
 #include "password.h"
 #include "ui_fatstacks.h"
@@ -13,7 +15,8 @@
 
 static nbgl_page_t *pageContext;
 static nbgl_layout_t *layoutContext = 0;
-static char errorMessage[100] = {0};
+#define MAX_ERROR_MSG_SIZE 100
+static char errorMessage[MAX_ERROR_MSG_SIZE] = {0};
 
 enum {
     BACK_BUTTON_TOKEN = FIRST_USER_TOKEN,
@@ -48,7 +51,7 @@ static void release_context(void) {
 }
 
 static void display_choice_page(void);
-static void display_name_pwd_page(void);
+static void display_create_pwd_page(void);
 static void display_settings_page(void);
 
 /*
@@ -56,8 +59,9 @@ static void display_settings_page(void);
  */
 static void display_error_page(error_type_t error) {
     message_pair_t msg = get_error(error);
+    const size_t msg_length = msg.first_len + msg.second_len + 2;
     snprintf(&errorMessage[0],
-             msg.first_len + msg.second_len + 1,
+             msg_length > MAX_ERROR_MSG_SIZE ? MAX_ERROR_MSG_SIZE : msg_length,
              "%s\n%s",
              (char*) PIC(msg.first),
              (char*) PIC(msg.second));
@@ -158,7 +162,13 @@ static void check_settings_before_home() {
 }
 
 static void display_settings_page() {
-    nbgl_useCaseSettings("Passwords infos", 0, 2, false, check_settings_before_home, display_settings_navigation, charset_settings_callback);
+    nbgl_useCaseSettings("Passwords infos",
+                         0,
+                         2,
+                         false,
+                         check_settings_before_home,
+                         display_settings_navigation,
+                         charset_settings_callback);
 }
 
 /*
@@ -172,7 +182,7 @@ static void create_password(void) {
     release_context();
     const size_t password_size = strlen(password_name);
     if (password_size == 0) {
-        nbgl_useCaseStatus("The nickname\ncan't be empty", false, &display_name_pwd_page);
+        nbgl_useCaseStatus("The nickname\ncan't be empty", false, &display_create_pwd_page);
     } else {
         PRINTF("ok\n");
         error_type_t error = create_new_password(password_name, password_size);
@@ -219,7 +229,7 @@ static void key_press_callback(const char touchedKey) {
     nbgl_refresh();
 }
 
-static void display_name_pwd_page() {
+static void display_create_pwd_page() {
     release_context();
     nbgl_layoutDescription_t layoutDescription = {.modal = false, .onActionCallback = &page_callback};
     nbgl_layoutKbd_t kbdInfo = {.lettersOnly = false,
@@ -247,6 +257,64 @@ static void display_name_pwd_page() {
 }
 
 /*
+ * Password list
+ */
+#define RADIO_BUTTON_PER_PAGE 6
+static char pwdBuffer[RADIO_BUTTON_PER_PAGE * (MAX_METANAME + 1)] = {0};
+static const char *passwordList[RADIO_BUTTON_PER_PAGE] = {0};
+static size_t pwdIndex = 0;
+
+static bool display_password_list_navigation(uint8_t page, nbgl_pageContent_t *content) {
+    pwdIndex = page * RADIO_BUTTON_PER_PAGE;
+    pwdBuffer[0] = '\0';
+    size_t bufferOffset = 0;
+    size_t localNb = 0;
+    while (localNb < RADIO_BUTTON_PER_PAGE && pwdIndex < N_storage.metadata_count) {
+        size_t pwdOffset = get_metadata(pwdIndex);
+        if (pwdOffset == -1UL) {
+            break;
+        }
+        const size_t pwdLength = METADATA_NICKNAME_LEN(pwdOffset);
+        char* nextBufferOffset = &pwdBuffer[0] + bufferOffset;
+        strlcpy(nextBufferOffset, (void*) METADATA_NICKNAME(pwdOffset), pwdLength + 1);
+        bufferOffset += (pwdLength + 1);
+        PRINTF("Password %d/%d (name: %s)\n",
+               pwdIndex + 1,
+               N_storage.metadata_count,
+               nextBufferOffset);
+        passwordList[localNb] = nextBufferOffset;
+
+        localNb++;
+        pwdIndex++;
+    }
+
+    content->type = CHOICES_LIST;
+    content->choicesList.names = (char **)passwordList;
+    content->choicesList.localized = false;
+    content->choicesList.nbChoices = localNb;
+    content->choicesList.initChoice = 0;
+    content->choicesList.token = CHOOSE_ACTION_TOKEN;
+    content->choicesList.tuneId = TUNE_TAP_CASUAL;
+    return true;
+}
+
+static void password_list_callback(const int token, const uint8_t index) {
+    PRINTF("Pwd list cb trigger: %d - %d\n", token, index);
+}
+
+static void display_password_list_page() {
+    pwdIndex = 0;
+    pwdBuffer[0] = '\0';
+    nbgl_useCaseSettings("Passwords infos",
+                         0,
+                         2,
+                         false,
+                         display_home_page,
+                         display_password_list_navigation,
+                         password_list_callback);
+}
+
+/*
  * Choice page (create, print, display) & dispatcher
  */
 
@@ -267,13 +335,19 @@ static void choice_callback(const int token, const uint8_t index __attribute__((
     switch (token) {
         case CHOICE_WRITE_TOKEN:
             PRINTF("Write password option\n");
+            display_password_list_page();
             break;
         case CHOICE_DISPLAY_TOKEN:
             PRINTF("Display password option\n");
+            display_password_list_page();
             break;
         case CHOICE_CREATE_TOKEN:
             PRINTF("Create new password option\n");
-            display_name_pwd_page();
+            display_create_pwd_page();
+            break;
+        case CHOICE_RESET_TOKEN:
+            PRINTF("Display password option\n");
+            display_password_list_page();
             break;
     }
 }
