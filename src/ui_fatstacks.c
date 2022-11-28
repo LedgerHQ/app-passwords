@@ -2,7 +2,7 @@
 #include <string.h>
 
 #include "ui_fatstacks.h"
-#include "password_options.h"
+#include "options.h"
 
 #if defined(TARGET_FATSTACKS)
 

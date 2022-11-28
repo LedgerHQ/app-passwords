@@ -11,8 +11,8 @@ from tests_vectors import tests_vectors
 APPS_DIRECTORY = Path("tests/elfs").resolve()
 BACKENDS = ["speculos", "ledgercomm", "ledgerwallet"]
 FIRMWARES = [
-        # Firmware('nanos', '2.1'),
-        # Firmware('nanox', '2.0.2'),
+        Firmware('nanos', '2.1'),
+        Firmware('nanox', '2.0.2'),
         Firmware('nanosp', '1.0.3')
 ]
 
@@ -46,7 +46,7 @@ def pytest_generate_tests(metafunc):
 def prepare_speculos_args(firmware):
     speculos_args = []
     # Uncomment line below to enable display
-    speculos_args += ["--display", "qt"]
+    # speculos_args += ["--display", "qt"]
     application = APPS_DIRECTORY / f"passwords-{firmware.device}.elf"
     return ([application], {"args": speculos_args})
 

@@ -2,10 +2,11 @@
 #include <os.h>
 #include <os_io_seproxyhal.h>
 
-#include "usbd_hid_impl.h"
+#include <hid_mapping.h>
+#include <usbd_hid_impl.h>
+
 #include "password_typing.h"
 #include "globals.h"
-#include "hid_mapping.h"
 
 static const uint8_t EMPTY_REPORT[] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 static const uint8_t SPACE_REPORT[] = {0x00, 0x00, 0x2C, 0x00, 0x00, 0x00, 0x00, 0x00};
@@ -16,9 +17,9 @@ static const uint8_t ENTER_REPORT[] = {0x00, 0x00, 0x28, 0x00, 0x00, 0x00, 0x00,
 uint8_t entropyProvided;
 uint8_t entropy[32];
 
-int entropyProvider2(__attribute__((unused)) void *context,
-                     unsigned char *buffer,
-                     __attribute__((unused)) size_t bufferSize) {
+static int entropyProvider2(__attribute__((unused)) void *context,
+                            unsigned char *buffer,
+                            __attribute__((unused)) size_t bufferSize) {
     if (entropyProvided) {
         // PRINTF("no more entropy\n");
         return 1;

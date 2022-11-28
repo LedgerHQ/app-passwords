@@ -19,7 +19,7 @@
 #include <os.h>
 #include <cx.h>
 
-#include "password_generation.h"
+#include <password_generation.h>
 
 static const char *SETS[] = {"ABCDEFGHIJKLMNOPQRSTUVWXYZ",  // 26
                              "abcdefghijklmnopqrstuvwxyz",  // 26
@@ -31,7 +31,7 @@ static const char *SETS[] = {"ABCDEFGHIJKLMNOPQRSTUVWXYZ",  // 26
                              "[]{}()<>",                  // 8
                              NULL};
 
-uint8_t rng_u8_modulo(mbedtls_ctr_drbg_context *drbg, uint8_t modulo) {
+static uint8_t rng_u8_modulo(mbedtls_ctr_drbg_context *drbg, uint8_t modulo) {
     if (modulo == 0) {
         THROW(EXCEPTION);
     }
@@ -47,7 +47,7 @@ uint8_t rng_u8_modulo(mbedtls_ctr_drbg_context *drbg, uint8_t modulo) {
     return (candidate % modulo);
 }
 
-void shuffle_array(mbedtls_ctr_drbg_context *drbg, uint8_t *buffer, uint32_t size) {
+static void shuffle_array(mbedtls_ctr_drbg_context *drbg, uint8_t *buffer, uint32_t size) {
     uint32_t i;
     for (i = size - 1; i > 0; i--) {
         uint32_t index = rng_u8_modulo(drbg, i + 1);
@@ -58,7 +58,7 @@ void shuffle_array(mbedtls_ctr_drbg_context *drbg, uint8_t *buffer, uint32_t siz
 }
 
 /* Sample from set with replacement */
-void sample(mbedtls_ctr_drbg_context *drbg,
+static void sample(mbedtls_ctr_drbg_context *drbg,
             const uint8_t *set,
             uint32_t setSize,
             uint8_t *out,

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "stdint.h"
+#include <stdint.h>
 
 #define METADATA_PTR(offset)       (&N_storage.metadatas[offset])
 #define METADATA_TOTAL_LEN(offset) (METADATA_DATALEN(offset) + 2)
@@ -23,7 +23,14 @@ typedef enum error_type_e {
     ERR_METADATA_ENTRY_TOO_BIG
 } error_type_t;
 
-error_type_t write_metadata(uint8_t *data, uint8_t dataSize);
+error_type_t write_metadata(uint8_t * data, uint8_t dataSize);
+
+/*
+ * Write a given amount of data on metadatas, at the given offset
+ * Used to load metadata from APDUs
+ */
+void override_metadatas(uint8_t offset, void* ptr, size_t size);
+
 void reset_metadatas(void);
 error_type_t erase_metadata(uint32_t offset);
 uint32_t find_free_metadata(void);

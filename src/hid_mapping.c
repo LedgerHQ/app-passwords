@@ -15,8 +15,8 @@
  *  limitations under the License.
  ********************************************************************************/
 
-#include "os.h"
-#include "hid_mapping.h"
+#include <os.h>
+#include <hid_mapping.h>
 
 #define KEYCODE_START    0x20
 #define MOD_MASK_LENGTH  12
