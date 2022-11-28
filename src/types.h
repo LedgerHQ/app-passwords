@@ -50,3 +50,12 @@ typedef struct message_pair_s {
     const char* first;
     const char* second;
 } message_pair_t;
+
+
+typedef enum error_type_e {
+    OK = 0,
+    ERR_NO_MORE_SPACE_AVAILABLE = 1,
+    ERR_CORRUPTED_METADATA = 2,
+    ERR_NO_METADATA = 3,
+    ERR_METADATA_ENTRY_TOO_BIG = 4
+} error_type_t;

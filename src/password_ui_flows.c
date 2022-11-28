@@ -4,7 +4,9 @@
 
 #include <hid_mapping.h>
 
+#include "error.h"
 #include "password_ui_flows.h"
+#include "password.h"
 #include "globals.h"
 #include "password_typing.h"
 #include "metadata.h"
@@ -22,13 +24,6 @@
 
 ux_state_t G_ux;
 bolos_ux_params_t G_ux_params;
-
-const message_pair_t ERR_MESSAGES[] = {
-    {"", ""},                             // OK
-    {"Write Error", "Database is full"},  // ERR_NO_MORE_SPACE_AVAILABLE
-    {"Write Error",
-     "Database should be repaired, please contact Ledger Support"},  // ERR_CORRUPTED_METADATA
-    {"Erase Error", "Database already empty"}};                      // ERR_NO_METADATA
 
 char line_buffer_1[16];
 char line_buffer_2[21];
@@ -208,7 +203,7 @@ static void reset_password_cb(size_t offset) {
     PRINTF("reset_password_cb\n");
     error_type_t err = erase_metadata(offset);
     if (err != OK) {
-        ui_error(ERR_MESSAGES[err]);
+        ui_error(get_error(err));
         return;
     }
     ui_idle();
@@ -347,18 +342,10 @@ static void toggle_password_setting(uint8_t caller_id, uint8_t symbols_bitflag) 
 }
 
 static void create_password_entry() {
-    // use the G_io_seproxyhal_spi_buffer as temp buffer to build the entry (and include the
-    // requested set of chars)
-    memmove(G_io_seproxyhal_spi_buffer + 1,
-            G_keyboard_ctx.words_buffer,
-            strlen(G_keyboard_ctx.words_buffer));
-    // use the requested classes from the user
-    G_io_seproxyhal_spi_buffer[0] = get_charset_options();
-    // add the metadata
-    error_type_t err =
-        write_metadata(G_io_seproxyhal_spi_buffer, 1 + strlen(G_keyboard_ctx.words_buffer));
+    error_type_t err = create_new_password(G_keyboard_ctx.words_buffer,
+                                           strlen(G_keyboard_ctx.words_buffer));
     if (err != OK) {
-        ui_error(ERR_MESSAGES[err]);
+        ui_error(get_error(err));
         return;
     }
     ui_idle();
