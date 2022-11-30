@@ -7,4 +7,4 @@
 #define HID_EPOUT_ADDR 0x02
 #define HID_EPOUT_SIZE 0x40
 
-#endif // USBD_HID_IMPL_H
+#endif  // USBD_HID_IMPL_H

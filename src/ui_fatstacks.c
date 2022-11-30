@@ -66,7 +66,11 @@ static void display_error_page(error_type_t error) {
              "%s\n%s",
              (char *) PIC(msg.first),
              (char *) PIC(msg.second));
-    nbgl_useCaseStatus(&errorMessage[0], false, &display_home_page);
+    nbgl_useCaseStatus(&errorMessage[0], false, &display_choice_page);
+}
+
+static void display_success_page(char *string) {
+    nbgl_useCaseStatus(string, true, &display_choice_page);
 }
 
 /*
@@ -165,7 +169,7 @@ static void display_settings_page() {
 /*
  * Password creation & callback
  */
-static char password_name[MAX_METANAME+1] = {0};
+static char password_name[MAX_METANAME + 1] = {0};
 static int textIndex, keyboardIndex = 0;
 
 static void create_password(void) {
@@ -175,10 +179,10 @@ static void create_password(void) {
     if (password_size == 0) {
         nbgl_useCaseStatus("The nickname\ncan't be empty", false, &display_create_pwd_page);
     } else {
-        PRINTF("ok\n");
         error_type_t error = create_new_password(password_name, password_size);
         if (error == OK) {
-            nbgl_useCaseStatus("NEW PASSWORD\nCREATED", true, &display_home_page);
+            display_success_page("NEW PASSWORD\nCREATED");
+            // nbgl_useCaseStatus("NEW PASSWORD\nCREATED", true, &display_choice_page);
         } else {
             PRINTF("The error nb %d occured\n", error);
             display_error_page(error);
@@ -257,30 +261,36 @@ static void display_create_pwd_page() {
 
 /*
  * Password list
+ * Used to go to either print, display or reset
  */
-#define RADIO_BUTTON_PER_PAGE 6
-static char pwdBuffer[RADIO_BUTTON_PER_PAGE * (MAX_METANAME + 1)] = {0};
-static const char *passwordList[RADIO_BUTTON_PER_PAGE] = {0};
+
+#define DISPLAYED_PASSWORD_PER_PAGE 5
+/* Buffer where password name strings are stored */
+static char pwdBuffer[DISPLAYED_PASSWORD_PER_PAGE * (MAX_METANAME + 1)] = {0};
+/* Placeholder for currently displayed password names, points to pwdBuffer indexes */
+static const char *passwordList[DISPLAYED_PASSWORD_PER_PAGE] = {0};
+/* Index of the last displayed password */
 static size_t pwdIndex = 0;
+/* Display password offsets, to be able to retrieve them in metadatas */
+static size_t pwdOffsets[DISPLAYED_PASSWORD_PER_PAGE] = {0};
+/* Callback to trigger with password offset - print, display or reset */
+void (*selector_callback)(const size_t offset);
 
 static bool display_password_list_navigation(uint8_t page, nbgl_pageContent_t *content) {
-    pwdIndex = page * RADIO_BUTTON_PER_PAGE;
+    pwdIndex = page * DISPLAYED_PASSWORD_PER_PAGE;
     pwdBuffer[0] = '\0';
     size_t bufferOffset = 0;
     size_t localNb = 0;
-    while (localNb < RADIO_BUTTON_PER_PAGE && pwdIndex < N_storage.metadata_count) {
+    while (localNb < DISPLAYED_PASSWORD_PER_PAGE && pwdIndex < N_storage.metadata_count) {
         size_t pwdOffset = get_metadata(pwdIndex);
         if (pwdOffset == -1UL) {
             break;
         }
+        pwdOffsets[localNb] = pwdOffset;
         const size_t pwdLength = METADATA_NICKNAME_LEN(pwdOffset);
         char *nextBufferOffset = &pwdBuffer[0] + bufferOffset;
         strlcpy(nextBufferOffset, (void *) METADATA_NICKNAME(pwdOffset), pwdLength + 1);
         bufferOffset += (pwdLength + 1);
-        PRINTF("Password %d/%d (name: %s)\n",
-               pwdIndex + 1,
-               N_storage.metadata_count,
-               nextBufferOffset);
         passwordList[localNb] = nextBufferOffset;
 
         localNb++;
@@ -297,8 +307,8 @@ static bool display_password_list_navigation(uint8_t page, nbgl_pageContent_t *c
     return true;
 }
 
-static void password_list_callback(const int token, const uint8_t index) {
-    PRINTF("Pwd list cb trigger: %d - %d\n", token, index);
+static void password_list_callback(const int token __attribute__((unused)), const uint8_t index) {
+    selector_callback(pwdOffsets[index]);
 }
 
 static void display_password_list_page() {
@@ -308,13 +318,65 @@ static void display_password_list_page() {
                          0,
                          2,
                          false,
-                         display_home_page,
+                         display_choice_page,
                          display_password_list_navigation,
                          password_list_callback);
 }
 
 /*
- * Choice page (create, print, display) & dispatcher
+ * Display single password page & dispatcher
+ */
+static uint8_t password_to_display[PASSWORD_MAX_SIZE + 1] = {0};
+static const uint8_t *ptrToPwd[1] = {0};
+
+static bool display_password_navigation(uint8_t page __attribute__((unused)),
+                                        nbgl_pageContent_t *content) {
+    ptrToPwd[0] = &password_to_display[0];
+    content->type = INFOS_LIST;
+    content->infosList.nbInfos = 1;
+    content->infosList.infoTypes = (const char **) ptrToPwd;
+    content->infosList.infoContents = (const char **) ptrToPwd;
+    return true;
+}
+
+static void display_password_page() {
+    nbgl_useCaseSettings("Your password:",
+                         0,
+                         1,
+                         false,
+                         display_choice_page,
+                         display_password_navigation,
+                         NULL);
+}
+
+/*
+ * Password management callbacks
+ */
+
+void type_password_cb(const size_t offset) {
+    PRINTF("type\n");
+    type_password_at_offset(offset);
+    display_success_page("PASSWORD HAS\nBEEN WRITTEN");
+}
+
+void show_password_cb(const size_t offset) {
+    PRINTF("show\n");
+    show_password_at_offset(offset, password_to_display);
+    display_password_page();
+}
+
+void reset_password_cb(const size_t offset) {
+    PRINTF("reset\n");
+    error_type_t result = reset_password_at_offset(offset);
+    if (result == OK) {
+        display_success_page("PASSWORD HAS\nBEEN DELETED");
+    } else {
+        display_error_page(result);
+    }
+}
+
+/*
+ * Choice page (create, print, display, reset) & dispatcher
  */
 
 static const char *const bars[] = {"Type a password",
@@ -339,10 +401,12 @@ static void choice_callback(const int token, const uint8_t index __attribute__((
     switch (token) {
         case CHOICE_WRITE_TOKEN:
             PRINTF("Write password option\n");
+            selector_callback = type_password_cb;
             display_password_list_page();
             break;
         case CHOICE_DISPLAY_TOKEN:
             PRINTF("Display password option\n");
+            selector_callback = show_password_cb;
             display_password_list_page();
             break;
         case CHOICE_CREATE_TOKEN:
@@ -351,6 +415,7 @@ static void choice_callback(const int token, const uint8_t index __attribute__((
             break;
         case CHOICE_RESET_TOKEN:
             PRINTF("Display password option\n");
+            selector_callback = reset_password_cb;
             display_password_list_page();
             break;
     }

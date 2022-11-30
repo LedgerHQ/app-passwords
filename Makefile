@@ -53,7 +53,7 @@ DEFINES += HAVE_UX_FLOW
 DEFINES += HAVE_SPRINTF
 
 TESTING:=0
-ifeq ($(TESTING),0)
+ifeq ($(TESTING), 0)
     $(info TESTING DISABLED)
     DEFINES   += HAVE_USB_HIDKBD
 else
@@ -76,6 +76,14 @@ ifneq ($(TARGET_NAME), TARGET_FATSTACKS)
 else
     $(info Using NBGL)
     DEFINES += NBGL_KEYBOARD
+endif
+
+POPULATE:=0
+ifeq ($(POPULATE), 0)
+    $(info POPULATE DISABLED)
+else
+    $(info POPULATE ENABLED)
+    DEFINES   += POPULATE
 endif
 
 # Enabling debug PRINTF

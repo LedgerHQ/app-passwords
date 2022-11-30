@@ -26,7 +26,7 @@ ux_state_t G_ux;
 bolos_ux_params_t G_ux_params;
 
 char line_buffer_1[16];
-char line_buffer_2[21];
+char line_buffer_2[PASSWORD_MAX_SIZE + 1];
 
 #if defined(TARGET_FATSTACKS)
 
@@ -80,14 +80,14 @@ void ui_request_user_approval(message_pair_t* msg) {
 
 uint16_t current_entry_index;
 int8_t previous_location;  // max left: -1, middle: 0, max right: 1
-void (*selector_callback)();
+void (*selector_callback)(const size_t offset);
 
 static void display_next_entry(bool is_upper_border);
 static void get_current_entry_name();
 static void select_password_and_apply_cb();
-static void type_password_cb(size_t offset);
-static void show_password_cb(size_t offset);
-static void reset_password_cb(size_t offset);
+static void type_password_cb(const size_t offset);
+static void show_password_cb(const size_t offset);
+static void reset_password_cb(const size_t offset);
 static void ui_error(message_pair_t err);
 
 // clang-format off
@@ -187,23 +187,14 @@ static void select_password_and_apply_cb() {
     }
 }
 
-static void type_password_cb(size_t offset) {
-    unsigned char enabledSets = METADATA_SETS(offset);
-    if (enabledSets == 0) {
-        enabledSets = ALL_SETS;
-    }
-    type_password((uint8_t*) METADATA_NICKNAME(offset),
-                  METADATA_NICKNAME_LEN(offset),
-                  NULL,
-                  enabledSets,
-                  (const uint8_t*) PIC(DEFAULT_MIN_SET),
-                  20);
+static void type_password_cb(const size_t offset) {
+    type_password_at_offset(offset);
     ui_idle();
 }
 
-static void reset_password_cb(size_t offset) {
+static void reset_password_cb(const size_t offset) {
     PRINTF("reset_password_cb\n");
-    error_type_t err = erase_metadata(offset);
+    error_type_t err = reset_password_at_offset(offset);
     if (err != OK) {
         ui_error(get_error(err));
         return;
@@ -227,19 +218,10 @@ UX_FLOW(show_password_flow,
         &show_password_step);
 // clang-format on
 
-static void show_password_cb(size_t offset) {
+static void show_password_cb(const size_t offset) {
     memcpy(line_buffer_1, (void*) METADATA_NICKNAME(offset), METADATA_NICKNAME_LEN(offset));
     line_buffer_1[METADATA_NICKNAME_LEN(offset)] = '\0';
-    unsigned char enabledSets = METADATA_SETS(offset);
-    if (enabledSets == 0) {
-        enabledSets = ALL_SETS;
-    }
-    type_password((uint8_t*) METADATA_NICKNAME(offset),
-                  METADATA_NICKNAME_LEN(offset),
-                  (uint8_t*) line_buffer_2,
-                  enabledSets,
-                  (const uint8_t*) PIC(DEFAULT_MIN_SET),
-                  20);
+    show_password_at_offset(offset, (uint8_t*) line_buffer_2);
     ux_flow_init(0, show_password_flow, NULL);
 }
 
