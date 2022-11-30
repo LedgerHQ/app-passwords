@@ -165,7 +165,7 @@ static void display_settings_page() {
 /*
  * Password creation & callback
  */
-static char password_name[120] = {0};
+static char password_name[MAX_METANAME+1] = {0};
 static int textIndex, keyboardIndex = 0;
 
 static void create_password(void) {
@@ -213,6 +213,11 @@ static void key_press_callback(const char touchedKey) {
         password_name[previousTextLen] = touchedKey;
         password_name[previousTextLen + 1] = '\0';
         textLen = previousTextLen + 1;
+    }
+    if (textLen >= MAX_METANAME) {
+        // password name length can't be greater than MAX_METANAME, so we mask
+        // every characters
+        mask = -1;
     }
     PRINTF("Current text is: '%s' (size '%d')\n", password_name, textLen);
     nbgl_layoutUpdateKeyboard(layoutContext, keyboardIndex, mask);
