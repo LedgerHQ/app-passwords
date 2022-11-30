@@ -10,6 +10,7 @@
 
 #if defined(TARGET_FATSTACKS)
 
+#include <nbgl_layout.h>
 #include <nbgl_page.h>
 #include <nbgl_use_case.h>
 
@@ -389,7 +390,7 @@ void display_home_page(void) {
         .topRightStyle = QUIT_ICON,
         .bottomButtonStyle = INFO_ICON,
         .topRightToken = QUIT_APP_TOKEN,
-        .bottomButtonToken = INFO_TOKEN,
+        .bottomButtonsToken = INFO_TOKEN,
         .footerText = NULL,
         .tapActionText = "Tap to manage\nyour passwords",
         .tapActionToken = CHOOSE_ACTION_TOKEN,

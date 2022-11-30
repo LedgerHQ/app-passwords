@@ -62,7 +62,7 @@ else
 endif
 
 ifneq ($(TARGET_NAME), TARGET_FATSTACKS)
-    $(info BAGL activated)
+    $(info Using BAGL)
     DEFINES += HAVE_BAGL
     DEFINES += HAVE_UX_FLOW
     ifneq ($(TARGET_NAME), TARGET_NANOS)
@@ -73,6 +73,9 @@ ifneq ($(TARGET_NAME), TARGET_FATSTACKS)
         DEFINES += HAVE_BAGL_FONT_OPEN_SANS_EXTRABOLD_11PX
         DEFINES += HAVE_BAGL_FONT_OPEN_SANS_LIGHT_16PX
     endif
+else
+    $(info Using NBGL)
+    DEFINES += NBGL_KEYBOARD
 endif
 
 # Enabling debug PRINTF
