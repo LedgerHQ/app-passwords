@@ -37,7 +37,7 @@ enum {
     CHOICE_WRITE_TOKEN,
     CHOICE_DISPLAY_TOKEN,
     CHOICE_CREATE_TOKEN,
-    CHOICE_RESET_TOKEN,
+    CHOICE_DELETE_TOKEN,
 };
 
 static void release_context(void) {
@@ -261,19 +261,24 @@ static void display_create_pwd_page() {
 
 /*
  * Password list
- * Used to go to either print, display or reset
+ * Used to go to either print, display or delete
  */
 
 #define DISPLAYED_PASSWORD_PER_PAGE 5
+
 /* Buffer where password name strings are stored */
 static char pwdBuffer[DISPLAYED_PASSWORD_PER_PAGE * (MAX_METANAME + 1)] = {0};
+
 /* Placeholder for currently displayed password names, points to pwdBuffer indexes */
 static const char *passwordList[DISPLAYED_PASSWORD_PER_PAGE] = {0};
+
 /* Index of the last displayed password */
 static size_t pwdIndex = 0;
+
 /* Display password offsets, to be able to retrieve them in metadatas */
 static size_t pwdOffsets[DISPLAYED_PASSWORD_PER_PAGE] = {0};
-/* Callback to trigger with password offset - print, display or reset */
+
+/* Callback to trigger with password offset - print, display or delete */
 void (*selector_callback)(const size_t offset);
 
 static bool display_password_list_navigation(uint8_t page, nbgl_pageContent_t *content) {
@@ -365,9 +370,9 @@ void show_password_cb(const size_t offset) {
     display_password_page();
 }
 
-void reset_password_cb(const size_t offset) {
-    PRINTF("reset\n");
-    error_type_t result = reset_password_at_offset(offset);
+void delete_password_cb(const size_t offset) {
+    PRINTF("delete\n");
+    error_type_t result = delete_password_at_offset(offset);
     if (result == OK) {
         display_success_page("PASSWORD HAS\nBEEN DELETED");
     } else {
@@ -376,17 +381,59 @@ void reset_password_cb(const size_t offset) {
 }
 
 /*
- * Choice page (create, print, display, reset) & dispatcher
+ * Delete confirmation page
+ */
+
+#define DELETION_MSG_SIZE 37
+#define DELETION_BUFFER_MAX DELETION_MSG_SIZE - 2 + MAX_METANAME + 1
+static const char confirmDeletion[DELETION_MSG_SIZE + 1] = \
+    "Confirm the deletion\nof password\n'%s'";
+static char deletionBuffer[DELETION_BUFFER_MAX] = {0};
+static nbgl_layoutTagValueList_t pairList = {
+  .nbMaxLinesForValue = 0,
+  .nbPairs = 0,
+  .pairs = NULL
+};
+
+static void reviewChoice(bool confirm) {
+    PRINTF("OK, confirm: %d\n", confirm);
+    if (confirm) {
+        delete_password_cb(0);
+    }
+    else {
+        display_choice_page();
+    }
+}
+
+static void confirm_password_deletion(const size_t offset) {
+    PRINTF("current index = %d\n", pwdIndex);
+    PRINTF("Format = '%s'\n", confirmDeletion);
+    PRINTF("Pwd: '%s'\n", passwordList[1]);
+    snprintf(&deletionBuffer[0], DELETION_BUFFER_MAX, confirmDeletion, passwordList[1]);
+    PRINTF("Result: '%s'\n", &deletionBuffer[0]);
+
+    nbgl_pageInfoLongPress_t infoLongPress = {
+        .icon = NULL,
+        .text = &deletionBuffer[0],
+        .longPressText = "Hold to confirm"
+    };
+
+    PRINTF("GO\n");
+    nbgl_useCaseStaticReview(&pairList, &infoLongPress, "Don't remove the password", reviewChoice);
+}
+
+/*
+ * Choice page (create, print, display, delete) & dispatcher
  */
 
 static const char *const bars[] = {"Type a password",
                                    "Show a password",
                                    "Create a new password",
-                                   "Reset a password"};
+                                   "Delete a password"};
 static const uint8_t barsToken[] = {CHOICE_WRITE_TOKEN,
                                     CHOICE_DISPLAY_TOKEN,
                                     CHOICE_CREATE_TOKEN,
-                                    CHOICE_RESET_TOKEN};
+                                    CHOICE_DELETE_TOKEN};
 
 static bool choice_navigation_callback(const uint8_t page __attribute__((unused)),
                                        nbgl_pageContent_t *content) {
@@ -413,9 +460,9 @@ static void choice_callback(const int token, const uint8_t index __attribute__((
             PRINTF("Create new password option\n");
             display_create_pwd_page();
             break;
-        case CHOICE_RESET_TOKEN:
+        case CHOICE_DELETE_TOKEN:
             PRINTF("Display password option\n");
-            selector_callback = reset_password_cb;
+            selector_callback = confirm_password_deletion;
             display_password_list_page();
             break;
     }

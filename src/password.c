@@ -40,6 +40,6 @@ void show_password_at_offset(const size_t offset, uint8_t* dest_buffer) {
                   PASSWORD_MAX_SIZE);
 }
 
-error_type_t reset_password_at_offset(const size_t offset) {
+error_type_t delete_password_at_offset(const size_t offset) {
     return erase_metadata(offset);
 }

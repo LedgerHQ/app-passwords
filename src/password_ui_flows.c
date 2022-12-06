@@ -194,7 +194,7 @@ static void type_password_cb(const size_t offset) {
 
 static void reset_password_cb(const size_t offset) {
     PRINTF("reset_password_cb\n");
-    error_type_t err = reset_password_at_offset(offset);
+    error_type_t err = delete_password_at_offset(offset);
     if (err != OK) {
         ui_error(get_error(err));
         return;
