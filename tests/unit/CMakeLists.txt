@@ -47,6 +47,6 @@ add_executable(test_fatstacks_password_list fatstacks/test_password_list.c)
 
 add_library(password_list SHARED ../../src/fatstacks/password_list.c)
 
-target_link_libraries(test_fatstacks_password_list PUBLIC cmocka gcov password_list)
+target_link_libraries(test_fatstacks_password_list PUBLIC cmocka gcov password_list bsd)
 
 add_test(test_fatstacks_password_list test_fatstacks_password_list)

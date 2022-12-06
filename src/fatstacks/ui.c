@@ -266,28 +266,24 @@ static void display_create_pwd_page() {
  */
 
 /* Callback to trigger with password offset - print, display or delete */
-void (*selector_callback)(const size_t index);
+static void (*selector_callback)(const size_t index);
 
 static bool display_password_list_navigation(uint8_t page, nbgl_pageContent_t *content) {
-    password_list_set_index(page * DISPLAYED_PASSWORD_PER_PAGE);
+    size_t passwordIndex = page * DISPLAYED_PASSWORD_PER_PAGE;
     password_list_reset_buffer();
-    size_t bufferOffset = 0;
     size_t localIndex = 0;
-    while (localIndex < DISPLAYED_PASSWORD_PER_PAGE &&
-           password_list_get_index() < N_storage.metadata_count) {
-        size_t pwdOffset = get_metadata(password_list_get_index());
+    while (localIndex < DISPLAYED_PASSWORD_PER_PAGE && passwordIndex < N_storage.metadata_count) {
+        size_t pwdOffset = get_metadata(passwordIndex);
         if (pwdOffset == -1UL) {
             break;
         }
-        password_list_set_offset(localIndex, pwdOffset);
-        const size_t pwdLength = METADATA_NICKNAME_LEN(pwdOffset);
-        char *nextBufferOffset = password_list_buffer_ptr(bufferOffset);
-        strlcpy(nextBufferOffset, (void *) METADATA_NICKNAME(pwdOffset), pwdLength + 1);
-        bufferOffset += (pwdLength + 1);
-        password_list_set_password(localIndex, nextBufferOffset);
-
+        const size_t pwdLength = METADATA_NICKNAME_LEN(pwdOffset) + 1;
+        password_list_add_password(localIndex,
+                                   pwdOffset,
+                                   (void *) METADATA_NICKNAME(pwdOffset),
+                                   pwdLength);
         localIndex++;
-        password_list_incr_index();
+        passwordIndex++;
     }
 
     content->type = CHOICES_LIST;
@@ -392,7 +388,7 @@ static void confirm_password_deletion_cb(const size_t index) {
                                               .text = &deletionBuffer[0],
                                               .longPressText = "Hold to confirm"};
 
-    password_list_set_index(index);
+    password_list_set_current(index);
     nbgl_useCaseStaticReview(&pairList, &infoLongPress, "Don't remove the password", reviewChoice);
 }
 

@@ -18,7 +18,7 @@ jobs:
       - name: Install cmocka
         run: |
           sudo apt update
-          sudo apt install libcmocka-dev lcov
+          sudo apt install libcmocka-dev lcov libbsd-dev
       - name: Compile the tests
         run: |
           cd tests/unit/
