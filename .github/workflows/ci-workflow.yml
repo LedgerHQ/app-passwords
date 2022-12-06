@@ -74,13 +74,13 @@ jobs:
         uses: actions/download-artifact@v2
         with:
           name: apps
-          path: tests/elfs
+          path: tests/functional/elfs
       - name: Install APT dependencies
         run: sudo apt-get update && sudo apt-get install -y qemu-user-static
       - name: Install Python dependencies
-        run: pip install --extra-index-url https://test.pypi.org/simple/ -r tests/requirements.txt
+        run: pip install --extra-index-url https://test.pypi.org/simple/ -r tests/functional/requirements.txt
       - name: Run test
-        run: pytest --tb=short -v tests/
+        run: pytest --tb=short -v tests/functional
       - name: Upload Speculos log
         if: always()
         uses: actions/upload-artifact@v2

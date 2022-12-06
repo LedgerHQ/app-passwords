@@ -9,4 +9,4 @@ src/glyphs.h
 speculos.log
 scan-build
 
-tests/elfs
+tests/functional/elfs
