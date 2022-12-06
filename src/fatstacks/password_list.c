@@ -1,18 +1,29 @@
-#include <strings.h>
+#include <string.h>
 
 #include "password_list.h"
 
 typedef struct passwordList_s {
-    /* Buffer where password name strings are stored */
+    /*
+     * Buffer where password names are stored
+     */
     char buffer[DISPLAYED_PASSWORD_PER_PAGE * (MAX_METANAME + 1)];
 
-    /* Placeholder for currently displayed password names, points to buffer indexes */
+    /*
+     * Placeholder for currently displayed password names, points to previous `buffer` locations.
+     * Also used to display currently selected password name (for display or deletion)
+     */
     const char *passwords[DISPLAYED_PASSWORD_PER_PAGE];
 
-    /* Index of the last displayed password */
+    /*
+     * Used to store the index of a passwordm in order to know which to display or remove.
+     */
     size_t index;
 
-    /* Display password offsets, to be able to retrieve them in metadatas */
+    /*
+     * Like `passwords` keeps a relation between currently displayed password indexes and their
+     * names, this array keeps the relation between currently displayed password indexes and their
+     * offset in metadatas.
+     */
     size_t offsets[DISPLAYED_PASSWORD_PER_PAGE];
 } passwordList_t;
 
