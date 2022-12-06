@@ -1,18 +1,19 @@
 #include <os.h>
 #include <string.h>
 
-#include "error.h"
-#include "globals.h"
-#include "metadata.h"
-#include "options.h"
-#include "password.h"
-#include "ui_fatstacks.h"
-
 #if defined(TARGET_FATSTACKS)
 
 #include <nbgl_layout.h>
 #include <nbgl_page.h>
 #include <nbgl_use_case.h>
+
+#include "../error.h"
+#include "../globals.h"
+#include "../metadata.h"
+#include "../options.h"
+#include "../password.h"
+#include "ui.h"
+#include "password_list.h"
 
 static nbgl_page_t *pageContext;
 static nbgl_layout_t *layoutContext = 0;
@@ -264,48 +265,35 @@ static void display_create_pwd_page() {
  * Used to go to either print, display or delete
  */
 
-#define DISPLAYED_PASSWORD_PER_PAGE 5
-
-/* Buffer where password name strings are stored */
-static char pwdBuffer[DISPLAYED_PASSWORD_PER_PAGE * (MAX_METANAME + 1)] = {0};
-
-/* Placeholder for currently displayed password names, points to pwdBuffer indexes */
-static const char *passwordList[DISPLAYED_PASSWORD_PER_PAGE] = {0};
-
-/* Index of the last displayed password */
-static size_t pwdIndex = 0;
-
-/* Display password offsets, to be able to retrieve them in metadatas */
-static size_t pwdOffsets[DISPLAYED_PASSWORD_PER_PAGE] = {0};
-
 /* Callback to trigger with password offset - print, display or delete */
-void (*selector_callback)(const size_t offset);
+void (*selector_callback)(const size_t index);
 
 static bool display_password_list_navigation(uint8_t page, nbgl_pageContent_t *content) {
-    pwdIndex = page * DISPLAYED_PASSWORD_PER_PAGE;
-    pwdBuffer[0] = '\0';
+    password_list_set_index(page * DISPLAYED_PASSWORD_PER_PAGE);
+    password_list_reset_buffer();
     size_t bufferOffset = 0;
-    size_t localNb = 0;
-    while (localNb < DISPLAYED_PASSWORD_PER_PAGE && pwdIndex < N_storage.metadata_count) {
-        size_t pwdOffset = get_metadata(pwdIndex);
+    size_t localIndex = 0;
+    while (localIndex < DISPLAYED_PASSWORD_PER_PAGE &&
+           password_list_get_index() < N_storage.metadata_count) {
+        size_t pwdOffset = get_metadata(password_list_get_index());
         if (pwdOffset == -1UL) {
             break;
         }
-        pwdOffsets[localNb] = pwdOffset;
+        password_list_set_offset(localIndex, pwdOffset);
         const size_t pwdLength = METADATA_NICKNAME_LEN(pwdOffset);
-        char *nextBufferOffset = &pwdBuffer[0] + bufferOffset;
+        char *nextBufferOffset = password_list_buffer_ptr(bufferOffset);
         strlcpy(nextBufferOffset, (void *) METADATA_NICKNAME(pwdOffset), pwdLength + 1);
         bufferOffset += (pwdLength + 1);
-        passwordList[localNb] = nextBufferOffset;
+        password_list_set_password(localIndex, nextBufferOffset);
 
-        localNb++;
-        pwdIndex++;
+        localIndex++;
+        password_list_incr_index();
     }
 
     content->type = CHOICES_LIST;
-    content->choicesList.names = (char **) passwordList;
+    content->choicesList.names = password_list_passwords();
     content->choicesList.localized = false;
-    content->choicesList.nbChoices = localNb;
+    content->choicesList.nbChoices = localIndex;
     content->choicesList.initChoice = 0;
     content->choicesList.token = CHOOSE_ACTION_TOKEN;
     content->choicesList.tuneId = TUNE_TAP_CASUAL;
@@ -313,12 +301,11 @@ static bool display_password_list_navigation(uint8_t page, nbgl_pageContent_t *c
 }
 
 static void password_list_callback(const int token __attribute__((unused)), const uint8_t index) {
-    selector_callback(pwdOffsets[index]);
+    selector_callback(index);
 }
 
 static void display_password_list_page() {
-    pwdIndex = 0;
-    pwdBuffer[0] = '\0';
+    password_list_reset();
     nbgl_useCaseSettings("Passwords infos",
                          0,
                          2,
@@ -358,21 +345,29 @@ static void display_password_page() {
  * Password management callbacks
  */
 
-void type_password_cb(const size_t offset) {
-    PRINTF("type\n");
-    type_password_at_offset(offset);
+void type_password_cb(const size_t index) {
+    type_password_at_offset(password_list_get_offset(index));
     display_success_page("PASSWORD HAS\nBEEN WRITTEN");
 }
 
-void show_password_cb(const size_t offset) {
-    PRINTF("show\n");
-    show_password_at_offset(offset, password_to_display);
+void show_password_cb(const size_t index) {
+    show_password_at_offset(password_list_get_offset(index), password_to_display);
     display_password_page();
 }
 
-void delete_password_cb(const size_t offset) {
-    PRINTF("delete\n");
-    error_type_t result = delete_password_at_offset(offset);
+/*
+ * Delete confirmation page
+ */
+
+#define DELETION_MSG_SIZE   37
+#define DELETION_BUFFER_MAX DELETION_MSG_SIZE - 2 + MAX_METANAME + 1
+static const char confirmDeletion[DELETION_MSG_SIZE + 1] =
+    "Confirm the deletion\nof password\n'%s'";
+static char deletionBuffer[DELETION_BUFFER_MAX] = {0};
+static nbgl_layoutTagValueList_t pairList = {.nbMaxLinesForValue = 0, .nbPairs = 0, .pairs = NULL};
+
+void delete_password() {
+    error_type_t result = delete_password_at_offset(password_list_get_current_offset());
     if (result == OK) {
         display_success_page("PASSWORD HAS\nBEEN DELETED");
     } else {
@@ -380,45 +375,24 @@ void delete_password_cb(const size_t offset) {
     }
 }
 
-/*
- * Delete confirmation page
- */
-
-#define DELETION_MSG_SIZE 37
-#define DELETION_BUFFER_MAX DELETION_MSG_SIZE - 2 + MAX_METANAME + 1
-static const char confirmDeletion[DELETION_MSG_SIZE + 1] = \
-    "Confirm the deletion\nof password\n'%s'";
-static char deletionBuffer[DELETION_BUFFER_MAX] = {0};
-static nbgl_layoutTagValueList_t pairList = {
-  .nbMaxLinesForValue = 0,
-  .nbPairs = 0,
-  .pairs = NULL
-};
-
 static void reviewChoice(bool confirm) {
-    PRINTF("OK, confirm: %d\n", confirm);
     if (confirm) {
-        delete_password_cb(0);
-    }
-    else {
+        delete_password();
+    } else {
         display_choice_page();
     }
 }
 
-static void confirm_password_deletion(const size_t offset) {
-    PRINTF("current index = %d\n", pwdIndex);
-    PRINTF("Format = '%s'\n", confirmDeletion);
-    PRINTF("Pwd: '%s'\n", passwordList[1]);
-    snprintf(&deletionBuffer[0], DELETION_BUFFER_MAX, confirmDeletion, passwordList[1]);
-    PRINTF("Result: '%s'\n", &deletionBuffer[0]);
+static void confirm_password_deletion_cb(const size_t index) {
+    snprintf(&deletionBuffer[0],
+             DELETION_BUFFER_MAX,
+             confirmDeletion,
+             password_list_get_password(index));
+    nbgl_pageInfoLongPress_t infoLongPress = {.icon = NULL,
+                                              .text = &deletionBuffer[0],
+                                              .longPressText = "Hold to confirm"};
 
-    nbgl_pageInfoLongPress_t infoLongPress = {
-        .icon = NULL,
-        .text = &deletionBuffer[0],
-        .longPressText = "Hold to confirm"
-    };
-
-    PRINTF("GO\n");
+    password_list_set_index(index);
     nbgl_useCaseStaticReview(&pairList, &infoLongPress, "Don't remove the password", reviewChoice);
 }
 
@@ -462,7 +436,7 @@ static void choice_callback(const int token, const uint8_t index __attribute__((
             break;
         case CHOICE_DELETE_TOKEN:
             PRINTF("Display password option\n");
-            selector_callback = confirm_password_deletion;
+            selector_callback = confirm_password_deletion_cb;
             display_password_list_page();
             break;
     }

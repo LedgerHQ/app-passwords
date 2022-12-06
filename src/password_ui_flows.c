@@ -30,7 +30,7 @@ char line_buffer_2[PASSWORD_MAX_SIZE + 1];
 
 #if defined(TARGET_FATSTACKS)
 
-#include "ui_fatstacks.h"
+#include "fatstacks/ui.h"
 
 void ui_idle() {
     display_home_page();
