@@ -8,7 +8,7 @@ from passwordsManager_cmd import PasswordsManagerCommand
 from tests_vectors import tests_vectors
 
 
-APPS_DIRECTORY = Path("tests/elfs").resolve()
+APPS_DIRECTORY = Path("tests/functional/elfs").resolve()
 BACKENDS = ["speculos", "ledgercomm", "ledgerwallet"]
 FIRMWARES = [
         Firmware('nanos', '2.1'),
