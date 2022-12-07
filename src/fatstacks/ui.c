@@ -9,11 +9,13 @@
 
 #include "../error.h"
 #include "../globals.h"
+#include "../glyphs.h"
 #include "../metadata.h"
 #include "../options.h"
 #include "../password.h"
-#include "ui.h"
+
 #include "password_list.h"
+#include "ui.h"
 
 static nbgl_page_t *pageContext;
 static nbgl_layout_t *layoutContext = 0;
@@ -468,7 +470,7 @@ static void home_dispatcher(int token, uint8_t index __attribute__((unused))) {
 
 void display_home_page(void) {
     nbgl_pageInfoDescription_t home = {
-        .centeredInfo.icon = NULL,
+        .centeredInfo.icon = &C_fatstacks_icon_password_manager_64px,
         .centeredInfo.text1 = "Passwords",
         .centeredInfo.text2 = "Create, type and display\npasswords through\nyour device",
         .centeredInfo.text3 = NULL,

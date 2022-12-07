@@ -37,7 +37,7 @@ DEFINES += APPVERSION=\"$(APPVERSION)\"
 ifeq ($(TARGET_NAME),TARGET_NANOS)
     ICONNAME=icons/nanos_icon_password_manager.gif
 else ifeq ($(TARGET_NAME), TARGET_FATSTACKS)
-    ICONNAME=icons/nanox_icon_password_manager.gif
+    ICONNAME=icons/fatstacks_icon_password_manager_32px.bmp
 else
     ICONNAME=icons/nanox_icon_password_manager.gif
 endif
