@@ -11,3 +11,4 @@ speculos.log
 scan-build
 
 tests/functional/elfs
+coverage*
