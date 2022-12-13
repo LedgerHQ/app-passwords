@@ -348,16 +348,15 @@ static void display_password_list_page() {
 /*
  * Display single password page & dispatcher
  */
-static uint8_t password_to_display[PASSWORD_MAX_SIZE + 1] = {0};
-static const uint8_t *ptrToPwd[1] = {0};
+static char password_to_display[PASSWORD_MAX_SIZE + 1] = {0};
+static const char *ptrToPwd[2] = {0};
 
 static bool display_password_navigation(uint8_t page __attribute__((unused)),
                                         nbgl_pageContent_t *content) {
-    ptrToPwd[0] = &password_to_display[0];
     content->type = INFOS_LIST;
     content->infosList.nbInfos = 1;
-    content->infosList.infoTypes = (const char **) ptrToPwd;
-    content->infosList.infoContents = (const char **) ptrToPwd;
+    content->infosList.infoTypes = (const char **) &ptrToPwd[0];
+    content->infosList.infoContents = (const char **) &ptrToPwd[1];
     return true;
 }
 
@@ -381,7 +380,9 @@ void type_password_cb(const size_t index) {
 }
 
 void show_password_cb(const size_t index) {
-    show_password_at_offset(password_list_get_offset(index), password_to_display);
+    ptrToPwd[0] = password_list_get_password(index);
+    show_password_at_offset(password_list_get_offset(index), (uint8_t *)password_to_display);
+    ptrToPwd[1] = &password_to_display[0];
     display_password_page();
 }
 
