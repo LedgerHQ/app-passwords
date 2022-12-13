@@ -54,6 +54,8 @@ enum {
     NUMBERS_TOKEN,
     BARS_TOKEN,
     EXT_SYMBOLS_TOKEN,
+    ERASE_METADATA_TOKEN,
+    NO_ENTER_TOKEN,
     CHOICE_WRITE_TOKEN,
     CHOICE_DISPLAY_TOKEN,
     CHOICE_CREATE_TOKEN,
@@ -99,42 +101,55 @@ static void display_success_page(char *string) {
 static const char *const infoTypes[] = {"Version", "Passwords"};
 static const char *const infoContents[] = {APPVERSION, "(c) 2017-2023 Ledger"};
 
-static nbgl_layoutSwitch_t switches[5];
+#define SETTINGS_CHARSET_OPTIONS_NUMBER 5
+#define SETTINGS_MISC_OPTIONS_NUMBER 1
+#define SETTINGS_INFO_NUMBER 2
+#define SETTINGS_PAGE_NUMBER 3
+
+static nbgl_layoutSwitch_t switches[SETTINGS_CHARSET_OPTIONS_NUMBER];
 
 static bool display_settings_navigation(uint8_t page, nbgl_pageContent_t *content) {
     if (page == 0) {
         switches[0] = (nbgl_layoutSwitch_t){.initState = has_charset_option(UPPERCASE_BITFLAG),
-                                            .text = "Enable uppercase",
+                                            .text = "Use uppercase",
                                             .subText = NULL,
                                             .token = UPPERCASE_TOKEN,
                                             .tuneId = TUNE_TAP_CASUAL};
         switches[1] = (nbgl_layoutSwitch_t){.initState = has_charset_option(LOWERCASE_BITFLAG),
-                                            .text = "Enable lowecase",
+                                            .text = "Use lowecase",
                                             .subText = NULL,
                                             .token = LOWERCASE_TOKEN,
                                             .tuneId = TUNE_TAP_CASUAL};
         switches[2] = (nbgl_layoutSwitch_t){.initState = has_charset_option(NUMBERS_BITFLAG),
-                                            .text = "Enable numbers",
+                                            .text = "Use numbers",
                                             .subText = NULL,
                                             .token = NUMBERS_TOKEN,
                                             .tuneId = TUNE_TAP_CASUAL};
         switches[3] = (nbgl_layoutSwitch_t){.initState = has_charset_option(BARS_BITFLAG),
-                                            .text = "Enable separators",
+                                            .text = "Use separators",
                                             .subText = "('-', ' ', '_')",
                                             .token = BARS_TOKEN,
                                             .tuneId = TUNE_TAP_CASUAL};
         switches[4] = (nbgl_layoutSwitch_t){.initState = has_charset_option(EXT_SYMBOLS_BITFLAG),
-                                            .text = "Enable special characters",
+                                            .text = "Use special characters",
                                             .subText = NULL,
                                             .token = EXT_SYMBOLS_TOKEN,
                                             .tuneId = TUNE_TAP_CASUAL};
-
         content->type = SWITCHES_LIST;
-        content->switchesList.nbSwitches = 5;
+        content->switchesList.nbSwitches = SETTINGS_CHARSET_OPTIONS_NUMBER;
         content->switchesList.switches = &switches[0];
     } else if (page == 1) {
+        switches[0] = (nbgl_layoutSwitch_t){.initState = N_storage.press_enter_after_typing,
+                                            .text = "Press enter",
+                                            .subText = "after writting the password",
+                                            .token = NO_ENTER_TOKEN,
+                                            .tuneId = TUNE_TAP_CASUAL};
+        content->type = SWITCHES_LIST;
+        content->switchesList.nbSwitches = SETTINGS_MISC_OPTIONS_NUMBER;
+        content->switchesList.switches = &switches[0];
+    } else if (page == 2) {
         content->type = INFOS_LIST;
-        content->infosList.nbInfos = 2;
+        content->infosList.nbInfos = SETTINGS_INFO_NUMBER;
         content->infosList.infoTypes = (const char **) infoTypes;
         content->infosList.infoContents = (const char **) infoContents;
     } else {
@@ -161,14 +176,15 @@ static void charset_settings_callback(const int token,
         case EXT_SYMBOLS_TOKEN:
             set_charset_option(EXT_SYMBOLS_BITFLAG);
             break;
+        case NO_ENTER_TOKEN:
+            change_enter_options();
+            break;
         default:
             break;
     }
-    PRINTF("New settings value: %d\n", get_charset_options());
 }
 
 static void check_settings_before_home() {
-    PRINTF("Current settings value: %d\n", get_charset_options());
     if (get_charset_options() == 0) {
         nbgl_useCaseStatus("At least one charset\nmust be selected", false, &display_settings_page);
     } else {
@@ -179,7 +195,7 @@ static void check_settings_before_home() {
 static void display_settings_page() {
     nbgl_useCaseSettings("Passwords infos",
                          0,
-                         2,
+                         SETTINGS_PAGE_NUMBER,
                          false,
                          check_settings_before_home,
                          display_settings_navigation,
@@ -243,7 +259,6 @@ static void key_press_callback(const char touchedKey) {
         // every characters
         mask = -1;
     }
-    PRINTF("Current text is: '%s' (size '%d')\n", password_name, textLen);
     nbgl_layoutUpdateKeyboard(layoutContext, keyboardIndex, mask);
     nbgl_layoutUpdateEnteredText(layoutContext, textIndex, false, 0, &(password_name[0]), false);
     nbgl_refresh();
@@ -371,18 +386,53 @@ void show_password_cb(const size_t index) {
 }
 
 /*
- * Delete confirmation page
+ * Delete confirmation pages
  */
 
-#define DELETION_MSG_SIZE   37
-#define DELETION_BUFFER_MAX DELETION_MSG_SIZE - 2 + MAX_METANAME + 1
-static const char confirmDeletion[DELETION_MSG_SIZE + 1] =
-    "Confirm the deletion\nof password\n'%s'";
-static char deletionBuffer[DELETION_BUFFER_MAX] = {0};
+static const char deletionPrefix[] = "Confirm the deletion\n";
+/* '\n' actually takes only 1 char */
+static const int deletionPrefixSize = sizeof(deletionPrefix) - 1; // size 21
+
+static const char oneDeletion[] = "of password\n'%s'";
+static const char allDeletion[] = "of all passwords (%d)";
+
+/*
+ * This buffer will hold the string obtained by formating and concatenated `deletionPrefix` and
+ * (`oneDeletion` OR `allDeletion`).
+ * - `deletionPrefix` is 21 chars
+ * - `oneDeletion` is 17 chars, but formated \n counts for 1, not 2 (-1) and %s will be replaced
+ *   (-1) by a string which length is at most MAX_METANAME (20). So 17 - 1 - 2 + 20 = 34
+ * - `allDeletion` is 21 chars, but %d will be replaced by a string which length is at most
+ *   sizeof(STR(MAX_METADATAS)) = sizeof("4096") = 4. So 21 - 2 + 4 = 23
+ * So the total buffer length is 21 + max(34, 23) + 1 terminating null byte = 56
+ */
+#define DELETION_BUFFER_SIZE (21 + 34 + 1)
+static char deletionBuffer[DELETION_BUFFER_SIZE] = {0};
 static nbgl_layoutTagValueList_t pairList = {.nbMaxLinesForValue = 0, .nbPairs = 0, .pairs = NULL};
 
-void delete_password() {
-    error_type_t result = delete_password_at_offset(password_list_get_current_offset());
+static void write_deletion_message(const size_t index) {
+    snprintf(&deletionBuffer[0], DELETION_BUFFER_SIZE, deletionPrefix);
+    if (index == (size_t)-1) {
+        // deleting all passwords
+        snprintf(&deletionBuffer[0] + deletionPrefixSize,
+                 DELETION_BUFFER_SIZE - deletionPrefixSize,
+                 allDeletion,
+                 N_storage.metadata_count);
+    } else {
+        snprintf(&deletionBuffer[0] + deletionPrefixSize,
+                 DELETION_BUFFER_SIZE - deletionPrefixSize,
+                 oneDeletion,
+                 password_list_get_password(index));
+    }
+}
+
+static void delete_password(const bool all) {
+    if (all) {
+        reset_metadatas();
+        display_success_page("PASSWORDS HAVE\nBEEN DELETED");
+        return;
+    }
+    const error_type_t result = delete_password_at_offset(password_list_get_current_offset());
     if (result == OK) {
         display_success_page("PASSWORD HAS\nBEEN DELETED");
     } else {
@@ -390,25 +440,37 @@ void delete_password() {
     }
 }
 
-static void reviewChoice(bool confirm) {
+static void reviewDeletePasswordChoice(bool confirm) {
     if (confirm) {
-        delete_password();
+        delete_password(false);
+    } else {
+        display_choice_page();
+    }
+}
+
+static void reviewDeletePasswordsChoice(bool confirm) {
+    if (confirm) {
+        delete_password(true);
     } else {
         display_choice_page();
     }
 }
 
 static void confirm_password_deletion_cb(const size_t index) {
-    snprintf(&deletionBuffer[0],
-             DELETION_BUFFER_MAX,
-             confirmDeletion,
-             password_list_get_password(index));
+    write_deletion_message(index);
     nbgl_pageInfoLongPress_t infoLongPress = {.icon = NULL,
                                               .text = &deletionBuffer[0],
                                               .longPressText = "Hold to confirm"};
-
     password_list_set_current(index);
-    nbgl_useCaseStaticReview(&pairList, &infoLongPress, "Don't remove the password", reviewChoice);
+    nbgl_useCaseStaticReview(&pairList, &infoLongPress, "Don't remove the password", reviewDeletePasswordChoice);
+}
+
+static void confirm_all_passwords_deletion() {
+    write_deletion_message(-1);
+    nbgl_pageInfoLongPress_t infoLongPress = {.icon = NULL,
+                                              .text = &deletionBuffer[0],
+                                              .longPressText = "Hold to confirm"};
+    nbgl_useCaseStaticReview(&pairList, &infoLongPress, "Don't remove the passwords", reviewDeletePasswordsChoice);
 }
 
 /*
@@ -418,16 +480,18 @@ static void confirm_password_deletion_cb(const size_t index) {
 static const char *const bars[] = {"Type a password",
                                    "Show a password",
                                    "Create a new password",
-                                   "Delete a password"};
+                                   "Delete a password",
+                                   "Delete all passwords"};
 static const uint8_t barsToken[] = {CHOICE_WRITE_TOKEN,
                                     CHOICE_DISPLAY_TOKEN,
                                     CHOICE_CREATE_TOKEN,
-                                    CHOICE_DELETE_TOKEN};
+                                    CHOICE_DELETE_TOKEN,
+                                    ERASE_METADATA_TOKEN};
 
 static bool choice_navigation_callback(const uint8_t page __attribute__((unused)),
                                        nbgl_pageContent_t *content) {
     content->type = BARS_LIST;
-    content->barsList.nbBars = 4;
+    content->barsList.nbBars = 5;
     content->barsList.barTexts = (const char **const) bars;
     content->barsList.tokens = (uint8_t *const) barsToken;
     return true;
@@ -436,23 +500,22 @@ static bool choice_navigation_callback(const uint8_t page __attribute__((unused)
 static void choice_callback(const int token, const uint8_t index __attribute__((unused))) {
     switch (token) {
         case CHOICE_WRITE_TOKEN:
-            PRINTF("Write password option\n");
             selector_callback = type_password_cb;
             display_password_list_page();
             break;
         case CHOICE_DISPLAY_TOKEN:
-            PRINTF("Display password option\n");
             selector_callback = show_password_cb;
             display_password_list_page();
             break;
         case CHOICE_CREATE_TOKEN:
-            PRINTF("Create new password option\n");
             display_create_pwd_page();
             break;
         case CHOICE_DELETE_TOKEN:
-            PRINTF("Display password option\n");
             selector_callback = confirm_password_deletion_cb;
             display_password_list_page();
+            break;
+        case ERASE_METADATA_TOKEN:
+            confirm_all_passwords_deletion();
             break;
     }
 }
