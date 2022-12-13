@@ -102,9 +102,9 @@ static const char *const infoTypes[] = {"Version", "Passwords"};
 static const char *const infoContents[] = {APPVERSION, "(c) 2017-2023 Ledger"};
 
 #define SETTINGS_CHARSET_OPTIONS_NUMBER 5
-#define SETTINGS_MISC_OPTIONS_NUMBER 1
-#define SETTINGS_INFO_NUMBER 2
-#define SETTINGS_PAGE_NUMBER 3
+#define SETTINGS_MISC_OPTIONS_NUMBER    1
+#define SETTINGS_INFO_NUMBER            2
+#define SETTINGS_PAGE_NUMBER            3
 
 static nbgl_layoutSwitch_t switches[SETTINGS_CHARSET_OPTIONS_NUMBER];
 
@@ -381,7 +381,7 @@ void type_password_cb(const size_t index) {
 
 void show_password_cb(const size_t index) {
     ptrToPwd[0] = password_list_get_password(index);
-    show_password_at_offset(password_list_get_offset(index), (uint8_t *)password_to_display);
+    show_password_at_offset(password_list_get_offset(index), (uint8_t *) password_to_display);
     ptrToPwd[1] = &password_to_display[0];
     display_password_page();
 }
@@ -392,7 +392,7 @@ void show_password_cb(const size_t index) {
 
 static const char deletionPrefix[] = "Confirm the deletion\n";
 /* '\n' actually takes only 1 char */
-static const int deletionPrefixSize = sizeof(deletionPrefix) - 1; // size 21
+static const int deletionPrefixSize = sizeof(deletionPrefix) - 1;  // size 21
 
 static const char oneDeletion[] = "of password\n'%s'";
 static const char allDeletion[] = "of all passwords (%d)";
@@ -413,7 +413,7 @@ static nbgl_layoutTagValueList_t pairList = {.nbMaxLinesForValue = 0, .nbPairs =
 
 static void write_deletion_message(const size_t index) {
     snprintf(&deletionBuffer[0], DELETION_BUFFER_SIZE, deletionPrefix);
-    if (index == (size_t)-1) {
+    if (index == (size_t) -1) {
         // deleting all passwords
         snprintf(&deletionBuffer[0] + deletionPrefixSize,
                  DELETION_BUFFER_SIZE - deletionPrefixSize,
@@ -463,7 +463,10 @@ static void confirm_password_deletion_cb(const size_t index) {
                                               .text = &deletionBuffer[0],
                                               .longPressText = "Hold to confirm"};
     password_list_set_current(index);
-    nbgl_useCaseStaticReview(&pairList, &infoLongPress, "Don't remove the password", reviewDeletePasswordChoice);
+    nbgl_useCaseStaticReview(&pairList,
+                             &infoLongPress,
+                             "Don't remove the password",
+                             reviewDeletePasswordChoice);
 }
 
 static void confirm_all_passwords_deletion() {
@@ -471,7 +474,10 @@ static void confirm_all_passwords_deletion() {
     nbgl_pageInfoLongPress_t infoLongPress = {.icon = NULL,
                                               .text = &deletionBuffer[0],
                                               .longPressText = "Hold to confirm"};
-    nbgl_useCaseStaticReview(&pairList, &infoLongPress, "Don't remove the passwords", reviewDeletePasswordsChoice);
+    nbgl_useCaseStaticReview(&pairList,
+                             &infoLongPress,
+                             "Don't remove all the passwords",
+                             reviewDeletePasswordsChoice);
 }
 
 /*

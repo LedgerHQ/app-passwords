@@ -44,7 +44,9 @@ error_type_t erase_metadata(uint32_t offset) {
     size_t metadata_count = N_storage.metadata_count - 1;
     unsigned char m = META_ERASED;
     nvm_write((void *) &N_storage.metadatas[offset + 1], &m, sizeof(N_storage.metadatas[0]));
-    nvm_write((void *) &N_storage.metadata_count, &metadata_count, sizeof(N_storage.metadata_count));
+    nvm_write((void *) &N_storage.metadata_count,
+              &metadata_count,
+              sizeof(N_storage.metadata_count));
     return OK;
 }
 
