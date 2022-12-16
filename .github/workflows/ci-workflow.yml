@@ -83,7 +83,7 @@ jobs:
         with:
           repository: LedgerHQ/ledger-secure-sdk
           path: ./stax-sdk
-          ref: fatstacks_1.0.0-rc1
+          ref: fatstacks_1.0.0-rc6
           token: ${{ secrets.STAX_RO }}
       - name: Build
         run: |
