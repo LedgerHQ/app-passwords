@@ -63,18 +63,14 @@ void app_main() {
     create_new_password("password6", 9);
     create_new_password("password7", 9);
 #endif
-
     for (;;) {
         BEGIN_TRY {
             TRY {
                 input_len = recv();
-
                 if (input_len == -1) {
                     return;
                 }
-
                 PRINTF("=> %.*H\n", input_len, G_io_apdu_buffer);
-
                 if (input_len < OFFSET_CDATA ||
                     input_len - OFFSET_CDATA != G_io_apdu_buffer[OFFSET_LC]) {
                     send_sw(SW_WRONG_DATA_LENGTH);

@@ -36,7 +36,7 @@ void ui_idle() {
     display_home_page();
 }
 void ui_request_user_approval(message_pair_t *msg) {
-    (void) msg;
+    display_approval_page(msg);
 }
 
 #else
@@ -521,7 +521,7 @@ reset_password_list(),
 {
     &C_icon_warning,
     "Reset the",
-    "password list ?",
+    "password list?",
 });
 // clang-format on
 

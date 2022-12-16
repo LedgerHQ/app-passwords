@@ -30,6 +30,7 @@
 #include "../metadata.h"
 #include "../options.h"
 #include "../password.h"
+#include "../dispatcher.h"
 
 #include "password_list.h"
 #include "ui.h"
@@ -574,6 +575,27 @@ void display_home_page(void) {
     release_context();
     pageContext = nbgl_pageDrawInfo(&home_dispatcher, NULL, &home);
     nbgl_refresh();
+}
+
+/*
+ * Approval page
+ */
+void approval_granted() {
+    app_state.user_approval = true;
+    dispatch();
+    display_home_page();
+}
+
+void display_approval_page(message_pair_t *msg) {
+    // using errorMessage to store the message to display
+    const size_t msgLen = msg->first_len + msg->second_len + 1;
+    snprintf(&errorMessage[0],
+             msgLen,
+             "%s %s",
+             (char *) PIC(msg->first),
+             (char *) PIC(msg->second));
+    PRINTF("Waiting confirmation: '%s'\n", &errorMessage[0]);
+    nbgl_useCaseConfirm(&errorMessage[0], NULL, "Approve", "Refuse", approval_granted);
 }
 
 #endif
