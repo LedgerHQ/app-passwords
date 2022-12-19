@@ -42,13 +42,6 @@ static char errorMessage[MAX_ERROR_MSG_SIZE] = {0};
 
 enum {
     BACK_BUTTON_TOKEN = FIRST_USER_TOKEN,
-    BACK_HOME_TOKEN,
-    CREATE_1_TOKEN,
-    CREATE_2_TOKEN,
-    CHOOSE_ACTION_TOKEN,
-    INFO_TOKEN,
-    QUIT_APP_TOKEN,
-    CREATE_NAVIGATION_TOKEN,
     CREATE_TOKEN,
     UPPERCASE_TOKEN,
     LOWERCASE_TOKEN,
@@ -326,7 +319,7 @@ static bool display_password_list_navigation(uint8_t page, nbgl_pageContent_t *c
     content->choicesList.localized = false;
     content->choicesList.nbChoices = localIndex;
     content->choicesList.initChoice = 0;
-    content->choicesList.token = CHOOSE_ACTION_TOKEN;
+    content->choicesList.token = -1;
     content->choicesList.tuneId = TUNE_TAP_CASUAL;
     return true;
 }
@@ -540,41 +533,22 @@ static void display_choice_page() {
 }
 
 /*
- * Home page & dispatcher
+ * Home page
  */
-static void home_dispatcher(int token, uint8_t index __attribute__((unused))) {
-    if (token == QUIT_APP_TOKEN) {
-        release_context();
-        os_sched_exit(-1);
-    } else if (token == INFO_TOKEN) {
-        release_context();
-        display_settings_page();
-    } else if (token == CHOOSE_ACTION_TOKEN) {
-        display_choice_page();
-    } else if (token == BACK_HOME_TOKEN) {
-        display_home_page();
-    }
+static void quit() {
+    release_context();
+    os_sched_exit(-1);
 }
 
 void display_home_page(void) {
-    nbgl_pageInfoDescription_t home = {
-        .centeredInfo.icon = &C_fatstacks_icon_password_manager_64px,
-        .centeredInfo.text1 = "Passwords",
-        .centeredInfo.text2 = "Create, type and display\npasswords through\nyour device",
-        .centeredInfo.text3 = NULL,
-        .centeredInfo.style = LARGE_CASE_INFO,
-        .centeredInfo.offsetY = 32,
-        .topRightStyle = QUIT_ICON,
-        .bottomButtonStyle = INFO_ICON,
-        .topRightToken = QUIT_APP_TOKEN,
-        .bottomButtonsToken = INFO_TOKEN,
-        .footerText = NULL,
-        .tapActionText = "Tap to manage\nyour passwords",
-        .tapActionToken = CHOOSE_ACTION_TOKEN,
-        .tuneId = TUNE_TAP_CASUAL};
-    release_context();
-    pageContext = nbgl_pageDrawInfo(&home_dispatcher, NULL, &home);
-    nbgl_refresh();
+    nbgl_useCaseHomeExt("Passwords",
+                        &C_fatstacks_icon_password_manager_64px,
+                        "Create, type and display\npasswords through\nyour device",
+                        true,
+                        "Tap to manage\nyour passwords",
+                        display_choice_page,
+                        display_settings_page,
+                        quit);
 }
 
 /*
