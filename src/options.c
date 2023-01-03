@@ -34,7 +34,7 @@ uint8_t get_charset_options() {
 #endif
 
 void init_charset_options() {
-    // default: uppercase (1), lowercase (2), numbers (4)
+    // default: uppercase (1) + lowercase (2) + numbers (4) = 7
     set_charset_options(0x07);
 }
 

@@ -91,9 +91,10 @@ def backend(backend_name: str, firmware: Firmware, display: bool):
 
 
 @pytest.fixture(scope="function")
-def cmd(backend):
+def cmd(backend, firmware):
     command = PasswordsManagerCommand(
         transport=backend,
+        firmware=firmware,
         debug=True
     )
     yield command
@@ -126,13 +127,17 @@ def use_on_firmware(request, firmware):
 
 def pytest_configure(config):
     config.addinivalue_line(
-        "markers", "use_on_firmware(firmware): skip test if not on the specified firmware",
+        "markers",
+        "use_on_firmware(firmware): skip test if not on the specified firmware",
     )
-
+    config.addinivalue_line(
+        "markers",
+        "requires_physical_device(): skip test if not on a physical device"
+    )
 
 def pytest_runtest_setup(item):
     if item.config.getoption("backend") == "speculos":
-        requires_phyical_device = [
-            mark for mark in item.iter_markers(name="requires_phyical_device")]
-        if requires_phyical_device:
+        requires_physical_device = [
+            mark for mark in item.iter_markers(name="requires_physical_device")]
+        if requires_physical_device:
             pytest.skip("test requires a real device to run")

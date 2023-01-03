@@ -3,7 +3,7 @@ from functools import partial
 from ragger.navigator.navigator import Navigator
 from time import sleep
 
-from .fatstacks_screen import FatstacksScreen
+from .screen import FatstacksScreen
 
 
 class NavInsID(Enum):

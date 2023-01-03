@@ -2,7 +2,7 @@ import pytest
 from ragger.navigator import NavIns
 from typing import Iterable, Union
 
-from .fatstacks_navigator import NavInsID
+from .navigator import NavInsID
 
 
 def format_instructions(instructions: Iterable[Union[NavIns, NavInsID]]) -> Iterable[NavIns]:

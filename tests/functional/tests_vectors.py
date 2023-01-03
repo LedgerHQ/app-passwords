@@ -1,3 +1,5 @@
+EXISTING_METADATA = b"\n\x00\x07password1\n\x00\x07password2\n\x00\x07password3"
+
 tests_vectors = {
     "test_generate_password": [
         [0x01, "gmail", "HMYDQUIOVKPCKJIHQJEN"],
@@ -12,17 +14,19 @@ tests_vectors = {
         [0xFF, "aSeedOfLengthEqual20", " $4,P.usI*C\\k1fv2;M;"]],
 
     "test_dump_metadatas": [
-        [0,  b""],
-        [100,  b"\x00" * 100],
-        [4096,  b"\x00" * 4096]
+        [0, b""],
+        [100, EXISTING_METADATA + b"\x00" * (100 - len(EXISTING_METADATA))],
+        [4096, EXISTING_METADATA + b"\x00" * (4096 - len(EXISTING_METADATA))]
     ],
 
     "test_load_metadatas": [
-        b"\x00" * 4096,
-        bytes.fromhex("02000761060007616c6c6168"),
-        bytes.fromhex("02000761060007616c6c6168") + b"\x00" * (4096 - 12),
-        bytes.fromhex("02000761" "14 00 07 616c6c6168616c6c6168616c6c6168616c6c70") +
-        b"\x00" * (4096 - 26),
+        # 1-element array to avoid huge test names filled with the data.
+        # Instead, it is filled with the data index
+        [b"\x00" * 4096],
+        [bytes.fromhex("02000761060007616c6c6168")],
+        [bytes.fromhex("02000761060007616c6c6168") + b"\x00" * (4096 - 12)],
+        [bytes.fromhex("02000761" "14 00 07 616c6c6168616c6c6168616c6c6168616c6c70") +
+        b"\x00" * (4096 - 26)],
     ],
 
     "test_load_metadatas_with_too_much_data": [

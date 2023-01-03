@@ -19,6 +19,7 @@ class RadioList:
 
 
 class FatstacksScreen(metaclass=MetaScreen):
+
     use_case_home = UseCaseHomeExt
     use_case_settings = UseCaseSettings
     use_case_menu = UseCaseSettings
@@ -30,10 +31,13 @@ class FatstacksScreen(metaclass=MetaScreen):
     layout_keyboard_cancel = LeftHeader
 
     def quit(self):
-        did_raise = False
         try:
             self.home.quit()
         except:
-            did_raise = True
-        if not did_raise:
+            # when the application exits, the Speculos emulator shuts down and the Speculos client
+            # throws a ConnectionError, so an error is expected here
+            return
+        else:
+            # if no error was raised, it is likely the emulator still runs, and the application did
+            # not exit
             raise RuntimeError("The application did not exit at this state")
