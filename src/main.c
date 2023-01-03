@@ -58,10 +58,6 @@ void app_main() {
     create_new_password("password1", 9);
     create_new_password("password2", 9);
     create_new_password("password3", 9);
-    create_new_password("password4", 9);
-    create_new_password("password5", 9);
-    create_new_password("password6", 9);
-    create_new_password("password7", 9);
 #endif
     for (;;) {
         BEGIN_TRY {
