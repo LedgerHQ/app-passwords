@@ -187,7 +187,7 @@ static void check_settings_before_home() {
 }
 
 static void display_settings_page() {
-    nbgl_useCaseSettings("Passwords infos",
+    nbgl_useCaseSettings("Password settings",
                          0,
                          SETTINGS_PAGE_NUMBER,
                          false,
@@ -330,7 +330,7 @@ static void password_list_callback(const int token __attribute__((unused)), cons
 
 static void display_password_list_page() {
     password_list_reset();
-    nbgl_useCaseSettings("Passwords infos",
+    nbgl_useCaseSettings("Password list",
                          0,
                          2,
                          false,
@@ -470,7 +470,7 @@ static void confirm_all_passwords_deletion() {
                                               .longPressText = "Hold to confirm"};
     nbgl_useCaseStaticReview(&pairList,
                              &infoLongPress,
-                             "Don't remove all the passwords",
+                             "Don't remove\nall the passwords",
                              reviewDeletePasswordsChoice);
 }
 
