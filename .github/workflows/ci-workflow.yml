@@ -68,7 +68,7 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: apps
-          path: bin/*elf
+          path: bin/*.elf
 
   fatstacks_build:
     name: Build application for Fatstacks
@@ -88,8 +88,8 @@ jobs:
       - name: Build
         run: |
           git config --global --add safe.directory "$GITHUB_WORKSPACE"
-          make BOLOS_SDK=./stax-sdk TARGET=fatstacks
-          mv bin/app.elf "bin/passwords-fatstacks.elf"
+          make TESTING=1 POPULATE=1 BOLOS_SDK=./stax-sdk TARGET=fatstacks
+          mv bin/app.elf "bin/passwords-fat.elf"
       - name: Upload app binary
         uses: actions/upload-artifact@v3
         with:
@@ -98,7 +98,7 @@ jobs:
 
   job_test:
     name: Test
-    needs: build
+    needs: [build, fatstacks_build]
     runs-on: ubuntu-latest
     steps:
       - name: Clone
