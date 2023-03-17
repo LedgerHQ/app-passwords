@@ -1,8 +1,8 @@
 from ragger.backend import BackendInterface
 from ragger.firmware import Firmware
-from ragger.firmware.fatstacks import MetaScreen
-from ragger.firmware.fatstacks.use_cases import UseCaseHomeExt, UseCaseReview, UseCaseSettings
-from ragger.firmware.fatstacks.layouts import ChoiceList, FullKeyboardLetters, \
+from ragger.firmware.stax import MetaScreen
+from ragger.firmware.stax.use_cases import UseCaseHomeExt, UseCaseReview, UseCaseSettings
+from ragger.firmware.stax.layouts import ChoiceList, FullKeyboardLetters, \
     LeftHeader, TappableCenter
 
 
@@ -18,7 +18,7 @@ class RadioList:
         self.backend.finger_touch(*positions[index])
 
 
-class FatstacksScreen(metaclass=MetaScreen):
+class StaxScreen(metaclass=MetaScreen):
 
     use_case_home = UseCaseHomeExt
     use_case_settings = UseCaseSettings
@@ -31,13 +31,4 @@ class FatstacksScreen(metaclass=MetaScreen):
     layout_keyboard_cancel = LeftHeader
 
     def quit(self):
-        try:
-            self.home.quit()
-        except:
-            # when the application exits, the Speculos emulator shuts down and the Speculos client
-            # throws a ConnectionError, so an error is expected here
-            return
-        else:
-            # if no error was raised, it is likely the emulator still runs, and the application did
-            # not exit
-            raise RuntimeError("The application did not exit at this state")
+        self.home.quit()

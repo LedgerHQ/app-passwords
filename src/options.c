@@ -4,7 +4,7 @@
 #include "options.h"
 #include "globals.h"
 
-#if !defined(TARGET_FATSTACKS)
+#if !defined(TARGET_STAX)
 
 static uint8_t charset_options;
 

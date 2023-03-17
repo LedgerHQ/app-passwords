@@ -3,7 +3,7 @@
 #include <stdint.h>
 #include <ux.h>
 
-#if !defined(TARGET_FATSTACKS)
+#if !defined(TARGET_STAX)
 
 #include "keyboard.h"
 

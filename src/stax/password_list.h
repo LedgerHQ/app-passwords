@@ -4,7 +4,7 @@
 
 #define DISPLAYED_PASSWORD_PER_PAGE 5
 
-#if defined(TARGET_FATSTACKS)
+#if defined(TARGET_STAX)
 
 void password_list_reset();
 

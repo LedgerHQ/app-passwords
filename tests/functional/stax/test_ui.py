@@ -10,13 +10,13 @@ def format_instructions(instructions: Iterable[Union[NavIns, NavInsID]]) -> Iter
             for instruction in instructions]
 
 
-@pytest.mark.use_on_firmware("fat")
+@pytest.mark.use_on_firmware("stax")
 def test_immediate_quit(navigator):
     instruction = format_instructions([NavInsID.HOME_TO_QUIT])
     navigator.navigate(instruction)
 
 
-@pytest.mark.use_on_firmware("fat")
+@pytest.mark.use_on_firmware("stax")
 def test_settings_screens(navigator):
     instructions = format_instructions([
         NavInsID.HOME_TO_SETTINGS,
@@ -26,7 +26,7 @@ def test_settings_screens(navigator):
     navigator.navigate(instructions)
 
 
-@pytest.mark.use_on_firmware("fat")
+@pytest.mark.use_on_firmware("stax")
 def test_delete_one_password(navigator, functional_test_directory):
     instructions = format_instructions([
         NavInsID.HOME_TO_MENU,
@@ -47,7 +47,7 @@ def test_delete_one_password(navigator, functional_test_directory):
                                    screen_change_after_last_instruction=False)
 
 
-@pytest.mark.use_on_firmware("fat")
+@pytest.mark.use_on_firmware("stax")
 def test_delete_all_password(navigator, functional_test_directory):
     instructions = format_instructions([
         NavInsID.HOME_TO_MENU,
@@ -67,7 +67,7 @@ def test_delete_all_password(navigator, functional_test_directory):
                                    screen_change_after_last_instruction=False)
 
 
-@pytest.mark.use_on_firmware("fat")
+@pytest.mark.use_on_firmware("stax")
 def test_create_password(navigator, functional_test_directory):
     instructions = format_instructions([
         NavInsID.HOME_TO_MENU,

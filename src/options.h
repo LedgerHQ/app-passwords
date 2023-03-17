@@ -18,7 +18,7 @@ uint8_t get_charset_options(void);
 void set_charset_option(const uint8_t bitflag);
 void change_enter_options();
 
-#if !defined(TARGET_FATSTACKS)
+#if !defined(TARGET_STAX)
 /*
  * Store the keyboard layout in NVM
  * Returns if it's the first time a layout is stored (true) or not (false)

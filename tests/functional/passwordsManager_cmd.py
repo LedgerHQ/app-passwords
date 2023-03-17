@@ -3,7 +3,7 @@ import enum
 from exception import DeviceException
 from ragger.backend import BackendInterface
 from ragger.firmware import Firmware
-from ragger.firmware.fatstacks.positions import BUTTON_ABOVE_LOWER_MIDDLE
+from ragger.firmware.stax.positions import BUTTON_ABOVE_LOWER_MIDDLE
 
 CLA_SDK: int = 0xb0
 CLA: int = 0xe0
@@ -32,7 +32,7 @@ class PasswordsManagerCommand:
         self.approved: bool = False
 
     def approve(self):
-        if self.firmware.device == "fat":
+        if self.firmware.has_nbgl:
             self.transport.finger_touch(*BUTTON_ABOVE_LOWER_MIDDLE)
         else:
             self.transport.both_click()

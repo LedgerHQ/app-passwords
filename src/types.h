@@ -15,7 +15,7 @@ typedef struct internalStorage_t {
      */
     size_t metadata_count;
     uint8_t metadatas[MAX_METADATAS];
-#if defined(TARGET_FATSTACKS)
+#if defined(TARGET_STAX)
     uint8_t charset_options;
 #endif
 } internalStorage_t;

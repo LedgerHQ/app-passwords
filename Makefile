@@ -36,20 +36,21 @@ DEFINES += APPVERSION=\"$(APPVERSION)\"
 
 ifeq ($(TARGET_NAME),TARGET_NANOS)
     ICONNAME=icons/nanos_icon_password_manager.gif
-else ifeq ($(TARGET_NAME), TARGET_FATSTACKS)
-    ICONNAME=icons/fatstacks_icon_password_manager_32px.bmp
+else ifeq ($(TARGET_NAME), TARGET_STAX)
+    ICONNAME=icons/stax_icon_password_manager_32px.gif
 else
     ICONNAME=icons/nanox_icon_password_manager.gif
 endif
 
 
-DEFINES += OS_IO_SEPROXYHAL IO_SEPROXYHAL_BUFFER_SIZE_B=300
+DEFINES += OS_IO_SEPROXYHAL
 DEFINES += HAVE_IO_USB HAVE_L4_USBLIB IO_USB_MAX_ENDPOINTS=4 IO_HID_EP_LENGTH=64 HAVE_USB_APDU
 DEFINES += MAX_METADATAS=4096 MAX_METANAME=20
 DEFINES += USE_CTAES
 DEFINES += HAVE_WEBUSB WEBUSB_URL_SIZE_B=0 WEBUSB_URL=""
 DEFINES += UNUSED\(x\)=\(void\)x
 DEFINES += HAVE_UX_FLOW
+# TODO: duplicate
 DEFINES += HAVE_SPRINTF
 
 TESTING:=0
@@ -61,20 +62,25 @@ else
     DEFINES   += TESTING
 endif
 
-ifneq ($(TARGET_NAME), TARGET_FATSTACKS)
+ifneq ($(TARGET_NAME), TARGET_STAX)
     $(info Using BAGL)
     DEFINES += HAVE_BAGL
     DEFINES += HAVE_UX_FLOW
     ifneq ($(TARGET_NAME), TARGET_NANOS)
+        DEFINES += IO_SEPROXYHAL_BUFFER_SIZE_B=300
         DEFINES += HAVE_GLO096
         DEFINES += BAGL_WIDTH=128 BAGL_HEIGHT=64
         DEFINES += HAVE_BAGL_ELLIPSIS # long label truncation feature
         DEFINES += HAVE_BAGL_FONT_OPEN_SANS_REGULAR_11PX
         DEFINES += HAVE_BAGL_FONT_OPEN_SANS_EXTRABOLD_11PX
         DEFINES += HAVE_BAGL_FONT_OPEN_SANS_LIGHT_16PX
+    else
+        DEFINES += IO_SEPROXYHAL_BUFFER_SIZE_B=128
     endif
 else
     $(info Using NBGL)
+    APP_LOAD_PARAMS += --appFlags 0x200
+    DEFINES += IO_SEPROXYHAL_BUFFER_SIZE_B=300
     DEFINES += NBGL_KEYBOARD
 endif
 
@@ -131,13 +137,12 @@ include $(BOLOS_SDK)/Makefile.glyphs
 APP_SOURCE_PATH  += src
 SDK_SOURCE_PATH  += lib_stusb lib_stusb_impl
 
-ifeq ($(TARGET_NAME), TARGET_FATSTACKS)
+ifeq ($(TARGET_NAME), TARGET_STAX)
     SDK_SOURCE_PATH += lib_nbgl/src
-    SDK_SOURCE_PATH += lib_ux_fatstacks
+    SDK_SOURCE_PATH += lib_ux_stax
 else ifneq ($(TARGET_NAME), TARGET_NANOS)
     SDK_SOURCE_PATH  += lib_ux
 endif
-
 
 load: all
 	python -m ledgerblue.loadApp $(APP_LOAD_PARAMS)

@@ -1,4 +1,5 @@
 #include "globals.h"
+#include "options.h"
 
 void init_storage() {
     if (N_storage.magic == STORAGE_MAGIC) {

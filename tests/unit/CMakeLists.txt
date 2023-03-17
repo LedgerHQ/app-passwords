@@ -38,15 +38,15 @@ add_compile_definitions(WIDE=)
 add_compile_definitions(TEST)
 add_compile_definitions(MAX_METANAME=20)
 add_compile_definitions(HAVE_BOLOS_UX)
-add_compile_definitions(TARGET_FATSTACKS)
+add_compile_definitions(TARGET_STAX)
 add_compile_definitions(OS_IO_SEPROXYHAL)
 
 include_directories(../../src ./mocks/)
 
-add_executable(test_fatstacks_password_list fatstacks/test_password_list.c)
+add_executable(test_stax_password_list stax/test_password_list.c)
 
-add_library(password_list SHARED ../../src/fatstacks/password_list.c)
+add_library(password_list SHARED ../../src/stax/password_list.c)
 
-target_link_libraries(test_fatstacks_password_list PUBLIC cmocka gcov password_list bsd)
+target_link_libraries(test_stax_password_list PUBLIC cmocka gcov password_list bsd)
 
-add_test(test_fatstacks_password_list test_fatstacks_password_list)
+add_test(test_stax_password_list test_stax_password_list)

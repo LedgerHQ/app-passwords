@@ -3,7 +3,7 @@ from functools import partial
 from ragger.navigator.navigator import Navigator
 from time import sleep
 
-from .screen import FatstacksScreen
+from .screen import StaxScreen
 
 
 class NavInsID(Enum):
@@ -38,10 +38,10 @@ class NavInsID(Enum):
     # choosing option in choice lists (settings, menu)
     LIST_CHOOSE = auto()
 
-class FatstacksNavigator(Navigator):
+class StaxNavigator(Navigator):
 
     def __init__(self, backend, firmware):
-        self.screen = FatstacksScreen(backend, firmware)
+        self.screen = StaxScreen(backend, firmware)
         callbacks = {
             NavInsID.WAIT: sleep,
             NavInsID.TOUCH: backend.finger_touch,
@@ -62,9 +62,18 @@ class FatstacksNavigator(Navigator):
             NavInsID.LIST_PREVIOUS: self.screen.settings.previous,
             NavInsID.CONFIRM_YES: self.screen.confirmation.confirm,
             NavInsID.CONFIRM_NO: self.screen.confirmation.reject,
-            NavInsID.KEYBOARD_WRITE: self.screen.keyboard.write,
+            NavInsID.KEYBOARD_WRITE: self._write,
             NavInsID.KEYBOARD_TO_CONFIRM: self.screen.keyboard_confirm.tap,
             NavInsID.KEYBOARD_TO_MENU: self.screen.keyboard_cancel.tap,
             NavInsID.LIST_CHOOSE: self.screen.list_choice.choose
         }
         super().__init__(backend, firmware, callbacks) #, golden_run=True)
+
+    def _write(self, characters: str):
+        # keyboard write is not an exact science on Ragger for now. The instruction together with
+        # the `wait_for_screen_change` function can get messy, as the write performs multiple
+        # `finger_touch` and the screen change several time, so `navigate_and_compare` could think
+        # the screen can be compared, when it has not reached its last state yet.
+        # Adding extra time after writing to have a better chance to get the expected screen
+        self.screen.keyboard.write(characters)
+        sleep(1)

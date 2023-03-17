@@ -5,7 +5,7 @@
 
 #include "types.h"
 
-#if !defined(TARGET_FATSTACKS)
+#if !defined(TARGET_STAX)
 void io_seproxyhal_display(const bagl_element_t *element);
 #endif
 

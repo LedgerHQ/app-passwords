@@ -5,7 +5,7 @@
 
 #include "keyboard.h"
 
-#if !defined(TARGET_FATSTACKS)
+#if !defined(TARGET_STAX)
 
 void bolos_ux_hslider3_init(unsigned int total_count) {
     G_keyboard_ctx.hslider3_total = total_count;

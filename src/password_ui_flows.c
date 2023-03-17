@@ -28,9 +28,9 @@ bolos_ux_params_t G_ux_params;
 char line_buffer_1[16];
 char line_buffer_2[PASSWORD_MAX_SIZE + 1];
 
-#if defined(TARGET_FATSTACKS)
+#if defined(TARGET_STAX)
 
-#include "fatstacks/ui.h"
+#include "stax/ui.h"
 
 void ui_idle() {
     display_home_page();

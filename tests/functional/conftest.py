@@ -6,7 +6,7 @@ from ragger.backend import SpeculosBackend, LedgerCommBackend, LedgerWalletBacke
 
 from passwordsManager_cmd import PasswordsManagerCommand
 from tests_vectors import tests_vectors
-from ui.fatstacks_navigator import FatstacksNavigator
+from stax.navigator import StaxNavigator
 
 FUNCTIONAL_TESTS_DIR = Path("tests/functional/").resolve()
 APPS_DIRECTORY = FUNCTIONAL_TESTS_DIR / "elfs"
@@ -15,7 +15,7 @@ FIRMWARES = [
         Firmware('nanos', '2.1'),
         Firmware('nanox', '2.0.2'),
         Firmware('nanosp', '1.0.3'),
-        Firmware('fat', '1.0')
+        Firmware('stax', '1.0')
 ]
 
 
@@ -102,7 +102,7 @@ def cmd(backend, firmware):
 
 @pytest.fixture(scope="function")
 def navigator(backend, firmware):
-    navigator = FatstacksNavigator(backend, firmware)
+    navigator = StaxNavigator(backend, firmware)
     yield navigator
 
 

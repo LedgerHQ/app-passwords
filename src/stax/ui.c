@@ -18,7 +18,7 @@
 #include <os.h>
 #include <string.h>
 
-#if defined(TARGET_FATSTACKS)
+#if defined(TARGET_STAX)
 
 #include <nbgl_layout.h>
 #include <nbgl_page.h>
@@ -26,12 +26,12 @@
 
 #include "../error.h"
 #include "../globals.h"
-#include "../glyphs.h"
 #include "../metadata.h"
 #include "../options.h"
 #include "../password.h"
 #include "../dispatcher.h"
 
+#include "glyphs.h"
 #include "password_list.h"
 #include "ui.h"
 
@@ -54,6 +54,7 @@ enum {
     CHOICE_DISPLAY_TOKEN,
     CHOICE_CREATE_TOKEN,
     CHOICE_DELETE_TOKEN,
+    KBD_TEXT_TOKEN,
 };
 
 static void release_context(void) {
@@ -253,7 +254,7 @@ static void key_press_callback(const char touchedKey) {
         // every characters
         mask = -1;
     }
-    nbgl_layoutUpdateKeyboard(layoutContext, keyboardIndex, mask);
+    nbgl_layoutUpdateKeyboard(layoutContext, keyboardIndex, mask, false, LOWER_CASE);
     nbgl_layoutUpdateEnteredText(layoutContext, textIndex, false, 0, &(password_name[0]), false);
     nbgl_refresh();
 }
@@ -263,7 +264,6 @@ static void display_create_pwd_page() {
     nbgl_layoutDescription_t layoutDescription = {.modal = false,
                                                   .onActionCallback = &page_callback};
     nbgl_layoutKbd_t kbdInfo = {.lettersOnly = false,
-                                .upperCase = false,
                                 .mode = MODE_LETTERS,
                                 .keyMask = 0,
                                 .callback = &key_press_callback};
@@ -284,7 +284,13 @@ static void display_create_pwd_page() {
                                      CREATE_TOKEN,
                                      TUNE_TAP_CASUAL);
     strlcpy(password_name, "", 1);
-    textIndex = nbgl_layoutAddEnteredText(layoutContext, false, 0, password_name, false, 32);
+    textIndex = nbgl_layoutAddEnteredText(layoutContext,
+                                          false,
+                                          0,
+                                          password_name,
+                                          false,
+                                          32,
+                                          KBD_TEXT_TOKEN);
     nbgl_layoutDraw(layoutContext);
 }
 
@@ -542,7 +548,7 @@ static void quit() {
 
 void display_home_page(void) {
     nbgl_useCaseHomeExt("Passwords",
-                        &C_fatstacks_icon_password_manager_64px,
+                        &C_stax_icon_password_manager_64px,
                         "Create, type and display\npasswords through\nyour device",
                         true,
                         "Tap to manage\nyour passwords",
