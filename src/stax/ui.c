@@ -136,7 +136,7 @@ static bool display_settings_navigation(uint8_t page, nbgl_pageContent_t *conten
     } else if (page == 1) {
         switches[0] = (nbgl_layoutSwitch_t){.initState = N_storage.press_enter_after_typing,
                                             .text = "Press enter",
-                                            .subText = "after writting the password",
+                                            .subText = "after writing the password",
                                             .token = NO_ENTER_TOKEN,
                                             .tuneId = TUNE_TAP_CASUAL};
         content->type = SWITCHES_LIST;
@@ -215,7 +215,7 @@ static void create_password(void) {
             display_success_page("NEW PASSWORD\nCREATED");
             // nbgl_useCaseStatus("NEW PASSWORD\nCREATED", true, &display_choice_page);
         } else {
-            PRINTF("The error nb %d occured\n", error);
+            PRINTF("The error nb %d occurred\n", error);
             display_error_page(error);
         }
     }
@@ -398,10 +398,10 @@ static const char oneDeletion[] = "of password\n'%s'";
 static const char allDeletion[] = "of all passwords (%d)";
 
 /*
- * This buffer will hold the string obtained by formating and concatenated `deletionPrefix` and
+ * This buffer will hold the string obtained by formatting and concatenated `deletionPrefix` and
  * (`oneDeletion` OR `allDeletion`).
  * - `deletionPrefix` is 21 chars
- * - `oneDeletion` is 17 chars, but formated \n counts for 1, not 2 (-1) and %s will be replaced
+ * - `oneDeletion` is 17 chars, but formatted \n counts for 1, not 2 (-1) and %s will be replaced
  *   (-1) by a string which length is at most MAX_METANAME (20). So 17 - 1 - 2 + 20 = 34
  * - `allDeletion` is 21 chars, but %d will be replaced by a string which length is at most
  *   sizeof(STR(MAX_METADATAS)) = sizeof("4096") = 4. So 21 - 2 + 4 = 23
