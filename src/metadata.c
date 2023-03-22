@@ -29,7 +29,7 @@ error_type_t write_metadata(uint8_t *data, uint8_t dataSize) {
 }
 
 void override_metadatas(uint8_t offset, void *ptr, size_t size) {
-    nvm_write((void *) N_storage.metadatas + offset, ptr, size);
+    nvm_write((void *) &N_storage.metadatas[offset], ptr, size);
 }
 
 void reset_metadatas(void) {

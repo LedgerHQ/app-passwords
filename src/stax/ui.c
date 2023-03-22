@@ -213,7 +213,6 @@ static void create_password(void) {
         error_type_t error = create_new_password(password_name, password_size);
         if (error == OK) {
             display_success_page("NEW PASSWORD\nCREATED");
-            // nbgl_useCaseStatus("NEW PASSWORD\nCREATED", true, &display_choice_page);
         } else {
             PRINTF("The error nb %d occurred\n", error);
             display_error_page(error);
