@@ -20,13 +20,14 @@
 #include <math.h>
 #include <stdlib.h>
 
+#include "../password_ui_flows.h"
 #include "get_app_config.h"
 #include "io.h"
 #include "sw.h"
 #include "types.h"
 #include "globals.h"
 
-int get_app_config(uint8_t p1, uint8_t p2, const buf_t* input) {
+int get_app_config(uint8_t p1, uint8_t p2, __attribute__((unused)) const buf_t* input) {
     if (p1 != 0 || p2 != 0) {
         return send_sw(SW_WRONG_P1P2);
     }

@@ -54,7 +54,6 @@ int dispatch() {
 #ifdef TESTING
         case RUN_TEST:
             return test_dispatcher(p1, p2, &input);
-            break;
 #endif
         default:
             return send_sw(SW_INS_NOT_SUPPORTED);

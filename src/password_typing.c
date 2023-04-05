@@ -1,9 +1,9 @@
-#include "password_typing.h"
+#include <string.h>
+#include <os.h>
+#include <os_io_seproxyhal.h>
 
-#include "os.h"
-#include "os_io_seproxyhal.h"
 #include "usbd_hid_impl.h"
-
+#include "password_typing.h"
 #include "globals.h"
 #include "hid_mapping.h"
 
@@ -16,12 +16,14 @@ static const uint8_t ENTER_REPORT[] = {0x00, 0x00, 0x28, 0x00, 0x00, 0x00, 0x00,
 uint8_t entropyProvided;
 uint8_t entropy[32];
 
-int entropyProvider2(void *context, unsigned char *buffer, size_t bufferSize) {
+int entropyProvider2(__attribute__((unused)) void *context,
+                     unsigned char *buffer,
+                     __attribute__((unused)) size_t bufferSize) {
     if (entropyProvided) {
         // PRINTF("no more entropy\n");
         return 1;
     }
-    os_memcpy(buffer, entropy, 32);
+    memcpy(buffer, entropy, 32);
     // PRINTF("entropy: %.*H\n", 32, entropy);
     entropyProvided = 1;
     return 0;
@@ -30,7 +32,7 @@ int entropyProvider2(void *context, unsigned char *buffer, size_t bufferSize) {
 void io_usb_send_ep_wait(unsigned int ep,
                          unsigned char *buf,
                          unsigned int len,
-                         unsigned int timeout_cs) {
+                         __attribute__((unused)) unsigned int timeout_cs) {
     io_usb_send_ep(ep, buf, len, 20);
 
     // wait until transfer timeout, or ended
@@ -64,7 +66,7 @@ void type_password(uint8_t *data,
     os_perso_derive_node_bip32(CX_CURVE_SECP256K1, derive, 9, tmp, tmp + 32);
     // PRINTF("pwseed %.*H\n", 64, tmp);
     cx_hash_sha256(tmp, 64, entropy, sizeof(entropy));
-    os_memset(tmp, 0, sizeof(tmp));
+    memset(tmp, 0, sizeof(tmp));
     entropyProvided = 0;
     mbedtls_ctr_drbg_context ctx;
     mbedtls_ctr_drbg_init(&ctx);
@@ -78,7 +80,7 @@ void type_password(uint8_t *data,
 
     generate_password(&ctx, setMask, minFromSet, tmp, size);
 
-    os_memset(report, 0, sizeof(report));
+    memset(report, 0, sizeof(report));
     // Insert EMPTY_REPORT CAPS_REPORT EMPTY_REPORT to avoid undesired capital letter on KONSOLE
     led_status = G_led_status;
     io_usb_send_ep_wait(HID_EPIN_ADDR, (uint8_t *) EMPTY_REPORT, 8, 20);

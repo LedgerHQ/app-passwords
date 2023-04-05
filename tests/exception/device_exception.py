@@ -1,8 +1,9 @@
 import enum
 from typing import Dict, Any, Optional
 
-from .types import *
-
+from .types import WrongP1P2Error, WrongDataLengthError, InsNotSupportedError, \
+    ClaNotSupportedError, AppNameTooLongError, ActionCancelledError, MetadatasParsingError, \
+    UnknownDeviceError
 
 class DeviceException(Exception):  # pylint: disable=too-few-public-methods
     exc: Dict[int, Any] = {

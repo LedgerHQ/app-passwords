@@ -1,60 +1,60 @@
 name: Compilation & tests
 
-on: [push, pull_request]
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - master
+      - develop
+  pull_request:
 
 jobs:
-  job_build:
-    name: Build debug
+  build:
+    name: Build application for NanoS, X and S+
+    strategy:
+      matrix:
+        include:
+          - SDK: "$NANOS_SDK"
+            model: nanos
+          - SDK: "$NANOX_SDK"
+            model: nanox
+          - SDK: "$NANOSP_SDK"
+            model: nanosp
     runs-on: ubuntu-latest
-
     container:
       image: ghcr.io/ledgerhq/ledger-app-builder/ledger-app-builder:latest
-
     steps:
       - name: Clone
         uses: actions/checkout@v2
-
       - name: Build
         run: |
-          make TESTING=1
-
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          make TESTING=1 BOLOS_SDK=${{ matrix.SDK }}
+          mv bin/app.elf bin/passwords-${{ matrix.model }}.elf
       - name: Upload app binary
         uses: actions/upload-artifact@v2
         with:
-          name: passwords-app
-          path: bin
+          name: apps
+          path: bin/*elf
 
   job_test:
     name: Test
-    needs: job_build
+    needs: build
     runs-on: ubuntu-latest
-
-    container:
-      image: ghcr.io/ledgerhq/speculos:latest
-      ports:
-        - 1234:1234
-        - 9999:9999
-        - 40000:40000
-        - 41000:41000
-        - 42000:42000
-        - 43000:43000
-      options: --entrypoint /bin/bash
-
     steps:
       - name: Clone
         uses: actions/checkout@v2
-
       - name: Download app binary
         uses: actions/download-artifact@v2
         with:
-          name: passwords-app
-          path: bin
-
+          name: apps
+          path: tests/elfs
+      - name: Install APT dependencies
+        run: sudo apt-get update && sudo apt-get install -y qemu-user-static
+      - name: Install Python dependencies
+        run: pip install --extra-index-url https://test.pypi.org/simple/ -r tests/requirements.txt
       - name: Run test
-        run: |
-          pip install -r tests/requirements.txt
-          pytest
-
+        run: pytest --tb=short -v tests/
       - name: Upload Speculos log
         if: always()
         uses: actions/upload-artifact@v2
@@ -62,3 +62,31 @@ jobs:
           name: speculos-log
           path: speculos.log
 
+  job_scan_build:
+    name: Clang Static Analyzer
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - SDK: "$NANOS_SDK"
+            model: nanos
+          - SDK: "$NANOX_SDK"
+            model: nanox
+          - SDK: "$NANOSP_SDK"
+            model: nanosp
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/ledgerhq/ledger-app-builder/ledger-app-builder:latest
+    steps:
+      - name: Clone
+        uses: actions/checkout@v2
+      - name: Build with Clang Static Analyzer
+        run: |
+          make clean
+          scan-build --use-cc=clang -analyze-headers -enable-checker security -enable-checker unix -enable-checker valist -o scan-build --status-bugs --exclude ${{ matrix.SDK }} make default BOLOS_SDK=${{ matrix.SDK }}
+      - name: Upload scan result
+        uses: actions/upload-artifact@v2
+        if: failure()
+        with:
+          name: scan-build
+          path: scan-build

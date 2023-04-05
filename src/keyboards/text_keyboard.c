@@ -110,7 +110,7 @@ const bagl_element_t* screen_keyboard_item_callback(unsigned int event, unsigned
 
         case KEYBOARD_RENDER_ITEM:
             G_ux.tmp_element.text = G_ux.string_buffer;
-            os_memset(G_ux.string_buffer, 0, 3);
+            memset(G_ux.string_buffer, 0, 3);
             if (GET_CHAR(G_keyboard_ctx.onboarding_step, value) == '\b') {
                 value = 3;
                 goto set_bitmap;

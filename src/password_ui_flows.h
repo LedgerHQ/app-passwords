@@ -1,10 +1,9 @@
-#ifndef _PASSWORD_UI_H_
-#define _PASSWORD_UI_H_
+#pragma once
 
 #include "ux.h"
 #include "types.h"
 
-extern const message_pair_t const ERR_MESSAGES[];
+extern const message_pair_t ERR_MESSAGES[];
 
 void ui_idle();
 void ui_request_user_approval(message_pair_t *msg);
@@ -15,5 +14,3 @@ void ui_error(message_pair_t err);
 #define NUMBERS_BITFLAG     4
 #define BARS_BITFLAG        8 | 16 | 32
 #define EXT_SYMBOLS_BITFLAG 64 | 128
-
-#endif

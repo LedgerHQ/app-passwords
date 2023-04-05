@@ -1,5 +1,4 @@
-#ifndef _TESTS_H_
-#define _TESTS_H_
+#pragma once
 
 #include "stdint.h"
 #include "types.h"
@@ -9,5 +8,3 @@ typedef enum {
 } test_cmd_e;
 
 int test_dispatcher(uint8_t p1, uint8_t p2, const buf_t *input);
-
-#endif

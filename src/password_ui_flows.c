@@ -1,11 +1,10 @@
-#include "password_ui_flows.h"
+#include <usbd_hid_impl.h>
+#include <hid_mapping.h>
+#include <string.h>
+#include <stdbool.h>
 
-#include "usbd_hid_impl.h"
-#include "hid_mapping.h"
-#include "string.h"
-#include "stdbool.h"
 #include "keyboard.h"
-
+#include "password_ui_flows.h"
 #include "globals.h"
 #include "password_typing.h"
 #include "metadata.h"
@@ -13,11 +12,19 @@
 #include "sw.h"
 #include "io.h"
 
+#define TXT_EMPTY_STRING     ""
+#define TXT_CANCEL           "Cancel"
+#define TXT_WITH             "With"
+#define TXT_WITHOUT          "Without"
+#define TXT_ENTER_NICKNAME   "Enter nickname"
+#define TXT_PRESS_ENTER      "Press Enter"
+#define TXT_DONT_PRESS_ENTER "Don't press Enter"
+
 ux_state_t G_ux;
 bolos_ux_params_t G_ux_params;
 keyboard_ctx_t G_keyboard_ctx;
 
-const message_pair_t const ERR_MESSAGES[] = {
+const message_pair_t ERR_MESSAGES[] = {
     {"", ""},                             // OK
     {"Write Error", "Database is full"},  // ERR_NO_MORE_SPACE_AVAILABLE
     {"Write Error",
@@ -146,8 +153,8 @@ void display_next_entry(bool is_upper_border) {
 void get_current_entry_name() {
     size_t offset = get_metadata(current_entry_index);
     if (offset == -1UL) {
-        strcpy(line_buffer_1, "");
-        strcpy(line_buffer_2, "Cancel");
+        strlcpy(line_buffer_1, TXT_EMPTY_STRING, sizeof(TXT_EMPTY_STRING));
+        strlcpy(line_buffer_2, TXT_CANCEL, sizeof(TXT_CANCEL));
         previous_location = 1;
     } else {
         SPRINTF(line_buffer_1, "Password %d/%d", current_entry_index + 1, N_storage.metadata_count);
@@ -310,9 +317,9 @@ void display_new_password_flow(const ux_flow_step_t* const start_step) {
 
 void get_current_charset_setting_value(uint8_t symbols_bitflag) {
     if (G_create_classes & symbols_bitflag) {
-        strcpy(line_buffer_2, "With");
+        strlcpy(line_buffer_2, TXT_WITH, sizeof(TXT_WITH));
     } else {
-        strcpy(line_buffer_2, "Without");
+        strlcpy(line_buffer_2, TXT_WITHOUT, sizeof(TXT_WITHOUT));
     }
 }
 
@@ -324,9 +331,9 @@ void toggle_password_setting(uint8_t caller_id, uint8_t symbols_bitflag) {
 void create_password_entry() {
     // use the G_io_seproxyhal_spi_buffer as temp buffer to build the entry (and include the
     // requested set of chars)
-    os_memmove(G_io_seproxyhal_spi_buffer + 1,
-               G_keyboard_ctx.words_buffer,
-               strlen(G_keyboard_ctx.words_buffer));
+    memmove(G_io_seproxyhal_spi_buffer + 1,
+            G_keyboard_ctx.words_buffer,
+            strlen(G_keyboard_ctx.words_buffer));
     // use the requested classes from the user
     G_io_seproxyhal_spi_buffer[0] = G_create_classes;
     // add the metadata
@@ -341,9 +348,9 @@ void create_password_entry() {
 
 void enter_password_nickname() {
 #if defined(TARGET_NANOX) || defined(TARGET_NANOS2)
-    strcpy(G_keyboard_ctx.title, "Enter nickname");
+    strlcpy(G_keyboard_ctx.title, TXT_ENTER_NICKNAME, sizeof(TXT_ENTER_NICKNAME));
 #endif
-    os_memset(G_keyboard_ctx.words_buffer, 0, sizeof(G_keyboard_ctx.words_buffer));
+    memset(G_keyboard_ctx.words_buffer, 0, sizeof(G_keyboard_ctx.words_buffer));
     screen_text_keyboard_init(G_keyboard_ctx.words_buffer, MAX_METANAME, create_password_entry);
 }
 
@@ -377,8 +384,8 @@ bnnn_paging,
 UX_FLOW(err_corrupted_memory_flow, &err_corrupted_memory_step, &generic_cancel_step);
 
 void ui_error(message_pair_t err) {
-    strcpy(line_buffer_1, (char*) PIC(err.first));
-    strcpy(line_buffer_2, (char*) PIC(err.second));
+    strlcpy(line_buffer_1, (char*) PIC(err.first), strlen(err.first) + 1);
+    strlcpy(line_buffer_2, (char*) PIC(err.second), strlen(err.second) + 1);
     ux_flow_init(0, err_corrupted_memory_flow, NULL);
 }
 
@@ -433,9 +440,9 @@ void display_settings_flow(const ux_flow_step_t* const start_step) {
 
 void get_current_pressEnterAfterTyping_setting_value() {
     if (N_storage.press_enter_after_typing) {
-        strcpy(line_buffer_2, "Press Enter");
+        strlcpy(line_buffer_2, TXT_PRESS_ENTER, sizeof(TXT_PRESS_ENTER));
     } else {
-        strcpy(line_buffer_2, "Don't press Enter");
+        strlcpy(line_buffer_2, TXT_DONT_PRESS_ENTER, sizeof(TXT_DONT_PRESS_ENTER));
     }
 }
 
@@ -552,7 +559,7 @@ pb,
 display_type_password_flow(),
 {
     &C_icon_bootloader,
-    "Type password", 
+    "Type password",
 });
 UX_STEP_CB(
 idle_show_password_step,
@@ -560,7 +567,7 @@ pb,
 display_show_password_flow(),
 {
     &C_icon_eye,
-    "Show password", 
+    "Show password",
 });
 UX_STEP_CB(
 idle_new_password_step,

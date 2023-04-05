@@ -1,5 +1,4 @@
-#ifndef _TYPES_H_
-#define _TYPES_H_
+#pragma once
 
 #include <stddef.h>
 #include <stdint.h>
@@ -48,5 +47,3 @@ typedef struct message_pair_s {
     const char* first;
     const char* second;
 } message_pair_t;
-
-#endif  // _TYPES_H_
