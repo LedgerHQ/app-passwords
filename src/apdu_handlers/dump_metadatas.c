@@ -7,7 +7,7 @@
 int dump_metadatas() {
     if (app_state.user_approval == false) {
         app_state.bytes_transferred = 0;
-        message_pair_t msg = {"Transfer", 9, "metadatas ?", 12};
+        message_pair_t msg = {"Transfer", "metadatas ?"};
         ui_request_user_approval(&msg);
         return 0;
     }
