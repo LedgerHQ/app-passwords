@@ -49,35 +49,10 @@ jobs:
       flags: "TESTING=1 POPULATE=1"
       upload_app_binaries_artifact: apps
 
-  job_test:
-    name: Test
+  test:
+    name: Test the application using the reusable workflow
+    uses: LedgerHQ/ledger-app-workflows/.github/workflows/reusable_ragger_tests.yml@v1
     needs: build
-    runs-on: ubuntu-latest
-    steps:
-      - name: Clone
-        uses: actions/checkout@v3
-      - name: Download app binary
-        uses: actions/download-artifact@v3
-        with:
-          name: apps
-          path: /tmp/apps/
-      - name: Gather binaries at the right places
-        run: |
-          mkdir -p tests/functional/elfs
-          mv /tmp/apps/nanos/bin/app.elf tests/functional/elfs/passwords-nanos.elf
-          mv /tmp/apps/nanos2/bin/app.elf tests/functional/elfs/passwords-nanosp.elf
-          mv /tmp/apps/nanox/bin/app.elf tests/functional/elfs/passwords-nanox.elf
-          mv /tmp/apps/stax/bin/app.elf tests/functional/elfs/passwords-stax.elf
-
-      - name: Install APT dependencies
-        run: sudo apt-get update && sudo apt-get install -y qemu-user-static tesseract-ocr libtesseract-dev
-      - name: Install Python dependencies
-        run: pip install --extra-index-url https://test.pypi.org/simple/ -r tests/functional/requirements.txt
-      - name: Run test
-        run: pytest --tb=short -v tests/functional
-      - name: Upload Speculos log
-        if: always()
-        uses: actions/upload-artifact@v3
-        with:
-          name: speculos-log
-          path: speculos.log
+    with:
+      test_dir: tests/functional/
+      download_app_binaries_artifact: apps
