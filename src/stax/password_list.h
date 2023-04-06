@@ -23,6 +23,6 @@ size_t password_list_get_current_offset();
 
 void password_list_reset_buffer();
 
-char **password_list_passwords();
+const char *const *password_list_passwords();
 
 #endif

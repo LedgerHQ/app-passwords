@@ -14,7 +14,14 @@
 #include "sw.h"
 #include "io.h"
 
-#define TXT_EMPTY_STRING     ""
+#define LINE_1_SIZE 16
+char line_buffer_1[LINE_1_SIZE];
+// none of these strings' length should exceed the LINE_1_SIZE (including the null-terminating byte)
+#define TXT_EMPTY_STRING ""
+
+char line_buffer_2[PASSWORD_MAX_SIZE + 1];
+// none of these strings' length should exceed PASSWORD_MAX_SIZE + 1
+// (including the null-terminating byte)
 #define TXT_CANCEL           "Cancel"
 #define TXT_WITH             "With"
 #define TXT_WITHOUT          "Without"
@@ -24,9 +31,6 @@
 
 ux_state_t G_ux;
 bolos_ux_params_t G_ux_params;
-
-char line_buffer_1[16];
-char line_buffer_2[PASSWORD_MAX_SIZE + 1];
 
 #if defined(TARGET_STAX)
 
@@ -166,8 +170,8 @@ static void display_next_entry(bool is_upper_border) {
 static void get_current_entry_name() {
     size_t offset = get_metadata(current_entry_index);
     if (offset == -1UL) {
-        strlcpy(line_buffer_1, TXT_EMPTY_STRING, sizeof(TXT_EMPTY_STRING));
-        strlcpy(line_buffer_2, TXT_CANCEL, sizeof(TXT_CANCEL));
+        strlcpy(line_buffer_1, TXT_EMPTY_STRING, sizeof(line_buffer_1));
+        strlcpy(line_buffer_2, TXT_CANCEL, sizeof(line_buffer_2));
         previous_location = 1;
     } else {
         SPRINTF(line_buffer_1, "Password %d/%d", current_entry_index + 1, N_storage.metadata_count);
@@ -313,9 +317,9 @@ static void display_new_password_flow(const ux_flow_step_t* const start_step) {
 
 static void get_current_charset_setting_value(uint8_t symbols_bitflag) {
     if (get_charset_options() & symbols_bitflag) {
-        strlcpy(line_buffer_2, TXT_WITH, sizeof(TXT_WITH));
+        strlcpy(line_buffer_2, TXT_WITH, sizeof(line_buffer_2));
     } else {
-        strlcpy(line_buffer_2, TXT_WITHOUT, sizeof(TXT_WITHOUT));
+        strlcpy(line_buffer_2, TXT_WITHOUT, sizeof(line_buffer_2));
     }
 }
 
@@ -336,7 +340,7 @@ static void create_password_entry() {
 
 static void enter_password_nickname() {
 #if defined(TARGET_NANOX) || defined(TARGET_NANOS2)
-    strlcpy(G_keyboard_ctx.title, TXT_ENTER_NICKNAME, sizeof(TXT_ENTER_NICKNAME));
+    strlcpy(G_keyboard_ctx.title, TXT_ENTER_NICKNAME, sizeof(line_buffer_2));
 #endif
     memset(G_keyboard_ctx.words_buffer, 0, sizeof(G_keyboard_ctx.words_buffer));
     screen_text_keyboard_init(G_keyboard_ctx.words_buffer, MAX_METANAME, create_password_entry);
@@ -430,9 +434,9 @@ static void display_settings_flow(const ux_flow_step_t* const start_step) {
 
 static void get_current_pressEnterAfterTyping_setting_value() {
     if (N_storage.press_enter_after_typing) {
-        strlcpy(line_buffer_2, TXT_PRESS_ENTER, sizeof(TXT_PRESS_ENTER));
+        strlcpy(line_buffer_2, TXT_PRESS_ENTER, sizeof(line_buffer_2));
     } else {
-        strlcpy(line_buffer_2, TXT_DONT_PRESS_ENTER, sizeof(TXT_DONT_PRESS_ENTER));
+        strlcpy(line_buffer_2, TXT_DONT_PRESS_ENTER, sizeof(line_buffer_2));
     }
 }
 

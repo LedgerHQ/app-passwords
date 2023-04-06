@@ -110,24 +110,22 @@ const bagl_element_t* screen_keyboard_item_callback(unsigned int event, unsigned
                     screen_keyboard_item_callback);
                 return NULL;
             }
+            break;
 
         case KEYBOARD_RENDER_ITEM:
             G_ux.tmp_element.text = G_ux.string_buffer;
             memset(G_ux.string_buffer, 0, 3);
             if (GET_CHAR(G_keyboard_ctx.onboarding_step, value) == '\b') {
                 value = 3;
-                goto set_bitmap;
             } else if (GET_CHAR(G_keyboard_ctx.onboarding_step, value) == '\r') {
                 value = 5;
-                goto set_bitmap;
             } else if (GET_CHAR(G_keyboard_ctx.onboarding_step, value) == '\n') {
                 value = 4;
-
-            set_bitmap:
-                screen_keyboard_render_icon(value);
             } else {
                 G_ux.string_buffer[0] = GET_CHAR(G_keyboard_ctx.onboarding_step, value);
+                break;
             }
+            screen_keyboard_render_icon(value);
             break;
 
         case KEYBOARD_RENDER_WORD: {
@@ -185,7 +183,11 @@ const bagl_element_t* screen_keyboard_class_callback(unsigned int event, unsigne
                     return NULL;
 
                 case 0:
+                    /* fallthrough */
+                    __attribute__((fallthrough));
                 case 1:
+                    /* fallthrough */
+                    __attribute__((fallthrough));
                 case 2:
                     G_keyboard_ctx.onboarding_step = value + (strlen(PP_BUFFER) ? 0 : 3);
                     screen_common_keyboard_init(

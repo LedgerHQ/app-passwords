@@ -15,6 +15,7 @@
  *  limitations under the License.
  ********************************************************************************/
 
+#include <decorators.h>
 #include <stdint.h>
 #include <os.h>
 
@@ -44,6 +45,7 @@ uint8_t io_event(__attribute__((unused)) uint8_t channel) {
                 THROW(EXCEPTION_IO_RESET);
             }
             /* fallthrough */
+            __attribute__((fallthrough));
         default:
             UX_DEFAULT_EVENT();
             break;
@@ -53,7 +55,8 @@ uint8_t io_event(__attribute__((unused)) uint8_t channel) {
 #endif
 #ifdef HAVE_NBGL
             UX_DEFAULT_EVENT();
-#endif  // HAVE_NBGL            break;
+#endif  // HAVE_NBGL
+            break;
         case SEPROXYHAL_TAG_TICKER_EVENT:
             UX_TICKER_EVENT(G_io_seproxyhal_spi_buffer, {});
             break;

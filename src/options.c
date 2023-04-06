@@ -11,6 +11,7 @@ static uint8_t charset_options;
 static void set_charset_options(uint8_t value) {
     charset_options = value;
 }
+
 uint8_t get_charset_options() {
     return charset_options;
 }

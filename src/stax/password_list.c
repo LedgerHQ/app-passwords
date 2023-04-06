@@ -35,11 +35,7 @@ typedef struct passwordList_s {
     size_t index;
 } passwordList_t;
 
-static passwordList_t passwordList = {.buffer = {0},
-                                      .currentOffset = 0,
-                                      .passwords = {0},
-                                      .offsets = {0},
-                                      .index = 0};
+static passwordList_t passwordList = {0};
 
 void password_list_reset() {
     explicit_bzero(&passwordList, sizeof(passwordList));
@@ -87,6 +83,6 @@ void password_list_reset_buffer() {
     passwordList.currentOffset = 0;
 }
 
-char **password_list_passwords() {
-    return (char **) passwordList.passwords;
+const char *const *password_list_passwords() {
+    return passwordList.passwords;
 }

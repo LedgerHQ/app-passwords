@@ -35,8 +35,8 @@
 #include "password_list.h"
 #include "ui.h"
 
-static nbgl_page_t *pageContext;
-static nbgl_layout_t *layoutContext = 0;
+static nbgl_page_t *pageContext = NULL;
+static nbgl_layout_t *layoutContext = NULL;
 #define MAX_ERROR_MSG_SIZE 100
 static char errorMessage[MAX_ERROR_MSG_SIZE] = {0};
 
@@ -77,16 +77,15 @@ static void display_settings_page(void);
  */
 static void display_error_page(error_type_t error) {
     message_pair_t msg = get_error(error);
-    const size_t msg_length = msg.first_len + msg.second_len + 2;
     snprintf(&errorMessage[0],
-             msg_length > MAX_ERROR_MSG_SIZE ? MAX_ERROR_MSG_SIZE : msg_length,
+             sizeof(errorMessage),
              "%s\n%s",
              (char *) PIC(msg.first),
              (char *) PIC(msg.second));
     nbgl_useCaseStatus(&errorMessage[0], false, &display_choice_page);
 }
 
-static void display_success_page(char *string) {
+static void display_success_page(const char *string) {
     nbgl_useCaseStatus(string, true, &display_choice_page);
 }
 
@@ -145,8 +144,8 @@ static bool display_settings_navigation(uint8_t page, nbgl_pageContent_t *conten
     } else if (page == 2) {
         content->type = INFOS_LIST;
         content->infosList.nbInfos = SETTINGS_INFO_NUMBER;
-        content->infosList.infoTypes = (const char **) infoTypes;
-        content->infosList.infoContents = (const char **) infoContents;
+        content->infosList.infoTypes = infoTypes;
+        content->infosList.infoContents = infoContents;
     } else {
         return false;
     }
@@ -335,6 +334,9 @@ static void password_list_callback(const int token __attribute__((unused)), cons
 
 static void display_password_list_page() {
     password_list_reset();
+    // this use case was originally provided for settings, however the listing, the pagination and
+    // customizable trigger on selection makes it perfect for displaying list of passwords to be
+    // selected for display, print or deletion.
     nbgl_useCaseSettings("Password list",
                          0,
                          2,
@@ -354,8 +356,8 @@ static bool display_password_navigation(uint8_t page __attribute__((unused)),
                                         nbgl_pageContent_t *content) {
     content->type = INFOS_LIST;
     content->infosList.nbInfos = 1;
-    content->infosList.infoTypes = (const char **) &ptrToPwd[0];
-    content->infosList.infoContents = (const char **) &ptrToPwd[1];
+    content->infosList.infoTypes = &ptrToPwd[0];
+    content->infosList.infoContents = &ptrToPwd[1];
     return true;
 }
 
@@ -498,8 +500,8 @@ static bool choice_navigation_callback(const uint8_t page __attribute__((unused)
                                        nbgl_pageContent_t *content) {
     content->type = BARS_LIST;
     content->barsList.nbBars = 5;
-    content->barsList.barTexts = (const char **const) bars;
-    content->barsList.tokens = (uint8_t *const) barsToken;
+    content->barsList.barTexts = bars;
+    content->barsList.tokens = barsToken;
     return true;
 }
 
@@ -567,9 +569,8 @@ void approval_granted() {
 
 void display_approval_page(message_pair_t *msg) {
     // using errorMessage to store the message to display
-    const size_t msgLen = msg->first_len + msg->second_len + 1;
     snprintf(&errorMessage[0],
-             msgLen,
+             sizeof(errorMessage),
              "%s %s",
              (char *) PIC(msg->first),
              (char *) PIC(msg->second));

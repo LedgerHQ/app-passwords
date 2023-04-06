@@ -49,11 +49,9 @@ DEFINES += MAX_METADATAS=4096 MAX_METANAME=20
 DEFINES += USE_CTAES
 DEFINES += HAVE_WEBUSB WEBUSB_URL_SIZE_B=0 WEBUSB_URL=""
 DEFINES += UNUSED\(x\)=\(void\)x
-DEFINES += HAVE_UX_FLOW
-# TODO: duplicate
 DEFINES += HAVE_SPRINTF
 
-TESTING:=0
+TESTING ?= 0
 ifeq ($(TESTING), 0)
     $(info TESTING DISABLED)
     DEFINES   += HAVE_USB_HIDKBD
@@ -79,12 +77,11 @@ ifneq ($(TARGET_NAME), TARGET_STAX)
     endif
 else
     $(info Using NBGL)
-    APP_LOAD_PARAMS += --appFlags 0x200
     DEFINES += IO_SEPROXYHAL_BUFFER_SIZE_B=300
     DEFINES += NBGL_KEYBOARD
 endif
 
-POPULATE:=0
+POPULATE ?= 0
 ifeq ($(POPULATE), 0)
     $(info POPULATE DISABLED)
 else
@@ -93,9 +90,9 @@ else
 endif
 
 # Enabling debug PRINTF
-DEBUG:=0
+DEBUG ?= 0
 ifneq ($(DEBUG),0)
-    $(info DEBUG enabled)
+    $(info DEBUG ENABLED)
     DEFINES += HAVE_STACK_OVERFLOW_CHECK HAVE_PRINTF
     ifeq ($(TARGET_NAME),TARGET_NANOS)
         DEFINES   += PRINTF=screen_printf
@@ -103,31 +100,16 @@ ifneq ($(DEBUG),0)
         DEFINES   += PRINTF=mcu_usb_printf
     endif
 else
+    $(info DEBUG DISABLED)
     DEFINES   += PRINTF\(...\)=
 endif
 
 ##############
 #  Compiler  #
 ##############
-ifneq ($(BOLOS_ENV),)
-    $(info BOLOS_ENV=$(BOLOS_ENV))
-    CLANGPATH := $(BOLOS_ENV)/clang-arm-fropi/bin/
-    GCCPATH := $(BOLOS_ENV)/gcc-arm-none-eabi-5_3-2016q1/bin/
-else
-    $(info BOLOS_ENV is not set: falling back to CLANGPATH and GCCPATH)
-endif
-ifeq ($(CLANGPATH),)
-    $(info CLANGPATH is not set: clang will be used from PATH)
-endif
-ifeq ($(GCCPATH),)
-    $(info GCCPATH is not set: arm-none-eabi-* will be used from PATH)
-endif
-
 CC      := $(CLANGPATH)clang
-CFLAGS  += -O3 -Os
 AS      := $(GCCPATH)arm-none-eabi-gcc
 LD      := $(GCCPATH)arm-none-eabi-gcc
-LDFLAGS += -O3 -Os
 LDLIBS  += -lm -lgcc -lc
 
 # import rules to compile glyphs(/pone)
@@ -137,11 +119,10 @@ include $(BOLOS_SDK)/Makefile.glyphs
 APP_SOURCE_PATH  += src
 SDK_SOURCE_PATH  += lib_stusb lib_stusb_impl
 
-ifeq ($(TARGET_NAME), TARGET_STAX)
-    SDK_SOURCE_PATH += lib_nbgl/src
-    SDK_SOURCE_PATH += lib_ux_stax
-else ifneq ($(TARGET_NAME), TARGET_NANOS)
+ifneq ($(TARGET_NAME), TARGET_NANOS)
+ifneq ($(TARGET_NAME), TARGET_STAX)
     SDK_SOURCE_PATH  += lib_ux
+endif
 endif
 
 load: all

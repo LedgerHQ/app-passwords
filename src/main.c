@@ -55,9 +55,11 @@ void app_main() {
 
 #if defined(POPULATE)
 #include "password.h"
-    create_new_password("password1", 9);
-    create_new_password("password2", 9);
-    create_new_password("password3", 9);
+    // removing 1 as `sizeof` will include the trailing null byte in the result (10)
+    // but this app stores password without this trailing null byte.
+    create_new_password("password1", sizeof("password1") - 1);
+    create_new_password("password2", sizeof("password2") - 1);
+    create_new_password("password3", sizeof("password3") - 1);
 #endif
     for (;;) {
         BEGIN_TRY {
