@@ -75,10 +75,10 @@ You can then run the tests:
 
 ### Functional
 
-Functional tests are written with Pytest. Before running them, you first need to compile the application with env variable `TESTING=1`:
+Functional tests are written with Pytest. Before running them, you first need to compile the application with env variables `TESTING=1` and `POPULATE=1`:
 
 ```bash
-make all TESTING=1
+make all TESTING=1 POPULATE=1
 ```
 
 Then you can execute tests on speculos with:
@@ -90,7 +90,7 @@ pytest tests/functional
 To run tests on a real device, load the app on it:
 
 ```bash
-make load TESTING=1
+make load TESTING=1 POPULATE=1
 ```
 
 Then open the app on your device and run:

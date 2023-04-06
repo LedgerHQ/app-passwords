@@ -1,9 +1,8 @@
 import pytest
 
 
-@pytest.mark.requires_physical_device
 def test_app_info(cmd):
-    assert cmd.get_app_info() == ("Passwords", "0.1.0")
+    assert cmd.get_app_info() == ("Passwords", "1.1.0")
 
 
 def test_app_config(cmd):

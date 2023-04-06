@@ -1,12 +1,13 @@
 from enum import auto, Enum
 from functools import partial
+from ragger.navigator import NavInsID
 from ragger.navigator.navigator import Navigator
 from time import sleep
 
-from .screen import StaxScreen
+from .screen import CustomStaxScreen
 
 
-class NavInsID(Enum):
+class CustomNavInsID(Enum):
     WAIT = auto()
     TOUCH = auto()
     # home screen
@@ -38,42 +39,43 @@ class NavInsID(Enum):
     # choosing option in choice lists (settings, menu)
     LIST_CHOOSE = auto()
 
-class StaxNavigator(Navigator):
+
+class CustomStaxNavigator(Navigator):
 
     def __init__(self, backend, firmware):
-        self.screen = StaxScreen(backend, firmware)
+        self.screen = CustomStaxScreen(backend, firmware)
         callbacks = {
+            # has to be defined for Ragger Navigator internals
             NavInsID.WAIT: sleep,
-            NavInsID.TOUCH: backend.finger_touch,
-            NavInsID.HOME_TO_SETTINGS: self.screen.home.settings,
-            NavInsID.HOME_TO_QUIT: self.screen.quit,
-            NavInsID.HOME_TO_MENU: self.screen.home.action,
-            NavInsID.SETTINGS_PREVIOUS: self.screen.settings.previous,
-            NavInsID.SETTINGS_TO_HOME: self.screen.settings.multi_page_exit,
-            NavInsID.SETTINGS_NEXT: self.screen.settings.next,
-            NavInsID.MENU_TO_HOME: self.screen.menu.single_page_exit,
-            NavInsID.MENU_TO_TYPE: partial(self.screen.menu_choice.choose, 1),
-            NavInsID.MENU_TO_DISPLAY: partial(self.screen.menu_choice.choose, 2),
-            NavInsID.MENU_TO_CREATE: partial(self.screen.menu_choice.choose, 3),
-            NavInsID.MENU_TO_DELETE: partial(self.screen.menu_choice.choose, 4),
-            NavInsID.MENU_TO_DELETE_ALL: partial(self.screen.menu_choice.choose, 5),
-            NavInsID.LIST_TO_MENU: self.screen.settings.multi_page_exit,
-            NavInsID.LIST_NEXT: self.screen.settings.next,
-            NavInsID.LIST_PREVIOUS: self.screen.settings.previous,
-            NavInsID.CONFIRM_YES: self.screen.confirmation.confirm,
-            NavInsID.CONFIRM_NO: self.screen.confirmation.reject,
-            NavInsID.KEYBOARD_WRITE: self._write,
-            NavInsID.KEYBOARD_TO_CONFIRM: self.screen.keyboard_confirm.tap,
-            NavInsID.KEYBOARD_TO_MENU: self.screen.keyboard_cancel.tap,
-            NavInsID.LIST_CHOOSE: self.screen.list_choice.choose
+            CustomNavInsID.WAIT: sleep,
+            CustomNavInsID.TOUCH: backend.finger_touch,
+            CustomNavInsID.HOME_TO_SETTINGS: self.screen.home.settings,
+            CustomNavInsID.HOME_TO_QUIT: self.screen.quit,
+            CustomNavInsID.HOME_TO_MENU: self.screen.home.action,
+            CustomNavInsID.SETTINGS_PREVIOUS: self.screen.settings.previous,
+            CustomNavInsID.SETTINGS_TO_HOME: self.screen.settings.multi_page_exit,
+            CustomNavInsID.SETTINGS_NEXT: self.screen.settings.next,
+            CustomNavInsID.MENU_TO_HOME: self.screen.menu.single_page_exit,
+            CustomNavInsID.MENU_TO_TYPE: partial(self.screen.menu_choice.choose, 1),
+            CustomNavInsID.MENU_TO_DISPLAY: partial(self.screen.menu_choice.choose, 2),
+            CustomNavInsID.MENU_TO_CREATE: partial(self.screen.menu_choice.choose, 3),
+            CustomNavInsID.MENU_TO_DELETE: partial(self.screen.menu_choice.choose, 4),
+            CustomNavInsID.MENU_TO_DELETE_ALL: partial(self.screen.menu_choice.choose, 5),
+            CustomNavInsID.LIST_TO_MENU: self.screen.settings.multi_page_exit,
+            CustomNavInsID.LIST_NEXT: self.screen.settings.next,
+            CustomNavInsID.LIST_PREVIOUS: self.screen.settings.previous,
+            CustomNavInsID.CONFIRM_YES: self.screen.confirmation.confirm,
+            CustomNavInsID.CONFIRM_NO: self.screen.confirmation.reject,
+            CustomNavInsID.KEYBOARD_WRITE: self.screen.keyboard.write,
+            CustomNavInsID.KEYBOARD_TO_CONFIRM: self.screen.keyboard_confirm.tap,
+            CustomNavInsID.KEYBOARD_TO_MENU: self.screen.keyboard_cancel.tap,
+            CustomNavInsID.LIST_CHOOSE: self._choose
         }
         super().__init__(backend, firmware, callbacks) #, golden_run=True)
 
-    def _write(self, characters: str):
-        # keyboard write is not an exact science on Ragger for now. The instruction together with
-        # the `wait_for_screen_change` function can get messy, as the write performs multiple
-        # `finger_touch` and the screen change several time, so `navigate_and_compare` could think
-        # the screen can be compared, when it has not reached its last state yet.
-        # Adding extra time after writing to have a better chance to get the expected screen
-        self.screen.keyboard.write(characters)
+    def _choose(self, position: int):
+        # Choosing a field in settings list will display a temporary screen where the chosen field
+        # is highlighted, then will go the result page. The sleep helps **not** catching this
+        # intermediate screen
+        self.screen.list_choice.choose(position)
         sleep(1)

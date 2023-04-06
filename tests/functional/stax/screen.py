@@ -18,7 +18,7 @@ class RadioList:
         self.backend.finger_touch(*positions[index])
 
 
-class StaxScreen(metaclass=MetaScreen):
+class CustomStaxScreen(metaclass=MetaScreen):
 
     use_case_home = UseCaseHomeExt
     use_case_settings = UseCaseSettings
