@@ -2,6 +2,8 @@ import enum
 
 from exception import DeviceException
 from ragger.backend import BackendInterface
+from ragger.firmware import Firmware
+from ragger.firmware.stax.positions import BUTTON_ABOVE_LOWER_MIDDLE
 
 CLA_SDK: int = 0xb0
 CLA: int = 0xe0
@@ -22,10 +24,18 @@ class TestInsType(enum.IntEnum):
 class PasswordsManagerCommand:
     def __init__(self,
                  transport: BackendInterface,
+                 firmware: Firmware,
                  debug: bool = False) -> None:
         self.transport = transport
+        self.firmware = firmware
         self.debug = debug
         self.approved: bool = False
+
+    def approve(self):
+        if self.firmware.has_nbgl:
+            self.transport.finger_touch(*BUTTON_ABOVE_LOWER_MIDDLE)
+        else:
+            self.transport.both_click()
 
     def get_app_info(self) -> str:
         ins: InsType = InsType.INS_GET_APP_INFO
@@ -98,7 +108,7 @@ class PasswordsManagerCommand:
         while len(metadatas) < size:
             if not self.approved:
                 with self.transport.exchange_async(cla=CLA, ins=ins):
-                    self.transport.both_click()
+                    self.approve()
                 response = self.transport.last_async_response
                 self.approved = True
             else:
@@ -122,7 +132,7 @@ class PasswordsManagerCommand:
                                                ins=ins,
                                                p1=0xFF if is_last else 0x00,
                                                data=chunk):
-                self.transport.both_click()
+                self.approve()
             response = self.transport.last_async_response
             self.approved = True
         else:

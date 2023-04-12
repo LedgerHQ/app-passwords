@@ -1,6 +1,6 @@
-/*****************************************************************************
- *   Ledger App Boilerplate.
- *   (c) 2020 Ledger SAS.
+/*******************************************************************************
+ *   Password Manager application
+ *   (c) 2017-2023 Ledger SAS
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -13,26 +13,31 @@
  *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
- *****************************************************************************/
+ ********************************************************************************/
 
+#include <decorators.h>
 #include <stdint.h>
 #include <os.h>
 
 #include "io.h"
 #include "globals.h"
 
+#if !defined(TARGET_STAX)
 void io_seproxyhal_display(const bagl_element_t *element) {
     io_seproxyhal_display_default((bagl_element_t *) element);
 }
+#endif
 
 uint8_t io_event(__attribute__((unused)) uint8_t channel) {
     switch (G_io_seproxyhal_spi_buffer[0]) {
         case SEPROXYHAL_TAG_FINGER_EVENT:
             UX_FINGER_EVENT(G_io_seproxyhal_spi_buffer);
             break;
+#if !defined(HAVE_NBGL)
         case SEPROXYHAL_TAG_BUTTON_PUSH_EVENT:
             UX_BUTTON_PUSH_EVENT(G_io_seproxyhal_spi_buffer);
             break;
+#endif
         case SEPROXYHAL_TAG_STATUS_EVENT:
             if (G_io_apdu_media == IO_APDU_MEDIA_USB_HID &&  //
                 !(U4BE(G_io_seproxyhal_spi_buffer, 3) &      //
@@ -40,11 +45,17 @@ uint8_t io_event(__attribute__((unused)) uint8_t channel) {
                 THROW(EXCEPTION_IO_RESET);
             }
             /* fallthrough */
+            __attribute__((fallthrough));
         default:
             UX_DEFAULT_EVENT();
             break;
         case SEPROXYHAL_TAG_DISPLAY_PROCESSED_EVENT:
+#if !defined(HAVE_NBGL)
             UX_DISPLAYED_EVENT({});
+#endif
+#ifdef HAVE_NBGL
+            UX_DEFAULT_EVENT();
+#endif  // HAVE_NBGL
             break;
         case SEPROXYHAL_TAG_TICKER_EVENT:
             UX_TICKER_EVENT(G_io_seproxyhal_spi_buffer, {});

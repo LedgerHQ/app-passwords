@@ -1,11 +1,15 @@
 bin
 debug
 dep
+build
 obj
 src/glyphs.c
 src/glyphs.h
 *.pyc
+*~
 speculos.log
 scan-build
 
-tests/elfs
+tests/functional/elfs
+coverage*
+snapshots-tmp/

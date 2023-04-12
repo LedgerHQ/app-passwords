@@ -20,9 +20,7 @@ int load_metadatas(uint8_t p1, uint8_t p2, const buf_t *input) {
         return send_sw(SW_WRONG_DATA_LENGTH);
     }
 
-    nvm_write((void *) N_storage.metadatas + app_state.bytes_transferred,
-              (void *) input->bytes,
-              input->size);
+    override_metadatas(app_state.bytes_transferred, (void *) input->bytes, input->size);
     app_state.bytes_transferred += input->size;
 
     if (app_state.bytes_transferred >= sizeof(N_storage.metadatas) || p1 == P1_LAST_CHUNK) {

@@ -1,4 +1,5 @@
 #include <string.h>
+
 #include "metadata.h"
 #include "globals.h"
 
@@ -27,8 +28,13 @@ error_type_t write_metadata(uint8_t *data, uint8_t dataSize) {
     return OK;
 }
 
+void override_metadatas(uint8_t offset, void *ptr, size_t size) {
+    nvm_write((void *) &N_storage.metadatas[offset], ptr, size);
+}
+
 void reset_metadatas(void) {
     nvm_write((void *) N_storage.metadatas, NULL, sizeof(N_storage.metadatas));
+    nvm_write((void *) &N_storage.metadata_count, 0, sizeof(N_storage.metadata_count));
 }
 
 error_type_t erase_metadata(uint32_t offset) {
@@ -37,8 +43,10 @@ error_type_t erase_metadata(uint32_t offset) {
     }
     size_t metadata_count = N_storage.metadata_count - 1;
     unsigned char m = META_ERASED;
-    nvm_write((void *) &N_storage.metadatas[offset + 1], &m, 1);
-    nvm_write((void *) &N_storage.metadata_count, &metadata_count, 4);
+    nvm_write((void *) &N_storage.metadatas[offset + 1], &m, sizeof(N_storage.metadatas[0]));
+    nvm_write((void *) &N_storage.metadata_count,
+              &metadata_count,
+              sizeof(N_storage.metadata_count));
     return OK;
 }
 

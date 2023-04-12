@@ -47,11 +47,15 @@ def test_wrong_data_length(cmd):
 
 @pytest.mark.xfail(raises=WrongDataLengthError)
 def test_load_metadatas_with_too_much_data(cmd, test_vector):
-    metadatas = test_vector
+    # [0] to avoid huge test names filled with the data.
+    # Instead, it is filled with the data index
+    metadatas = test_vector[0]
     cmd.load_metadatas(metadatas)
 
 
 @pytest.mark.xfail(raises=MetadatasParsingError)
 def test_load_metadatas_with_name_too_long(cmd, test_vector):
-    metadatas = test_vector
+    # [0] to avoid huge test names filled with the data.
+    # Instead, it is filled with the data index
+    metadatas = test_vector[0]
     cmd.load_metadatas(metadatas)
