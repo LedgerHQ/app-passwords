@@ -51,7 +51,7 @@ def test_delete_one_password(navigator, functional_test_directory):
 
 
 @pytest.mark.use_on_firmware("stax")
-def test_delete_all_password(navigator, functional_test_directory):
+def test_delete_all_passwords(navigator, functional_test_directory):
     instructions = format_instructions([
         CustomNavInsID.HOME_TO_MENU,
         # ensure the password list is filled with populated passwords
