@@ -254,7 +254,7 @@ static void key_press_callback(const char touchedKey) {
     }
     nbgl_layoutUpdateKeyboard(layoutContext, keyboardIndex, mask, false, LOWER_CASE);
     nbgl_layoutUpdateEnteredText(layoutContext, textIndex, false, 0, &(password_name[0]), false);
-    nbgl_refresh();
+    nbgl_refreshSpecialWithPostRefresh(BLACK_AND_WHITE_REFRESH, POST_REFRESH_FORCE_POWER_ON);
 }
 
 static void display_create_pwd_page() {
