@@ -46,7 +46,7 @@ void io_usb_send_ep_wait(unsigned int ep,
     }
 }
 
-void type_password(uint8_t *data,
+bool type_password(uint8_t *data,
                    uint32_t dataSize,
                    uint8_t *out,
                    setmask_t setMask,
@@ -64,7 +64,10 @@ void type_password(uint8_t *data,
         derive[i + 1] = 0x80000000 | (tmp[4 * i] << 24) | (tmp[4 * i + 1] << 16) |
                         (tmp[4 * i + 2] << 8) | (tmp[4 * i + 3]);
     }
-    os_perso_derive_node_bip32(CX_CURVE_SECP256K1, derive, 9, tmp, tmp + 32);
+
+    if (os_derive_bip32_no_throw(CX_CURVE_SECP256K1, derive, 9, tmp, tmp + 32) != CX_OK) {
+        return false;
+    }
     // PRINTF("pwseed %.*H\n", 64, tmp);
     cx_hash_sha256(tmp, 64, entropy, sizeof(entropy));
     memset(tmp, 0, sizeof(tmp));
@@ -76,7 +79,7 @@ void type_password(uint8_t *data,
     }
     if (out != NULL) {
         generate_password(&ctx, setMask, minFromSet, out, size);
-        return;
+        return true;
     }
 
     generate_password(&ctx, setMask, minFromSet, tmp, size);
@@ -126,4 +129,6 @@ void type_password(uint8_t *data,
         io_usb_send_ep_wait(HID_EPIN_ADDR, (uint8_t *) ENTER_REPORT, 8, 20);
         io_usb_send_ep_wait(HID_EPIN_ADDR, (uint8_t *) EMPTY_REPORT, 8, 20);
     }
+
+    return true;
 }
