@@ -29,6 +29,3 @@ class CustomStaxScreen(metaclass=MetaScreen):
     layout_keyboard = FullKeyboardLetters
     layout_keyboard_confirm = TappableCenter
     layout_keyboard_cancel = LeftHeader
-
-    def quit(self):
-        self.home.quit()

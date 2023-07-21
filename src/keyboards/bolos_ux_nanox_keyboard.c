@@ -267,7 +267,6 @@ const bagl_element_t* screen_common_keyboard_before_element_display_callback(
 unsigned int screen_common_keyboard_button(unsigned int button_mask,
                                            unsigned int button_mask_counter
                                            __attribute__((unused))) {
-
     switch (button_mask) {
         case BUTTON_EVT_RELEASED | BUTTON_LEFT | BUTTON_RIGHT:  // validate current digit
 

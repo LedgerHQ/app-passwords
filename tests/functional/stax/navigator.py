@@ -50,7 +50,7 @@ class CustomStaxNavigator(Navigator):
             CustomNavInsID.WAIT: sleep,
             CustomNavInsID.TOUCH: backend.finger_touch,
             CustomNavInsID.HOME_TO_SETTINGS: self.screen.home.settings,
-            CustomNavInsID.HOME_TO_QUIT: self.screen.quit,
+            CustomNavInsID.HOME_TO_QUIT: self.screen.home.quit,
             CustomNavInsID.HOME_TO_MENU: self.screen.home.action,
             CustomNavInsID.SETTINGS_PREVIOUS: self.screen.settings.previous,
             CustomNavInsID.SETTINGS_TO_HOME: self.screen.settings.multi_page_exit,
