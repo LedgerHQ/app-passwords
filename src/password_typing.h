@@ -7,7 +7,7 @@ void io_usb_send_ep_wait(unsigned int ep,
                          unsigned char *buf,
                          unsigned int len,
                          unsigned int timeout_cs);
-void type_password(uint8_t *data,
+bool type_password(uint8_t *data,
                    uint32_t dataSize,
                    uint8_t *out,
                    setmask_t setMask,

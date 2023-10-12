@@ -9,6 +9,7 @@ from ragger.conftest import configuration
 
 pytest_plugins = ("ragger.conftest.base_conftest", )
 
+
 # Glue to call every test that depends on the firmware once for each required firmware
 def pytest_generate_tests(metafunc):
     if "test_vector" in metafunc.fixturenames:
@@ -20,11 +21,11 @@ def pytest_generate_tests(metafunc):
 def functional_test_directory(root_pytest_dir) -> Path:
     return root_pytest_dir / "tests" / "functional"
 
+
 @pytest.fixture
 def custom_backend(backend):
     backend.raise_policy = RaisePolicy.RAISE_NOTHING
     yield backend
-
 
 
 @pytest.fixture

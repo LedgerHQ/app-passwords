@@ -1,5 +1,6 @@
 import pytest
 from ragger.navigator import NavIns, NavInsID
+from requests.exceptions import ConnectionError
 from typing import Iterable, Union
 
 from .navigator import CustomNavInsID
@@ -12,8 +13,7 @@ def format_instructions(instructions: Iterable[Union[NavIns, CustomNavInsID]]) -
 
 @pytest.mark.use_on_firmware("stax")
 def test_immediate_quit(navigator):
-    instruction = format_instructions([CustomNavInsID.HOME_TO_QUIT])
-    navigator.navigate(instruction,
+    navigator.navigate(format_instructions([CustomNavInsID.HOME_TO_QUIT]),
                        screen_change_before_first_instruction=False,
                        screen_change_after_last_instruction=False)
 
