@@ -2,7 +2,7 @@ import pytest
 
 
 def test_app_info(cmd):
-    assert cmd.get_app_info() == ("Passwords", "1.1.1")
+    assert cmd.get_app_info() == ("Passwords", "1.1.2")
 
 
 def test_app_config(cmd):
