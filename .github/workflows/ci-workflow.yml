@@ -44,14 +44,14 @@ jobs:
 
   build:
     name: Build application using the reusable workflow
-    uses: LedgerHQ/ledger-app-workflows/.github/workflows/reusable_build.yml@v1
+    uses: LedgerHQ/ledger-app-workflows/.github/workflows/reusable_build.yml@lp/manifest
     with:
       flags: "TESTING=1 POPULATE=1"
       upload_app_binaries_artifact: apps
 
   test:
     name: Test the application using the reusable workflow
-    uses: LedgerHQ/ledger-app-workflows/.github/workflows/reusable_ragger_tests.yml@v1
+    uses: LedgerHQ/ledger-app-workflows/.github/workflows/reusable_ragger_tests.yml@lp/manifest
     needs: build
     with:
       test_dir: tests/functional/
