@@ -47,7 +47,7 @@ static void test_password_list_passwords(void **state __attribute__((unused))) {
     for (size_t i = 0; i < (sizeof(strings) / sizeof(strings[0])); i++) {
         assert_true(password_list_add_password(i, i, strings[i], strlen(strings[i]) + 1));
     }
-    char **passwords = password_list_passwords();
+    const char * const *passwords = password_list_passwords();
     for (size_t i = 0; i < (sizeof(strings) / sizeof(strings[0])); i++) {
         assert_string_equal(passwords[i], strings[i]);
         assert_string_equal(password_list_get_password(i), strings[i]);
@@ -73,7 +73,7 @@ static void test_password_list_reset_buffer(void **state __attribute__((unused))
         assert_true(password_list_add_password(i, i, strings[i], strlen(strings[i]) + 1));
     }
     password_list_reset_buffer();
-    char **passwords = password_list_passwords();
+    const char * const *passwords = password_list_passwords();
     for (size_t i = 0; i < (sizeof(strings) / sizeof(strings[0])); i++) {
         // all passwords have been removed
         assert_ptr_equal(*passwords[i], NULL);

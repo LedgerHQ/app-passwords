@@ -41,12 +41,15 @@ add_compile_definitions(HAVE_BOLOS_UX)
 add_compile_definitions(TARGET_STAX)
 add_compile_definitions(OS_IO_SEPROXYHAL)
 
-include_directories(../../src ./mocks/)
+include_directories(../../src ../../include ./mocks/)
 
 add_executable(test_stax_password_list stax/test_password_list.c)
-
 add_library(password_list SHARED ../../src/stax/password_list.c)
-
 target_link_libraries(test_stax_password_list PUBLIC cmocka gcov password_list bsd)
 
-add_test(test_stax_password_list test_stax_password_list)
+add_executable(test_hid_mapping test_hid_mapping.c)
+add_library(hid_mapping SHARED ../../src/hid_mapping.c)
+target_link_libraries(test_hid_mapping PUBLIC cmocka gcov hid_mapping bsd)
+
+add_test(stax_password_list test_stax_password_list)
+add_test(hid_mapping test_hid_mapping)
