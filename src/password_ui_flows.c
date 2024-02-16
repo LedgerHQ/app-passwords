@@ -1,3 +1,4 @@
+#include <io.h>
 #include <usbd_hid_impl.h>
 #include <string.h>
 #include <stdbool.h>
@@ -12,7 +13,6 @@
 #include "metadata.h"
 #include "dispatcher.h"
 #include "sw.h"
-#include "io.h"
 
 #define LINE_1_SIZE 16
 char line_buffer_1[LINE_1_SIZE];
@@ -29,9 +29,6 @@ char line_buffer_2[PASSWORD_MAX_SIZE + 1];
 #define TXT_PRESS_ENTER      "Press Enter"
 #define TXT_DONT_PRESS_ENTER "Don't press Enter"
 
-ux_state_t G_ux;
-bolos_ux_params_t G_ux_params;
-
 #if defined(TARGET_STAX)
 
 #include "stax/ui.h"
@@ -43,7 +40,7 @@ void ui_request_user_approval(message_pair_t *msg) {
     display_approval_page(msg);
 }
 
-#else
+#else // if defined(TARGET_STAX)
 
 #include "keyboard.h"
 #include "options.h"
@@ -65,7 +62,7 @@ app_state.user_approval = true; dispatch(),
 UX_STEP_CB(
 generic_cancel_step,
 pb,
-send_sw(SW_CONDITIONS_OF_USE_NOT_SATISFIED); ui_idle(),
+io_send_sw(SW_CONDITIONS_OF_USE_NOT_SATISFIED); ui_idle(),
 {
     &C_icon_back,
     "Cancel",
@@ -236,7 +233,7 @@ static void toggle_password_setting(uint8_t caller_id, uint8_t symbols_bitflag);
 static void create_password_entry();
 #if defined(TARGET_NANOS)
 static void display_nickname_explanation();
-#endif
+#endif // #if defined(TARGET_NANOS)
 static void enter_password_nickname();
 
 // clang-format off
@@ -638,4 +635,4 @@ void ui_idle() {
     }
 }
 
-#endif
+#endif // else( if defined(TARGET_STAX) )

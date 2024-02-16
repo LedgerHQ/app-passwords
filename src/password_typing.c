@@ -22,23 +22,19 @@ static int entropyProvider2(__attribute__((unused)) void *context,
                             unsigned char *buffer,
                             __attribute__((unused)) size_t bufferSize) {
     if (entropyProvided) {
-        // PRINTF("no more entropy\n");
         return 1;
     }
     memcpy(buffer, entropy, 32);
-    // PRINTF("entropy: %.*H\n", 32, entropy);
     entropyProvided = true;
     return 0;
 }
 
 #ifndef TESTING
-static void io_usb_send_ep_wait(unsigned int ep,
-                                unsigned char *buf,
-                                unsigned int len) {
-    io_usb_send_ep(ep, buf, len, 60);
+static void usb_write_wait(unsigned char *buf) {
+    io_usb_send_ep(HID_EPIN_ADDR, buf, REPORT_SIZE, 60);
 
     // wait until transfer timeout, or ended
-    while (G_io_app.usb_ep_timeouts[ep & 0x7F].timeout) {
+    while (G_io_app.usb_ep_timeouts[HID_EPIN_ADDR & 0x7F].timeout) {
         if (!io_seproxyhal_spi_is_status_sent()) {
             io_seproxyhal_general_status();
         }
@@ -47,9 +43,7 @@ static void io_usb_send_ep_wait(unsigned int ep,
     }
 }
 #else
-static void io_usb_send_ep_wait(__attribute__((unused)) unsigned int ep,
-                                __attribute__((unused)) unsigned char *buf,
-                                __attribute__((unused)) unsigned int len) {
+static void usb_write_wait(__attribute__((unused)) unsigned char *buf) {
     return;
 }
 #endif // TESTING
@@ -76,7 +70,6 @@ bool type_password(uint8_t *data,
     if (os_derive_bip32_no_throw(CX_CURVE_SECP256K1, derive, 9, tmp, tmp + 32) != CX_OK) {
         return false;
     }
-    // PRINTF("pwseed %.*H\n", 64, tmp);
     cx_hash_sha256(tmp, 64, entropy, sizeof(entropy));
     memset(tmp, 0, sizeof(tmp));
     entropyProvided = false;
@@ -95,21 +88,21 @@ bool type_password(uint8_t *data,
     memset(report, 0, sizeof(report));
     // Insert EMPTY_REPORT CAPS_REPORT EMPTY_REPORT to avoid undesired capital letter on KONSOLE
     led_status = G_led_status;
-    io_usb_send_ep_wait(HID_EPIN_ADDR, (uint8_t *) EMPTY_REPORT, REPORT_SIZE);
+    usb_write_wait((uint8_t *) EMPTY_REPORT);
 
-    io_usb_send_ep_wait(HID_EPIN_ADDR, (uint8_t *) CAPS_REPORT, REPORT_SIZE);
-    io_usb_send_ep_wait(HID_EPIN_ADDR, (uint8_t *) EMPTY_REPORT, REPORT_SIZE);
+    usb_write_wait((uint8_t *) CAPS_REPORT);
+    usb_write_wait((uint8_t *) EMPTY_REPORT);
 
     // toggle shift if set.
     if (led_status & 2) {
-        io_usb_send_ep_wait(HID_EPIN_ADDR, (uint8_t *) CAPS_LOCK_REPORT, REPORT_SIZE);
-        io_usb_send_ep_wait(HID_EPIN_ADDR, (uint8_t *) EMPTY_REPORT, REPORT_SIZE);
+        usb_write_wait((uint8_t *) CAPS_LOCK_REPORT);
+        usb_write_wait((uint8_t *) EMPTY_REPORT);
     }
     for (i = 0; i < size; i++) {
         // If keyboard layout not initialized, use the default
         map_char(N_storage.keyboard_layout, tmp[i], report);
-        io_usb_send_ep_wait(HID_EPIN_ADDR, report, REPORT_SIZE);
-        io_usb_send_ep_wait(HID_EPIN_ADDR, (uint8_t *) EMPTY_REPORT, REPORT_SIZE);
+        usb_write_wait(report);
+        usb_write_wait((uint8_t *) EMPTY_REPORT);
 
         // for international keyboard, make sure to insert space after special symbols
         if (N_storage.keyboard_layout == HID_MAPPING_QWERTY_INTL) {
@@ -120,23 +113,22 @@ bool type_password(uint8_t *data,
                 case '~':
                 case '^':
                     // insert a extra space to validate the symbol
-                    io_usb_send_ep_wait(HID_EPIN_ADDR, (uint8_t *) SPACE_REPORT, REPORT_SIZE);
-                    io_usb_send_ep_wait(HID_EPIN_ADDR, (uint8_t *) EMPTY_REPORT, REPORT_SIZE);
+                    usb_write_wait((uint8_t *) SPACE_REPORT);
+                    usb_write_wait((uint8_t *) EMPTY_REPORT);
                     break;
             }
         }
     }
-    PRINTF("\n");
     // restore shift state
     if (led_status & 2) {
-        io_usb_send_ep_wait(HID_EPIN_ADDR, (uint8_t *) CAPS_LOCK_REPORT, REPORT_SIZE);
-        io_usb_send_ep_wait(HID_EPIN_ADDR, (uint8_t *) EMPTY_REPORT, REPORT_SIZE);
+        usb_write_wait((uint8_t *) CAPS_LOCK_REPORT);
+        usb_write_wait((uint8_t *) EMPTY_REPORT);
     }
 
     if (N_storage.press_enter_after_typing) {
         // press enter
-        io_usb_send_ep_wait(HID_EPIN_ADDR, (uint8_t *) ENTER_REPORT, REPORT_SIZE);
-        io_usb_send_ep_wait(HID_EPIN_ADDR, (uint8_t *) EMPTY_REPORT, REPORT_SIZE);
+        usb_write_wait((uint8_t *) ENTER_REPORT);
+        usb_write_wait((uint8_t *) EMPTY_REPORT);
     }
 
     return true;

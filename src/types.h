@@ -1,5 +1,6 @@
 #pragma once
 
+#include <io.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdbool.h>
@@ -19,8 +20,6 @@ typedef struct internalStorage_t {
     uint8_t charset_options;
 #endif
 } internalStorage_t;
-
-typedef enum { READY, RECEIVED, WAITING } io_state_e;
 
 typedef enum {
     GET_APP_CONFIG = 0x03,

@@ -1,6 +1,6 @@
+#include <io.h>
 #include "tests.h"
 #include "sw.h"
-#include "io.h"
 #include "password_typing.h"
 
 /* Takes a metadata as an input (charset + seed) and returns a 20 char password*/
@@ -18,8 +18,7 @@ int test_generate_password(const buf_t *input) {
                   enabledSets,
                   (const uint8_t *) PIC(DEFAULT_MIN_SET),
                   sizeof(out_buffer));
-    const buf_t response = {.bytes = out_buffer, .size = 20};
-    return send(&response, SW_OK);
+    return io_send_response_pointer(out_buffer, 20, SW_OK);
 }
 
 int test_dispatcher(uint8_t p1, __attribute__((unused)) uint8_t p2, const buf_t *input) {
@@ -27,6 +26,6 @@ int test_dispatcher(uint8_t p1, __attribute__((unused)) uint8_t p2, const buf_t 
         case GENERATE_PASSWORD:
             return test_generate_password(input);
         default:
-            return send_sw(SW_INS_NOT_SUPPORTED + 1);
+            return io_send_sw(SW_INS_NOT_SUPPORTED + 1);
     }
 }

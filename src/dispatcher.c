@@ -15,12 +15,12 @@
  *  limitations under the License.
  ********************************************************************************/
 
+#include <io.h>
 #include <stdint.h>
 
 #include "dispatcher.h"
 #include "types.h"
 #include "globals.h"
-#include "io.h"
 #include "sw.h"
 #include "apdu_handlers/dump_metadatas.h"
 #include "apdu_handlers/load_metadatas.h"
@@ -29,7 +29,7 @@
 
 int dispatch() {
     if (G_io_apdu_buffer[OFFSET_CLA] != CLA) {
-        return send_sw(SW_CLA_NOT_SUPPORTED);
+        return io_send_sw(SW_CLA_NOT_SUPPORTED);
     }
 
     uint8_t ins = G_io_apdu_buffer[OFFSET_INS];
@@ -56,6 +56,6 @@ int dispatch() {
             return test_dispatcher(p1, p2, &input);
 #endif
         default:
-            return send_sw(SW_INS_NOT_SUPPORTED);
+            return io_send_sw(SW_INS_NOT_SUPPORTED);
     }
 }
