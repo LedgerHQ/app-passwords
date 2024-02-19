@@ -16,16 +16,17 @@
  ********************************************************************************/
 
 #include <io.h>
+#include <lib_standard_app/offsets.h>
 #include <stdint.h>
 
-#include "dispatcher.h"
-#include "types.h"
-#include "globals.h"
-#include "sw.h"
 #include "apdu_handlers/dump_metadatas.h"
 #include "apdu_handlers/load_metadatas.h"
 #include "apdu_handlers/get_app_config.h"
+#include "dispatcher.h"
+#include "error.h"
+#include "globals.h"
 #include "tests/tests.h"
+#include "types.h"
 
 int dispatch() {
     if (G_io_apdu_buffer[OFFSET_CLA] != CLA) {

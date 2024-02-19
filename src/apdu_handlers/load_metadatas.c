@@ -1,10 +1,11 @@
 #include <io.h>
 
-#include "load_metadatas.h"
+#include "error.h"
 #include "globals.h"
-#include "sw.h"
+#include "load_metadatas.h"
 #include "metadata.h"
 #include "password_ui_flows.h"
+
 
 int load_metadatas(uint8_t p1, uint8_t p2, const buf_t *input) {
     if ((p1 != 0 && p1 != P1_LAST_CHUNK) || p2 != 0) {

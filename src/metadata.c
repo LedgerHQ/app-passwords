@@ -3,6 +3,7 @@
 #include "metadata.h"
 #include "globals.h"
 
+
 error_type_t write_metadata(uint8_t *data, uint8_t dataSize) {
     if (dataSize > MAX_METANAME) {
         dataSize = MAX_METANAME;

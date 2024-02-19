@@ -1,8 +1,9 @@
 #include "dump_metadatas.h"
+#include "error.h"
 #include "globals.h"
 #include "io.h"
-#include "sw.h"
 #include "password_ui_flows.h"
+
 
 int dump_metadatas() {
     if (app_state.user_approval == false) {

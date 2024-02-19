@@ -1,7 +1,9 @@
 #include <io.h>
-#include "tests.h"
-#include "sw.h"
+
+#include "error.h"
 #include "password_typing.h"
+#include "tests.h"
+
 
 /* Takes a metadata as an input (charset + seed) and returns a 20 char password*/
 int test_generate_password(const buf_t *input) {

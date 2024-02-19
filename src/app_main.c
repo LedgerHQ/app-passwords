@@ -19,37 +19,35 @@
 #include <io.h>
 #include <os.h>
 #include <os_io_seproxyhal.h>
+#include <lib_standard_app/offsets.h>
 #include <stdbool.h>
 #include <string.h>
 
+#include <ctr_drbg.h>
+#include <hid_mapping.h>
+#include <password_generation.h>
+#include <usbd_hid_impl.h>
 
 #include "glyphs.h"
-
-#include "ctr_drbg.h"
-#include "hid_mapping.h"
-#include "password_generation.h"
-#include "usbd_hid_impl.h"
-#include "sw.h"
-
-#include "password_ui_flows.h"
-#include "password_typing.h"
+#include "dispatcher.h"
+#include "error.h"
 #include "globals.h"
 #include "metadata.h"
-#include "dispatcher.h"
+#include "password_ui_flows.h"
+#include "password_typing.h"
+
 
 const internalStorage_t N_storage_real;
 app_state_t app_state;
 volatile unsigned int G_led_status;
 
-void app_init() {
-    init_storage();
-    memset(&app_state, 0, sizeof(app_state));
-}
 
 void app_main() {
     int input_len = 0;
 
-    app_init();
+    init_storage();
+    memset(&app_state, 0, sizeof(app_state));
+
     ui_idle();
 
     app_state.io.output_len = 0;
