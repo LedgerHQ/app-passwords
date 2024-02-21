@@ -59,7 +59,7 @@ bool type_password(uint8_t *data,
     uint32_t led_status;
     uint8_t tmp[64];
     uint8_t i;
-    uint8_t report[REPORT_SIZE];
+    uint8_t report[REPORT_SIZE] = {0};
 
     cx_hash_sha256(data, dataSize, tmp, sizeof(tmp));
     derive[0] = DERIVE_PASSWORD_PATH;
@@ -86,11 +86,10 @@ bool type_password(uint8_t *data,
 
     generate_password(&ctx, setMask, minFromSet, tmp, size);
 
-    memset(report, 0, sizeof(report));
-    // Insert EMPTY_REPORT CAPS_REPORT EMPTY_REPORT to avoid undesired capital letter on KONSOLE
     led_status = G_led_status;
-    usb_write_wait((uint8_t *) EMPTY_REPORT);
 
+    // Insert EMPTY_REPORT CAPS_REPORT EMPTY_REPORT to avoid undesired capital letter on KONSOLE
+    usb_write_wait((uint8_t *) EMPTY_REPORT);
     usb_write_wait((uint8_t *) CAPS_REPORT);
     usb_write_wait((uint8_t *) EMPTY_REPORT);
 
@@ -99,11 +98,17 @@ bool type_password(uint8_t *data,
         usb_write_wait((uint8_t *) CAPS_LOCK_REPORT);
         usb_write_wait((uint8_t *) EMPTY_REPORT);
     }
+
     for (i = 0; i < size; i++) {
         // If keyboard layout not initialized, use the default
         map_char(N_storage.keyboard_layout, tmp[i], report);
+
         usb_write_wait(report);
-        usb_write_wait((uint8_t *) EMPTY_REPORT);
+        if (report[0] & SHIFT_KEY) {
+            usb_write_wait((uint8_t *) CAPS_REPORT);
+        } else {
+            usb_write_wait((uint8_t *) EMPTY_REPORT);
+        }
 
         // for international keyboard, make sure to insert space after special symbols
         if (N_storage.keyboard_layout == HID_MAPPING_QWERTY_INTL) {
@@ -120,6 +125,7 @@ bool type_password(uint8_t *data,
             }
         }
     }
+    usb_write_wait((uint8_t *) EMPTY_REPORT);
     // restore shift state
     if (led_status & 2) {
         usb_write_wait((uint8_t *) CAPS_LOCK_REPORT);
