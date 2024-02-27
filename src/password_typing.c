@@ -8,12 +8,12 @@
 #include "password_typing.h"
 #include "globals.h"
 
-
 #define REPORT_SIZE 8
 static const uint8_t EMPTY_REPORT[REPORT_SIZE] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 static const uint8_t SPACE_REPORT[REPORT_SIZE] = {0x00, 0x00, 0x2C, 0x00, 0x00, 0x00, 0x00, 0x00};
 static const uint8_t CAPS_REPORT[REPORT_SIZE] = {0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
-static const uint8_t CAPS_LOCK_REPORT[REPORT_SIZE] = {0x00, 0x00, 0x39, 0x00, 0x00, 0x00, 0x00, 0x00};
+static const uint8_t CAPS_LOCK_REPORT[REPORT_SIZE] =
+    {0x00, 0x00, 0x39, 0x00, 0x00, 0x00, 0x00, 0x00};
 static const uint8_t ENTER_REPORT[REPORT_SIZE] = {0x00, 0x00, 0x28, 0x00, 0x00, 0x00, 0x00, 0x00};
 
 bool entropyProvided;
@@ -47,7 +47,7 @@ static void usb_write_wait(unsigned char *buf) {
 static void usb_write_wait(__attribute__((unused)) unsigned char *buf) {
     return;
 }
-#endif // TESTING
+#endif  // TESTING
 
 bool type_password(uint8_t *data,
                    uint32_t dataSize,

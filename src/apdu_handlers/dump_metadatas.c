@@ -4,7 +4,6 @@
 #include "io.h"
 #include "password_ui_flows.h"
 
-
 int dump_metadatas() {
     if (app_state.user_approval == false) {
         app_state.bytes_transferred = 0;

@@ -36,11 +36,9 @@
 #include "password_ui_flows.h"
 #include "password_typing.h"
 
-
 const internalStorage_t N_storage_real;
 app_state_t app_state;
 volatile unsigned int G_led_status;
-
 
 void app_main() {
     int input_len = 0;

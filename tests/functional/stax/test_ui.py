@@ -13,9 +13,10 @@ def format_instructions(instructions: Iterable[Union[NavIns, CustomNavInsID]]) -
 
 @pytest.mark.use_on_firmware("stax")
 def test_immediate_quit(navigator):
-    navigator.navigate(format_instructions([CustomNavInsID.HOME_TO_QUIT]),
-                       screen_change_before_first_instruction=False,
-                       screen_change_after_last_instruction=False)
+    with pytest.raises(ConnectionError):
+        navigator.navigate(format_instructions([CustomNavInsID.HOME_TO_QUIT]),
+                           screen_change_before_first_instruction=False,
+                           screen_change_after_last_instruction=False)
 
 
 @pytest.mark.use_on_firmware("stax")
@@ -25,9 +26,10 @@ def test_settings_screens(navigator):
         CustomNavInsID.SETTINGS_TO_HOME,
         CustomNavInsID.HOME_TO_QUIT
     ])
-    navigator.navigate(instructions,
-                       screen_change_before_first_instruction=False,
-                       screen_change_after_last_instruction=False)
+    with pytest.raises(ConnectionError):
+        navigator.navigate(instructions,
+                           screen_change_before_first_instruction=False,
+                           screen_change_after_last_instruction=False)
 
 
 @pytest.mark.use_on_firmware("stax")
@@ -81,7 +83,6 @@ def test_create_password(navigator, functional_test_directory):
         NavIns(CustomNavInsID.KEYBOARD_WRITE, ("e", )),
         NavIns(CustomNavInsID.KEYBOARD_WRITE, ("w", )),
         CustomNavInsID.KEYBOARD_TO_CONFIRM,
-        NavIns(NavInsID.WAIT, (2.5, )),
         # return to list to see the newly created password
         CustomNavInsID.MENU_TO_DISPLAY,
     ])

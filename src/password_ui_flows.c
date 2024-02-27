@@ -39,7 +39,7 @@ void ui_request_user_approval(message_pair_t *msg) {
     display_approval_page(msg);
 }
 
-#else // if defined(TARGET_STAX)
+#else  // if defined(TARGET_STAX)
 
 #include "keyboard.h"
 #include "options.h"
@@ -232,7 +232,7 @@ static void toggle_password_setting(uint8_t caller_id, uint8_t symbols_bitflag);
 static void create_password_entry();
 #if defined(TARGET_NANOS)
 static void display_nickname_explanation();
-#endif // #if defined(TARGET_NANOS)
+#endif  // #if defined(TARGET_NANOS)
 static void enter_password_nickname();
 
 // clang-format off
@@ -635,4 +635,4 @@ void ui_idle() {
     }
 }
 
-#endif // else( if defined(TARGET_STAX) )
+#endif  // else( if defined(TARGET_STAX) )

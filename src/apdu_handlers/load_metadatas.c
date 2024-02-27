@@ -6,7 +6,6 @@
 #include "metadata.h"
 #include "password_ui_flows.h"
 
-
 int load_metadatas(uint8_t p1, uint8_t p2, const buf_t *input) {
     if ((p1 != 0 && p1 != P1_LAST_CHUNK) || p2 != 0) {
         return io_send_sw(SW_WRONG_P1P2);

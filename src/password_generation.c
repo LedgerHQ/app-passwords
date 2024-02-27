@@ -18,7 +18,6 @@
 #include <cx.h>
 #include <password_generation.h>
 
-
 static const char *SETS[] = {"ABCDEFGHIJKLMNOPQRSTUVWXYZ",  // 26
                              "abcdefghijklmnopqrstuvwxyz",  // 26
                              "0123456789",                  // 10
