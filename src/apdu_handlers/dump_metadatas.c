@@ -1,7 +1,7 @@
 #include "dump_metadatas.h"
+#include "error.h"
 #include "globals.h"
 #include "io.h"
-#include "sw.h"
 #include "password_ui_flows.h"
 
 int dump_metadatas() {
@@ -31,8 +31,7 @@ int dump_metadatas() {
 
     app_state.bytes_transferred += payload_size;
 
-    const buf_t response = {.bytes = G_io_apdu_buffer,
-                            .size = payload_size + TRANSFER_PAYLOAD_OFFSET};
-
-    return send(&response, SW_OK);
+    return io_send_response_pointer(G_io_apdu_buffer,
+                                    payload_size + TRANSFER_PAYLOAD_OFFSET,
+                                    SW_OK);
 }

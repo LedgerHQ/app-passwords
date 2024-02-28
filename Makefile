@@ -28,20 +28,19 @@ APPVERSION_N=1
 APPVERSION_P=2
 APPVERSION=$(APPVERSION_M).$(APPVERSION_N).$(APPVERSION_P)
 
-APP_LOAD_PARAMS=--appFlags 0x40 --path "5265220'" --curve secp256k1 $(COMMON_LOAD_PARAMS)
+VARIANT_PARAM = NONE
+VARIANT_VALUES = pwmgr
+
+CURVE_APP_LOAD_PARAMS = secp256k1
+PATH_APP_LOAD_PARAMS = "5265220'"
+HAVE_APPLICATION_FLAG_GLOBAL_PIN = 1
 
 DEFINES += APPNAME=\"$(APPNAME)\"
-DEFINES += MAJOR_VERSION=$(APPVERSION_M) MINOR_VERSION=$(APPVERSION_N) PATCH_VERSION=$(APPVERSION_P)
-DEFINES += APPVERSION=\"$(APPVERSION)\"
 
-ifeq ($(TARGET_NAME),TARGET_NANOS)
-    ICONNAME=icons/nanos_icon_password_manager.gif
-else ifeq ($(TARGET_NAME), TARGET_STAX)
-    ICONNAME=icons/stax_icon_password_manager_32px.gif
-else
-    ICONNAME=icons/nanox_icon_password_manager.gif
-endif
-
+ICON_NANOS = icons/nanos_icon_password_manager.gif
+ICON_NANOSP = icons/nanox_icon_password_manager.gif
+ICON_NANOX = icons/nanox_icon_password_manager.gif
+ICON_STAX = icons/stax_icon_password_manager_32px.gif
 
 DEFINES += OS_IO_SEPROXYHAL
 DEFINES += HAVE_IO_USB HAVE_L4_USBLIB IO_USB_MAX_ENDPOINTS=4 IO_HID_EP_LENGTH=64 HAVE_USB_APDU
@@ -88,53 +87,10 @@ else
     DEFINES   += POPULATE
 endif
 
-# Enabling debug PRINTF
-DEBUG ?= 0
-ifneq ($(DEBUG),0)
-    $(info DEBUG ENABLED)
-    DEFINES += HAVE_STACK_OVERFLOW_CHECK HAVE_PRINTF
-    ifeq ($(TARGET_NAME),TARGET_NANOS)
-        DEFINES   += PRINTF=screen_printf
-    else
-        DEFINES   += PRINTF=mcu_usb_printf
-    endif
-else
-    $(info DEBUG DISABLED)
-    DEFINES   += PRINTF\(...\)=
-endif
-
-##############
-#  Compiler  #
-##############
-CC      := $(CLANGPATH)clang
-AS      := $(GCCPATH)arm-none-eabi-gcc
-LD      := $(GCCPATH)arm-none-eabi-gcc
-LDLIBS  += -lm -lgcc -lc
-
-# import rules to compile glyphs(/pone)
-include $(BOLOS_SDK)/Makefile.glyphs
-
 ### computed variables
 APP_SOURCE_PATH  += src
-SDK_SOURCE_PATH  += lib_stusb lib_stusb_impl
-
-ifneq ($(TARGET_NAME), TARGET_NANOS)
-ifneq ($(TARGET_NAME), TARGET_STAX)
-    SDK_SOURCE_PATH  += lib_ux
-endif
-endif
-
-load: all
-	python -m ledgerblue.loadApp $(APP_LOAD_PARAMS)
-
-delete:
-	python -m ledgerblue.deleteApp $(COMMON_DELETE_PARAMS)
-
-# import generic rules from the sdk
-include $(BOLOS_SDK)/Makefile.rules
 
 #add dependency on custom makefile filename
 dep/%.d: %.c Makefile
 
-listvariants:
-	@echo VARIANTS NONE pwmgr
+include $(BOLOS_SDK)/Makefile.standard_app

@@ -2,6 +2,7 @@
 
 #include <stdint.h>
 
+#include "error.h"
 #include "types.h"
 
 #define METADATA_PTR(offset)       (&N_storage.metadatas[offset])

@@ -15,9 +15,11 @@
  *  limitations under the License.
  ********************************************************************************/
 
-#ifndef HID_MAPPING_H
+#pragma once
 
 #define HID_MAPPING_H
+#define SHIFT_KEY 0x02
+#define ALT_KEY   0x04
 
 #include <stdint.h>
 
@@ -29,5 +31,3 @@ enum hid_mapping_e {
 typedef enum hid_mapping_e hid_mapping_t;
 
 void map_char(hid_mapping_t mapping, uint8_t key, uint8_t *out);
-
-#endif

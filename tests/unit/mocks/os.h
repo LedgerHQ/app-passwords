@@ -6,6 +6,8 @@
 #include <string.h>
 
 #define PRINTF printf
+#define THROW(X) return
+#define EXCEPTION 1
 
 
 bool bolos_ux_mnemonic_check(const unsigned char* buffer, unsigned int length) {

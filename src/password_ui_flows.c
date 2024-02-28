@@ -1,18 +1,17 @@
-#include <usbd_hid_impl.h>
-#include <string.h>
+#include <io.h>
+#include <lib_stusb_impl/usbd_hid_impl.h>
 #include <stdbool.h>
+#include <string.h>
 
 #include <hid_mapping.h>
 
+#include "dispatcher.h"
 #include "error.h"
+#include "globals.h"
+#include "metadata.h"
 #include "password_ui_flows.h"
 #include "password.h"
-#include "globals.h"
 #include "password_typing.h"
-#include "metadata.h"
-#include "dispatcher.h"
-#include "sw.h"
-#include "io.h"
 
 #define LINE_1_SIZE 16
 char line_buffer_1[LINE_1_SIZE];
@@ -29,9 +28,6 @@ char line_buffer_2[PASSWORD_MAX_SIZE + 1];
 #define TXT_PRESS_ENTER      "Press Enter"
 #define TXT_DONT_PRESS_ENTER "Don't press Enter"
 
-ux_state_t G_ux;
-bolos_ux_params_t G_ux_params;
-
 #if defined(TARGET_STAX)
 
 #include "stax/ui.h"
@@ -43,7 +39,7 @@ void ui_request_user_approval(message_pair_t *msg) {
     display_approval_page(msg);
 }
 
-#else
+#else  // if defined(TARGET_STAX)
 
 #include "keyboard.h"
 #include "options.h"
@@ -65,7 +61,7 @@ app_state.user_approval = true; dispatch(),
 UX_STEP_CB(
 generic_cancel_step,
 pb,
-send_sw(SW_CONDITIONS_OF_USE_NOT_SATISFIED); ui_idle(),
+io_send_sw(SW_CONDITIONS_OF_USE_NOT_SATISFIED); ui_idle(),
 {
     &C_icon_back,
     "Cancel",
@@ -92,7 +88,7 @@ static void select_password_and_apply_cb();
 static void type_password_cb(const size_t offset);
 static void show_password_cb(const size_t offset);
 static void reset_password_cb(const size_t offset);
-static void ui_error(message_pair_t err);
+static void ui_error(error_type_t error);
 
 // clang-format off
 UX_STEP_INIT(
@@ -200,7 +196,7 @@ static void reset_password_cb(const size_t offset) {
     PRINTF("reset_password_cb\n");
     error_type_t err = delete_password_at_offset(offset);
     if (err != OK) {
-        ui_error(get_error(err));
+        ui_error(err);
         return;
     }
     ui_idle();
@@ -236,7 +232,7 @@ static void toggle_password_setting(uint8_t caller_id, uint8_t symbols_bitflag);
 static void create_password_entry();
 #if defined(TARGET_NANOS)
 static void display_nickname_explanation();
-#endif
+#endif  // #if defined(TARGET_NANOS)
 static void enter_password_nickname();
 
 // clang-format off
@@ -332,7 +328,7 @@ static void create_password_entry() {
     error_type_t err =
         create_new_password(G_keyboard_ctx.words_buffer, strlen(G_keyboard_ctx.words_buffer));
     if (err != OK) {
-        ui_error(get_error(err));
+        ui_error(err);
         return;
     }
     ui_idle();
@@ -377,7 +373,8 @@ bnnn_paging,
 
 UX_FLOW(err_corrupted_memory_flow, &err_corrupted_memory_step, &generic_cancel_step);
 
-static void ui_error(message_pair_t err) {
+static void ui_error(error_type_t error) {
+    message_pair_t err = get_error(error);
     strlcpy(line_buffer_1, (char*) PIC(err.first), strlen(err.first) + 1);
     strlcpy(line_buffer_2, (char*) PIC(err.second), strlen(err.second) + 1);
     ux_flow_init(0, err_corrupted_memory_flow, NULL);
@@ -638,4 +635,4 @@ void ui_idle() {
     }
 }
 
-#endif
+#endif  // else( if defined(TARGET_STAX) )
