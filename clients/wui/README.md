@@ -1,6 +1,6 @@
 # Passwords Backup
 
-[Live demo here](https://blog.ledger.com/passwords-backup/)
+[Live demo here](https://ledgerhq.github.io/app-passwords/)
 
 ## What is this Web App ?
 
