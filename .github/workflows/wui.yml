@@ -51,7 +51,7 @@ jobs:
       - name: Download documentation bundle
         uses: actions/download-artifact@v4
       - name: Deploy documentation on pages
-        uses: peaceiris/actions-gh-pages@v4
+        uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: site
