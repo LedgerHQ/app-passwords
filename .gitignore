@@ -13,3 +13,5 @@ scan-build
 tests/functional/elfs
 coverage*
 snapshots-tmp/
+
+node_modules

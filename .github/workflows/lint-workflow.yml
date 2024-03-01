@@ -42,3 +42,4 @@ jobs:
         builtin: clear,rare
         check_filenames: true
         ignore_words_list: ontop
+        skip: ./clients/wui/yarn.lock,
