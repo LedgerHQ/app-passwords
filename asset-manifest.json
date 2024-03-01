@@ -1,0 +1,24 @@
+{
+  "files": {
+    "main.css": "/passwords-backup/static/css/main.1c57864a.chunk.css",
+    "main.js": "/passwords-backup/static/js/main.b4c224bd.chunk.js",
+    "main.js.map": "/passwords-backup/static/js/main.b4c224bd.chunk.js.map",
+    "runtime-main.js": "/passwords-backup/static/js/runtime-main.229c84fd.js",
+    "runtime-main.js.map": "/passwords-backup/static/js/runtime-main.229c84fd.js.map",
+    "static/css/2.83342f34.chunk.css": "/passwords-backup/static/css/2.83342f34.chunk.css",
+    "static/js/2.8cbb6824.chunk.js": "/passwords-backup/static/js/2.8cbb6824.chunk.js",
+    "static/js/2.8cbb6824.chunk.js.map": "/passwords-backup/static/js/2.8cbb6824.chunk.js.map",
+    "index.html": "/passwords-backup/index.html",
+    "static/css/2.83342f34.chunk.css.map": "/passwords-backup/static/css/2.83342f34.chunk.css.map",
+    "static/css/main.1c57864a.chunk.css.map": "/passwords-backup/static/css/main.1c57864a.chunk.css.map",
+    "static/js/2.8cbb6824.chunk.js.LICENSE.txt": "/passwords-backup/static/js/2.8cbb6824.chunk.js.LICENSE.txt",
+    "static/media/logo.aeffe6a7.svg": "/passwords-backup/static/media/logo.aeffe6a7.svg"
+  },
+  "entrypoints": [
+    "static/js/runtime-main.229c84fd.js",
+    "static/css/2.83342f34.chunk.css",
+    "static/js/2.8cbb6824.chunk.js",
+    "static/css/main.1c57864a.chunk.css",
+    "static/js/main.b4c224bd.chunk.js"
+  ]
+}
