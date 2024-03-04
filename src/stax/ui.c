@@ -54,6 +54,7 @@ enum {
     CHOICE_CREATE_TOKEN,
     CHOICE_DELETE_TOKEN,
     KBD_TEXT_TOKEN,
+    KBL_TOKEN,
 };
 
 static void release_context(void) {
@@ -94,13 +95,37 @@ static void display_success_page(const char *string) {
  */
 static const char *const infoTypes[] = {"Version", "Passwords"};
 static const char *const infoContents[] = {APPVERSION, "(c) 2017-2023 Ledger"};
+static const char *const availableKbl[] = {"QWERTY", "QWERTY INT", "AZERTY"};
 
-#define SETTINGS_CHARSET_OPTIONS_NUMBER 5
-#define SETTINGS_MISC_OPTIONS_NUMBER    1
-#define SETTINGS_INFO_NUMBER            2
-#define SETTINGS_PAGE_NUMBER            3
+#define SETTINGS_CHARSET_OPTIONS_NUMBER  5
+#define SETTINGS_KEYBOARD_OPTIONS_NUMBER 3
+#define SETTINGS_MISC_OPTIONS_NUMBER     1
+#define SETTINGS_INFO_NUMBER             2
+#define SETTINGS_PAGE_NUMBER             4
 
 static nbgl_layoutSwitch_t switches[SETTINGS_CHARSET_OPTIONS_NUMBER];
+
+static void _prepare_kbl_choice(nbgl_pageContent_t *content) {
+    content->type = CHOICES_LIST;
+    content->choicesList.names = availableKbl;
+    content->choicesList.localized = false;
+    content->choicesList.nbChoices = 3;
+    switch (N_storage.keyboard_layout) {
+        case HID_MAPPING_QWERTY:
+            content->choicesList.initChoice = 0;
+            break;
+        case HID_MAPPING_QWERTY_INTL:
+            content->choicesList.initChoice = 1;
+            break;
+        case HID_MAPPING_AZERTY:
+            content->choicesList.initChoice = 2;
+            break;
+        default:
+            break;
+    }
+    content->choicesList.token = KBL_TOKEN;
+    content->choicesList.tuneId = TUNE_TAP_CASUAL;
+}
 
 static bool display_settings_navigation(uint8_t page, nbgl_pageContent_t *content) {
     if (page == 0) {
@@ -142,6 +167,8 @@ static bool display_settings_navigation(uint8_t page, nbgl_pageContent_t *conten
         content->switchesList.nbSwitches = SETTINGS_MISC_OPTIONS_NUMBER;
         content->switchesList.switches = &switches[0];
     } else if (page == 2) {
+        _prepare_kbl_choice(content);
+    } else if (page == 3) {
         content->type = INFOS_LIST;
         content->infosList.nbInfos = SETTINGS_INFO_NUMBER;
         content->infosList.infoTypes = infoTypes;
@@ -152,8 +179,7 @@ static bool display_settings_navigation(uint8_t page, nbgl_pageContent_t *conten
     return true;
 }
 
-static void charset_settings_callback(const int token,
-                                      const uint8_t index __attribute__((unused))) {
+static void charset_settings_callback(const int token, const uint8_t index) {
     switch (token) {
         case UPPERCASE_TOKEN:
             set_charset_option(UPPERCASE_BITFLAG);
@@ -172,6 +198,21 @@ static void charset_settings_callback(const int token,
             break;
         case NO_ENTER_TOKEN:
             change_enter_options();
+            break;
+        case KBL_TOKEN:
+            switch (index) {
+                case 0:
+                    set_keyboard_layout(HID_MAPPING_QWERTY);
+                    break;
+                case 1:
+                    set_keyboard_layout(HID_MAPPING_QWERTY_INTL);
+                    break;
+                case 2:
+                    set_keyboard_layout(HID_MAPPING_AZERTY);
+                    break;
+                default:
+                    break;
+            }
             break;
         default:
             break;
@@ -547,6 +588,8 @@ static void quit() {
     os_sched_exit(-1);
 }
 
+static void display_startup();
+
 static void display_home_page(void) {
     nbgl_useCaseHomeExt("Passwords",
                         &C_stax_icon_password_manager_64px,
@@ -578,16 +621,64 @@ static void display_approval_page(message_pair_t *msg) {
     nbgl_useCaseConfirm(&errorMessage[0], NULL, "Approve", "Refuse", approval_granted);
 }
 
+/*
+ * Startup "choose keyboard" layout page
+ */
+static void kbl_callback(const int token __attribute__((unused)), const uint8_t index) {
+    switch (index) {
+        case 0:
+            set_keyboard_layout(HID_MAPPING_QWERTY);
+            display_home_page();
+            break;
+        case 1:
+            set_keyboard_layout(HID_MAPPING_QWERTY_INTL);
+            display_home_page();
+            break;
+        case 2:
+            set_keyboard_layout(HID_MAPPING_AZERTY);
+            display_home_page();
+            break;
+        default:
+            break;
+    }
+}
+
+static bool display_startup_choose_kbl(uint8_t page, nbgl_pageContent_t *content) {
+    if (page == 0) {
+        _prepare_kbl_choice(content);
+    } else {
+        return false;
+    }
+    return true;
+}
+
+static void startup_check_settings_before_home() {
+    nbgl_useCaseStatus("Please select a\nkeyboard layout", false, &display_startup);
+}
+
+static void display_startup() {
+    nbgl_useCaseSettings("Choose keyboard layout",
+                         0,
+                         1,
+                         false,
+                         startup_check_settings_before_home,
+                         display_startup_choose_kbl,
+                         kbl_callback);
+}
 
 /*
  * Interface (password_ui_flows.h) implementations
  */
 void ui_idle() {
-    display_home_page();
+    // First start: the keyboard layout is not selected yet
+    if (N_storage.keyboard_layout == HID_MAPPING_NONE) {
+        display_startup();
+    } else {
+        display_home_page();
+    }
 }
 void ui_request_user_approval(message_pair_t *msg) {
     display_approval_page(msg);
 }
-
 
 #endif

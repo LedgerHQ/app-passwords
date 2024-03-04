@@ -3,7 +3,7 @@
 #include <stdbool.h>
 #include <string.h>
 
-#if ! defined(TARGET_STAX)
+#if !defined(TARGET_STAX)
 
 #include <hid_mapping.h>
 
@@ -492,7 +492,7 @@ static void get_current_keyboard_setting_value(hid_mapping_t mapping) {
 }
 
 static void enter_keyboard_setting(uint8_t caller_id, hid_mapping_t mapping) {
-    if (storage_keyboard_layout(mapping)) {
+    if (set_keyboard_layout(mapping)) {
         ui_idle();
     } else {
         display_change_keyboard_flow(change_keyboard_flow[caller_id]);
@@ -625,4 +625,4 @@ void ui_idle() {
     }
 }
 
-#endif  // if ! defined(TARGET_STAX)
+#endif  // if !defined(TARGET_STAX)

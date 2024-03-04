@@ -21,6 +21,7 @@ class RadioList:
 class CustomStaxScreen(metaclass=MetaScreen):
 
     use_case_home = UseCaseHomeExt
+    use_case_kbl_choice = ChoiceList
     use_case_settings = UseCaseSettings
     use_case_menu = UseCaseSettings
     use_case_confirmation = UseCaseReview

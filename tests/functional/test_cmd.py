@@ -1,8 +1,5 @@
-import pytest
-
-
 def test_app_info(cmd):
-    assert cmd.get_app_info() == ("Passwords", "1.1.2")
+    assert cmd.get_app_info() == ("Passwords", "1.2.0")
 
 
 def test_app_config(cmd):

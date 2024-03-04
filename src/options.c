@@ -16,12 +16,6 @@ uint8_t get_charset_options() {
     return charset_options;
 }
 
-bool storage_keyboard_layout(hid_mapping_t mapping) {
-    const bool return_value = (N_storage.keyboard_layout == 0);
-    nvm_write((void*) &N_storage.keyboard_layout, (void*) &mapping, sizeof(hid_mapping_t));
-    return return_value;
-}
-
 #else
 
 static void set_charset_options(uint8_t value) {
@@ -50,4 +44,10 @@ void set_charset_option(const uint8_t bitflag) {
 void change_enter_options() {
     bool new_value = !N_storage.press_enter_after_typing;
     nvm_write((void*) &N_storage.press_enter_after_typing, (void*) &new_value, sizeof(new_value));
+}
+
+bool set_keyboard_layout(hid_mapping_t mapping) {
+    const bool return_value = (N_storage.keyboard_layout == 0);
+    nvm_write((void*) &N_storage.keyboard_layout, (void*) &mapping, sizeof(hid_mapping_t));
+    return return_value;
 }
