@@ -32,7 +32,7 @@ uint8_t get_charset_options() {
     return N_storage.charset_options;
 }
 
-#endif
+#endif  // !defined(TARGET_STAX)
 
 void init_charset_options() {
     // default: uppercase (1) + lowercase (2) + numbers (4) = 7

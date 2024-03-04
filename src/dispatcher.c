@@ -19,9 +19,7 @@
 #include <lib_standard_app/offsets.h>
 #include <stdint.h>
 
-#include "apdu_handlers/dump_metadatas.h"
-#include "apdu_handlers/load_metadatas.h"
-#include "apdu_handlers/get_app_config.h"
+#include "apdu_handlers/handlers.h"
 #include "dispatcher.h"
 #include "error.h"
 #include "globals.h"

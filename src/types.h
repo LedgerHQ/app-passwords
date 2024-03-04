@@ -9,7 +9,7 @@ typedef struct internalStorage_t {
 #define STORAGE_MAGIC 0xDEAD1337
     uint32_t magic;
     bool press_enter_after_typing;
-    uint32_t keyboard_layout;
+    uint8_t keyboard_layout;
     /**
      * A metadata in memory is represented by 1 byte of size (l), 1 byte of type (to disable it if
      * required), 1 byte to select char sets, l bytes of user seed

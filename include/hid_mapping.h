@@ -24,6 +24,7 @@
 #include <stdint.h>
 
 enum hid_mapping_e {
+    HID_MAPPING_NONE = 0,
     HID_MAPPING_QWERTY = 1,
     HID_MAPPING_QWERTY_INTL = 2,
     HID_MAPPING_AZERTY = 3,

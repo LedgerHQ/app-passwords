@@ -3,15 +3,17 @@
 #include <stdbool.h>
 #include <string.h>
 
+#if ! defined(TARGET_STAX)
+
 #include <hid_mapping.h>
 
 #include "dispatcher.h"
 #include "error.h"
 #include "globals.h"
 #include "metadata.h"
-#include "password_ui_flows.h"
 #include "password.h"
 #include "password_typing.h"
+#include "ui.h"
 
 #define LINE_1_SIZE 16
 char line_buffer_1[LINE_1_SIZE];
@@ -27,19 +29,6 @@ char line_buffer_2[PASSWORD_MAX_SIZE + 1];
 #define TXT_ENTER_NICKNAME   "Enter nickname"
 #define TXT_PRESS_ENTER      "Press Enter"
 #define TXT_DONT_PRESS_ENTER "Don't press Enter"
-
-#if defined(TARGET_STAX)
-
-#include "stax/ui.h"
-
-void ui_idle() {
-    display_home_page();
-}
-void ui_request_user_approval(message_pair_t *msg) {
-    display_approval_page(msg);
-}
-
-#else  // if defined(TARGET_STAX)
 
 #include "keyboard.h"
 #include "options.h"
@@ -451,7 +440,7 @@ static void enter_keyboard_setting(uint8_t caller_id, hid_mapping_t mapping);
 
 // clang-format off
 UX_STEP_CB_INIT(
-qwerty_step,
+kbl_qwerty_step,
 pb,
 get_current_keyboard_setting_value(HID_MAPPING_QWERTY),
 enter_keyboard_setting(0, HID_MAPPING_QWERTY),
@@ -460,7 +449,7 @@ enter_keyboard_setting(0, HID_MAPPING_QWERTY),
     "Qwerty",
 });
 UX_STEP_CB_INIT(
-qwerty_international_step,
+kbl_qwerty_international_step,
 pb,
 get_current_keyboard_setting_value(HID_MAPPING_QWERTY_INTL),
 enter_keyboard_setting(1, HID_MAPPING_QWERTY_INTL),
@@ -473,7 +462,7 @@ enter_keyboard_setting(1, HID_MAPPING_QWERTY_INTL),
     #endif
 });
 UX_STEP_CB_INIT(
-azerty_step,
+kbl_azerty_step,
 pb,
 get_current_keyboard_setting_value(HID_MAPPING_AZERTY),
 enter_keyboard_setting(2, HID_MAPPING_AZERTY),
@@ -484,9 +473,9 @@ enter_keyboard_setting(2, HID_MAPPING_AZERTY),
 // clang-format on
 
 UX_FLOW(change_keyboard_flow,
-        &qwerty_step,
-        &qwerty_international_step,
-        &azerty_step,
+        &kbl_qwerty_step,
+        &kbl_qwerty_international_step,
+        &kbl_azerty_step,
         &generic_cancel_step,
         FLOW_LOOP);
 
@@ -607,10 +596,11 @@ UX_FLOW(idle_flow,
         &idle_quit_step,
         FLOW_LOOP);
 
-/* Used only when the application is first launched to setup the right keyboard*/
+/* Used only when the application is first launched to setup the right keyboard */
+
 // clang-format off
 UX_STEP_NOCB(
-explanation_step,
+kbl_selection_disclaimer_step,
 nn,
 {
     "Select the layout",
@@ -619,20 +609,20 @@ nn,
 // clang-format on
 
 UX_FLOW(setup_keyboard_at_init_flow,
-        &explanation_step,
-        &qwerty_step,
-        &qwerty_international_step,
-        &azerty_step);
+        &kbl_selection_disclaimer_step,
+        &kbl_qwerty_step,
+        &kbl_qwerty_international_step,
+        &kbl_azerty_step);
 
 void ui_idle() {
     if (G_ux.stack_count == 0) {
         ux_stack_push();
     }
-    if (N_storage.keyboard_layout != 0) {
+    if (N_storage.keyboard_layout != HID_MAPPING_NONE) {
         ux_flow_init(0, idle_flow, NULL);
     } else {
         ux_flow_init(0, setup_keyboard_at_init_flow, NULL);
     }
 }
 
-#endif  // else( if defined(TARGET_STAX) )
+#endif  // if ! defined(TARGET_STAX)

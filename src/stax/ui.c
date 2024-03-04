@@ -24,13 +24,12 @@
 #include <nbgl_page.h>
 #include <nbgl_use_case.h>
 
-#include "../error.h"
-#include "../globals.h"
-#include "../metadata.h"
-#include "../options.h"
-#include "../password.h"
-#include "../dispatcher.h"
-
+#include "error.h"
+#include "globals.h"
+#include "metadata.h"
+#include "options.h"
+#include "password.h"
+#include "dispatcher.h"
 #include "glyphs.h"
 #include "password_list.h"
 #include "ui.h"
@@ -68,6 +67,7 @@ static void release_context(void) {
     }
 }
 
+static void display_home_page(void);
 static void display_choice_page(void);
 static void display_create_pwd_page(void);
 static void display_settings_page(void);
@@ -547,7 +547,7 @@ static void quit() {
     os_sched_exit(-1);
 }
 
-void display_home_page(void) {
+static void display_home_page(void) {
     nbgl_useCaseHomeExt("Passwords",
                         &C_stax_icon_password_manager_64px,
                         "Create, type and display\npasswords through\nyour device",
@@ -561,13 +561,13 @@ void display_home_page(void) {
 /*
  * Approval page
  */
-void approval_granted() {
+static void approval_granted() {
     app_state.user_approval = true;
     dispatch();
     display_home_page();
 }
 
-void display_approval_page(message_pair_t *msg) {
+static void display_approval_page(message_pair_t *msg) {
     // using errorMessage to store the message to display
     snprintf(&errorMessage[0],
              sizeof(errorMessage),
@@ -577,5 +577,17 @@ void display_approval_page(message_pair_t *msg) {
     PRINTF("Waiting confirmation: '%s'\n", &errorMessage[0]);
     nbgl_useCaseConfirm(&errorMessage[0], NULL, "Approve", "Refuse", approval_granted);
 }
+
+
+/*
+ * Interface (password_ui_flows.h) implementations
+ */
+void ui_idle() {
+    display_home_page();
+}
+void ui_request_user_approval(message_pair_t *msg) {
+    display_approval_page(msg);
+}
+
 
 #endif
