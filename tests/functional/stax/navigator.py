@@ -1,13 +1,13 @@
-from enum import auto, Enum
+from enum import auto
 from functools import partial
-from ragger.navigator import NavInsID
+from ragger.navigator import NavInsID, BaseNavInsID
 from ragger.navigator.navigator import Navigator
 from time import sleep
 
 from .screen import CustomStaxScreen
 
 
-class CustomNavInsID(Enum):
+class CustomNavInsID(BaseNavInsID):
     WAIT = auto()
     TOUCH = auto()
     # home screen
@@ -38,6 +38,10 @@ class CustomNavInsID(Enum):
     KEYBOARD_TO_MENU = auto()
     # choosing option in choice lists (settings, menu)
     LIST_CHOOSE = auto()
+    # Keyboard layout selection
+    CHOOSE_KBL_QWERTY = auto()
+    CHOOSE_KBL_QWERTY_INTL = auto()
+    CHOOSE_KBL_AZERTY = auto()
 
 
 class CustomStaxNavigator(Navigator):
@@ -69,7 +73,10 @@ class CustomStaxNavigator(Navigator):
             CustomNavInsID.KEYBOARD_WRITE: self.screen.keyboard.write,
             CustomNavInsID.KEYBOARD_TO_CONFIRM: self.screen.keyboard_confirm.tap,
             CustomNavInsID.KEYBOARD_TO_MENU: self.screen.keyboard_cancel.tap,
-            CustomNavInsID.LIST_CHOOSE: self._choose
+            CustomNavInsID.LIST_CHOOSE: self._choose,
+            CustomNavInsID.CHOOSE_KBL_QWERTY: partial(self._choose, 0),
+            CustomNavInsID.CHOOSE_KBL_QWERTY_INTL: partial(self._choose, 1),
+            CustomNavInsID.CHOOSE_KBL_AZERTY: partial(self._choose, 2),
         }
         super().__init__(backend, firmware, callbacks) #, golden_run=True)
 
@@ -78,4 +85,4 @@ class CustomStaxNavigator(Navigator):
         # is highlighted, then will go the result page. The sleep helps **not** catching this
         # intermediate screen
         self.screen.list_choice.choose(position)
-        sleep(1)
+        sleep(0.2)

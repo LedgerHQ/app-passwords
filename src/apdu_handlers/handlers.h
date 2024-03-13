@@ -1,8 +1,8 @@
-#ifndef __DUMP_METADATAS_H__
-#define __DUMP_METADATAS_H__
+#pragma once
 
-#include "stdint.h"
-#include "os.h"
+#include <stdint.h>
+
+#include "types.h"
 
 #define TRANSFER_FLAG_OFFSET    0
 #define TRANSFER_PAYLOAD_OFFSET 1
@@ -14,5 +14,5 @@
 #define LAST_CHUNK         0xFF
 
 int dump_metadatas();
-
-#endif
+int get_app_config(uint8_t p1, uint8_t p2, const buf_t *input);
+int load_metadatas(uint8_t p1, uint8_t p2, const buf_t *input);

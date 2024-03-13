@@ -33,8 +33,8 @@
 #include "error.h"
 #include "globals.h"
 #include "metadata.h"
-#include "password_ui_flows.h"
 #include "password_typing.h"
+#include "ui.h"
 
 const internalStorage_t N_storage_real;
 app_state_t app_state;
