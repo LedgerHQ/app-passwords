@@ -3,7 +3,7 @@
 #include <stdbool.h>
 #include <string.h>
 
-#if !defined(TARGET_STAX)
+#if !defined(SCREEN_SIZE_WALLET)
 
 #include <hid_mapping.h>
 
@@ -638,4 +638,4 @@ void ui_idle() {
     }
 }
 
-#endif  // if !defined(TARGET_STAX)
+#endif  // if !defined(SCREEN_SIZE_WALLET)

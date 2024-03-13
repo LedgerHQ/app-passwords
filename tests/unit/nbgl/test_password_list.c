@@ -3,7 +3,7 @@
 #include <string.h>
 #include <cmocka.h>
 
-#include "stax/password_list.h"
+#include "nbgl/password_list.h"
 
 
 static int setup(void **state __attribute__((unused))) {
