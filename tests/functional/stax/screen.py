@@ -1,7 +1,8 @@
 from ragger.backend import BackendInterface
 from ragger.firmware import Firmware
 from ragger.firmware.stax import MetaScreen
-from ragger.firmware.stax.use_cases import UseCaseHomeExt, UseCaseReview, UseCaseSettings
+from ragger.firmware.stax.use_cases import UseCaseChoice, UseCaseHomeExt, UseCaseReview, \
+    UseCaseSettings
 from ragger.firmware.stax.layouts import ChoiceList, FullKeyboardLetters, \
     LeftHeader, TappableCenter
 
@@ -21,10 +22,11 @@ class RadioList:
 class CustomStaxScreen(metaclass=MetaScreen):
 
     use_case_home = UseCaseHomeExt
-    use_case_kbl_choice = ChoiceList
+    layout_kbl_choice = ChoiceList
     use_case_settings = UseCaseSettings
     use_case_menu = UseCaseSettings
     use_case_confirmation = UseCaseReview
+    use_case_disclaimer = UseCaseChoice
     layout_menu_choice = ChoiceList
     layout_list_choice = RadioList
     layout_keyboard = FullKeyboardLetters

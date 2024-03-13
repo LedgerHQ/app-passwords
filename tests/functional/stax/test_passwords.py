@@ -7,6 +7,7 @@ from .navigator import CustomNavInsID
 @pytest.mark.use_on_firmware("stax")
 def test_delete_one_password(navigator, functional_test_directory):
     instructions = [
+        CustomNavInsID.DISCLAIMER_CONFIRM,
         CustomNavInsID.CHOOSE_KBL_QWERTY,
         CustomNavInsID.HOME_TO_MENU,
         # ensure the password list is filled with populated passwords
@@ -28,6 +29,7 @@ def test_delete_one_password(navigator, functional_test_directory):
 @pytest.mark.use_on_firmware("stax")
 def test_delete_all_passwords(navigator, functional_test_directory):
     instructions = [
+        CustomNavInsID.DISCLAIMER_CONFIRM,
         CustomNavInsID.CHOOSE_KBL_QWERTY,
         CustomNavInsID.HOME_TO_MENU,
         # ensure the password list is filled with populated passwords
@@ -47,6 +49,7 @@ def test_delete_all_passwords(navigator, functional_test_directory):
 @pytest.mark.use_on_firmware("stax")
 def test_create_password(navigator, functional_test_directory):
     instructions = [
+        CustomNavInsID.DISCLAIMER_CONFIRM,
         CustomNavInsID.CHOOSE_KBL_QWERTY,
         CustomNavInsID.HOME_TO_MENU,
         # ensure the password list is filled with populated passwords

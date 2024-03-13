@@ -95,7 +95,7 @@ static void display_success_page(const char *string) {
  */
 static const char *const infoTypes[] = {"Version", "Passwords"};
 static const char *const infoContents[] = {APPVERSION, "(c) 2017-2023 Ledger"};
-static const char *const availableKbl[] = {"QWERTY", "QWERTY INT", "AZERTY"};
+static const char *const availableKbl[] = {"QWERTY", "QWERTY INT.", "AZERTY"};
 
 #define SETTINGS_CHARSET_OPTIONS_NUMBER  5
 #define SETTINGS_KEYBOARD_OPTIONS_NUMBER 3
@@ -305,6 +305,7 @@ static void display_create_pwd_page() {
     nbgl_layoutKbd_t kbdInfo = {.lettersOnly = false,
                                 .mode = MODE_LETTERS,
                                 .keyMask = 0,
+                                .casing = LOWER_CASE,
                                 .callback = &key_press_callback};
     nbgl_layoutCenteredInfo_t centeredInfo = {.text1 = NULL,
                                               .text2 = "New password nickname",
@@ -595,7 +596,7 @@ static void display_home_page(void) {
                         &C_stax_icon_password_manager_64px,
                         "Create, type and display\npasswords through\nyour device",
                         true,
-                        "Tap to manage\nyour passwords",
+                        "Tap to manage",
                         display_choice_page,
                         display_settings_page,
                         quit);
@@ -669,10 +670,27 @@ static void display_startup() {
 /*
  * Interface (password_ui_flows.h) implementations
  */
+
+void startup_callback(bool choice) {
+    if (choice) {
+        display_startup();
+    } else {
+        quit();
+    }
+}
+
 void ui_idle() {
     // First start: the keyboard layout is not selected yet
     if (N_storage.keyboard_layout == HID_MAPPING_NONE) {
-        display_startup();
+        nbgl_useCaseChoice(
+            &C_stax_icon_password_manager_64px,
+            "Disclaimer",
+            "Be sure to backup your passwords every time you\nupdate either your device"
+            "\nOS or this application:\nhttps://passwords.ledger.com\n\nIf not, they "
+            "will be lost.",
+            "Yes, I understand",
+            "No, this is too complicated",
+            startup_callback);
     } else {
         display_home_page();
     }

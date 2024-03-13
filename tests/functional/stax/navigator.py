@@ -42,6 +42,9 @@ class CustomNavInsID(BaseNavInsID):
     CHOOSE_KBL_QWERTY = auto()
     CHOOSE_KBL_QWERTY_INTL = auto()
     CHOOSE_KBL_AZERTY = auto()
+    # startup disclaimer
+    DISCLAIMER_CONFIRM = auto()
+    DISCLAIMER_REJECT = auto()
 
 
 class CustomStaxNavigator(Navigator):
@@ -77,6 +80,8 @@ class CustomStaxNavigator(Navigator):
             CustomNavInsID.CHOOSE_KBL_QWERTY: partial(self._choose, 0),
             CustomNavInsID.CHOOSE_KBL_QWERTY_INTL: partial(self._choose, 1),
             CustomNavInsID.CHOOSE_KBL_AZERTY: partial(self._choose, 2),
+            CustomNavInsID.DISCLAIMER_CONFIRM: self.screen.disclaimer.confirm,
+            CustomNavInsID.DISCLAIMER_REJECT: self.screen.disclaimer.reject,
         }
         super().__init__(backend, firmware, callbacks) #, golden_run=True)
 

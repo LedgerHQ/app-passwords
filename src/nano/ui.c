@@ -596,20 +596,33 @@ UX_FLOW(idle_flow,
         &idle_quit_step,
         FLOW_LOOP);
 
-/* Used only when the application is first launched to setup the right keyboard */
+/*
+ * Used only when the application is first launched:
+ * - to display the disclaimer (backup your passwords before updating)
+ * - and to select a keyboard layout
+ */
+UX_STEP_NOCB(startup_disclaimer_step,
+             bnnn_paging,
+             {
+                 .title = "Disclaimer",
+                 .text = "Be sure to backup your passwords every time you update either "
+                         "your device OS or this application: https://passwords.ledger.com. "
+                         "If not, they will be lost.",
+             });
 
 // clang-format off
 UX_STEP_NOCB(
-kbl_selection_disclaimer_step,
-nn,
-{
-    "Select the layout",
-    "of your computer",
-});
+    kbl_selection_step,
+    nn,
+    {
+        "Select the layout",
+        "of your computer",
+    });
 // clang-format on
 
 UX_FLOW(setup_keyboard_at_init_flow,
-        &kbl_selection_disclaimer_step,
+        &startup_disclaimer_step,
+        &kbl_selection_step,
         &kbl_qwerty_step,
         &kbl_qwerty_international_step,
         &kbl_azerty_step);

@@ -8,6 +8,7 @@ from .navigator import CustomNavInsID
 @pytest.mark.use_on_firmware("stax")
 def test_settings_screens(navigator, functional_test_directory):
     instructions = [
+        CustomNavInsID.DISCLAIMER_CONFIRM,
         CustomNavInsID.CHOOSE_KBL_QWERTY,
         CustomNavInsID.HOME_TO_SETTINGS,
         CustomNavInsID.SETTINGS_NEXT,
