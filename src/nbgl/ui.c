@@ -1,6 +1,6 @@
 /*******************************************************************************
  *   Password Manager application
- *   (c) 2017-2023 Ledger SAS
+ *   (c) 2017-2024 Ledger SAS
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -18,7 +18,7 @@
 #include <os.h>
 #include <string.h>
 
-#if defined(TARGET_STAX)
+#if defined(SCREEN_SIZE_WALLET)
 
 #include <nbgl_layout.h>
 #include <nbgl_page.h>
@@ -97,13 +97,15 @@ static const char *const infoTypes[] = {"Version", "Passwords"};
 static const char *const infoContents[] = {APPVERSION, "(c) 2017-2023 Ledger"};
 static const char *const availableKbl[] = {"QWERTY", "QWERTY INT.", "AZERTY"};
 
-#define SETTINGS_CHARSET_OPTIONS_NUMBER  5
-#define SETTINGS_KEYBOARD_OPTIONS_NUMBER 3
-#define SETTINGS_MISC_OPTIONS_NUMBER     1
-#define SETTINGS_INFO_NUMBER             2
-#define SETTINGS_PAGE_NUMBER             4
+#define SETTINGS_FIRST_PAGE_STAX_OPTIONS_NUMBER  5
+#define SETTINGS_FIRST_PAGE_FLEX_OPTIONS_NUMBER  4
+#define SETTINGS_SECOND_PAGE_STAX_OPTIONS_NUMBER 1
+#define SETTINGS_SECOND_PAGE_FLEX_OPTIONS_NUMBER 2
+#define SETTINGS_KEYBOARD_OPTIONS_NUMBER         3
+#define SETTINGS_INFO_NUMBER                     2
+#define SETTINGS_PAGE_NUMBER                     4
 
-static nbgl_layoutSwitch_t switches[SETTINGS_CHARSET_OPTIONS_NUMBER];
+static nbgl_layoutSwitch_t switches[SETTINGS_FIRST_PAGE_STAX_OPTIONS_NUMBER];
 
 static void _prepare_kbl_choice(nbgl_pageContent_t *content) {
     content->type = CHOICES_LIST;
@@ -149,22 +151,40 @@ static bool display_settings_navigation(uint8_t page, nbgl_pageContent_t *conten
                                             .subText = "('-', ' ', '_')",
                                             .token = BARS_TOKEN,
                                             .tuneId = TUNE_TAP_CASUAL};
+#if defined(TARGET_STAX)
         switches[4] = (nbgl_layoutSwitch_t){.initState = has_charset_option(EXT_SYMBOLS_BITFLAG),
                                             .text = "Use special characters",
                                             .subText = NULL,
                                             .token = EXT_SYMBOLS_TOKEN,
                                             .tuneId = TUNE_TAP_CASUAL};
+        content->switchesList.nbSwitches = SETTINGS_FIRST_PAGE_STAX_OPTIONS_NUMBER;
+#else   // TARGET_STAX
+        content->switchesList.nbSwitches = SETTINGS_FIRST_PAGE_FLEX_OPTIONS_NUMBER;
+#endif  // TARGET_STAX
         content->type = SWITCHES_LIST;
-        content->switchesList.nbSwitches = SETTINGS_CHARSET_OPTIONS_NUMBER;
         content->switchesList.switches = &switches[0];
+        PRINTF("PAGE 1 READY TO DISPLAY\n");
     } else if (page == 1) {
-        switches[0] = (nbgl_layoutSwitch_t){.initState = N_storage.press_enter_after_typing,
-                                            .text = "Press enter",
-                                            .subText = "after writing the password",
-                                            .token = NO_ENTER_TOKEN,
+        size_t index_after_charset = 0;
+#if defined(TARGET_FLEX)
+        switches[0] = (nbgl_layoutSwitch_t){.initState = has_charset_option(EXT_SYMBOLS_BITFLAG),
+                                            .text = "Use special characters",
+                                            .subText = NULL,
+                                            .token = EXT_SYMBOLS_TOKEN,
                                             .tuneId = TUNE_TAP_CASUAL};
+        index_after_charset++;
+        content->switchesList.nbSwitches = SETTINGS_SECOND_PAGE_FLEX_OPTIONS_NUMBER;
+#else   // TARGET_FLEX
+        content->switchesList.nbSwitches = SETTINGS_SECOND_PAGE_STAX_OPTIONS_NUMBER;
+#endif  // TARGET_FLEX
+        switches[index_after_charset] =
+            (nbgl_layoutSwitch_t){.initState = N_storage.press_enter_after_typing,
+                                  .text = "Press enter",
+                                  .subText = "after writing the password",
+                                  .token = NO_ENTER_TOKEN,
+                                  .tuneId = TUNE_TAP_CASUAL};
+
         content->type = SWITCHES_LIST;
-        content->switchesList.nbSwitches = SETTINGS_MISC_OPTIONS_NUMBER;
         content->switchesList.switches = &switches[0];
     } else if (page == 2) {
         _prepare_kbl_choice(content);
@@ -685,9 +705,15 @@ void ui_idle() {
         nbgl_useCaseChoice(
             &C_stax_icon_password_manager_64px,
             "Disclaimer",
-            "Be sure to backup your passwords every time you\nupdate either your device"
-            "\nOS or this application:\nhttps://passwords.ledger.com\n\nIf not, they "
+#if defined(TARGET_STAX)
+            "Be sure to backup your passwords every time you update either your device "
+            "OS or this application: https://passwords.ledger.com\n\nIf not, they "
             "will be lost.",
+#else  // TARGET_STAX
+            "Be sure to backup your passwords every time you update either your device "
+            "OS or this application: https://passwords.ledger.com\nIf not, they "
+            "will be lost.",
+#endif
             "Yes, I understand",
             "No, this is too complicated",
             startup_callback);

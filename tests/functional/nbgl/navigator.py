@@ -4,7 +4,7 @@ from ragger.navigator import NavInsID, BaseNavInsID
 from ragger.navigator.navigator import Navigator
 from time import sleep
 
-from .screen import CustomStaxScreen
+from .screen import CustomNBGLScreen
 
 
 class CustomNavInsID(BaseNavInsID):
@@ -47,10 +47,10 @@ class CustomNavInsID(BaseNavInsID):
     DISCLAIMER_REJECT = auto()
 
 
-class CustomStaxNavigator(Navigator):
+class CustomNBGLNavigator(Navigator):
 
     def __init__(self, backend, firmware):
-        self.screen = CustomStaxScreen(backend, firmware)
+        self.screen = CustomNBGLScreen(backend, firmware)
         callbacks = {
             # has to be defined for Ragger Navigator internals
             NavInsID.WAIT: sleep,
@@ -74,7 +74,7 @@ class CustomStaxNavigator(Navigator):
             CustomNavInsID.CONFIRM_YES: self.screen.confirmation.confirm,
             CustomNavInsID.CONFIRM_NO: self.screen.confirmation.reject,
             CustomNavInsID.KEYBOARD_WRITE: self.screen.keyboard.write,
-            CustomNavInsID.KEYBOARD_TO_CONFIRM: self.screen.keyboard_confirm.tap,
+            CustomNavInsID.KEYBOARD_TO_CONFIRM: self.screen.keyboard_confirm.confirm,
             CustomNavInsID.KEYBOARD_TO_MENU: self.screen.keyboard_cancel.tap,
             CustomNavInsID.LIST_CHOOSE: self._choose,
             CustomNavInsID.CHOOSE_KBL_QWERTY: partial(self._choose, 0),
