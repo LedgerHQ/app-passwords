@@ -4,7 +4,8 @@ from ragger.backend import RaisePolicy
 
 from passwordsManager_cmd import PasswordsManagerCommand
 from tests_vectors import tests_vectors
-from stax.navigator import CustomStaxNavigator
+from nbgl.navigator import CustomNBGLNavigator
+
 from ragger.conftest import configuration
 
 pytest_plugins = ("ragger.conftest.base_conftest", )
@@ -40,15 +41,18 @@ def cmd(custom_backend, firmware):
 
 @pytest.fixture
 def navigator(custom_backend, firmware):
-    navigator = CustomStaxNavigator(custom_backend, firmware)
+    navigator = CustomNBGLNavigator(custom_backend, firmware)
     yield navigator
 
 
 @pytest.fixture(autouse=True)
 def use_on_firmware(request, firmware):
     if request.node.get_closest_marker('use_on_firmware'):
-        current_firmware = request.node.get_closest_marker('use_on_firmware').args[0].lower()
-        if current_firmware != firmware.device:
+        accepted_firmware = request.node.get_closest_marker('use_on_firmware').args[0]
+        if isinstance(accepted_firmware, str):
+            accepted_firmware = [accepted_firmware]
+
+        if firmware.device not in [f.lower() for f in accepted_firmware]:
             pytest.skip(f'skipped on this firmware: "{firmware.device}" is not '\
                         f'"{current_firmware}"')
 
