@@ -17,7 +17,7 @@
 
 #pragma once
 
-#if !defined(TARGET_STAX)
+#if !defined(SCREEN_SIZE_WALLET)
 
 #include <os_io_seproxyhal.h>
 #include <ux.h>

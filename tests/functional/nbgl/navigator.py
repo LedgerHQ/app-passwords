@@ -4,7 +4,7 @@ from ragger.navigator import NavInsID, BaseNavInsID
 from ragger.navigator.navigator import Navigator
 from time import sleep
 
-from .screen import CustomStaxScreen
+from .screen import CustomNBGLScreen
 
 
 class CustomNavInsID(BaseNavInsID):
@@ -47,10 +47,10 @@ class CustomNavInsID(BaseNavInsID):
     DISCLAIMER_REJECT = auto()
 
 
-class CustomStaxNavigator(Navigator):
+class CustomNBGLNavigator(Navigator):
 
     def __init__(self, backend, firmware):
-        self.screen = CustomStaxScreen(backend, firmware)
+        self.screen = CustomNBGLScreen(backend, firmware)
         callbacks = {
             # has to be defined for Ragger Navigator internals
             NavInsID.WAIT: sleep,

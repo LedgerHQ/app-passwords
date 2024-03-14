@@ -4,7 +4,7 @@
 #include "options.h"
 #include "globals.h"
 
-#if !defined(TARGET_STAX)
+#if !defined(SCREEN_SIZE_WALLET)
 
 static uint8_t charset_options;
 
@@ -26,7 +26,7 @@ uint8_t get_charset_options() {
     return N_storage.charset_options;
 }
 
-#endif  // !defined(TARGET_STAX)
+#endif  // !defined(SCREEN_SIZE_WALLET)
 
 void init_charset_options() {
     // default: uppercase (1) + lowercase (2) + numbers (4) = 7
