@@ -12,4 +12,4 @@ on:
 jobs:
   guidelines_enforcer:
     name: Call Ledger guidelines_enforcer
-    uses: LedgerHQ/ledger-app-workflows/.github/workflows/reusable_guidelines_enforcer.yml@v1
+    uses: LedgerHQ/ledger-app-workflows/.github/workflows/reusable_guidelines_enforcer.yml@clean/explicit_reusable_workflow_path
