@@ -1,6 +1,6 @@
 #*******************************************************************************
 #   Ledger App
-#   (c) 2017 Ledger
+#   (c) 2017-2024 Ledger
 #
 #  Licensed under the Apache License, Version 2.0 (the "License");
 #  you may not use this file except in compliance with the License.
@@ -24,7 +24,7 @@ all: default
 
 APPNAME ="Passwords"
 APPVERSION_M=1
-APPVERSION_N=2
+APPVERSION_N=3
 APPVERSION_P=0
 APPVERSION=$(APPVERSION_M).$(APPVERSION_N).$(APPVERSION_P)
 
@@ -37,10 +37,11 @@ HAVE_APPLICATION_FLAG_GLOBAL_PIN = 1
 
 DEFINES += APPNAME=\"$(APPNAME)\"
 
-ICON_NANOS = icons/nanos_icon_password_manager.gif
-ICON_NANOSP = icons/nanox_icon_password_manager.gif
-ICON_NANOX = icons/nanox_icon_password_manager.gif
-ICON_STAX = icons/stax_icon_password_manager_32px.gif
+ICON_NANOS = icons/nanos_icon_passwords.gif
+ICON_NANOSP = icons/nanox_icon_passwords.gif
+ICON_NANOX = icons/nanox_icon_passwords.gif
+ICON_STAX = icons/stax_icon_passwords.gif
+ICON_FLEX = icons/flex_icon_passwords.gif
 
 DEFINES += OS_IO_SEPROXYHAL
 DEFINES += HAVE_IO_USB HAVE_L4_USBLIB IO_USB_MAX_ENDPOINTS=4 IO_HID_EP_LENGTH=64 HAVE_USB_APDU
@@ -58,10 +59,9 @@ else
     DEFINES   += TESTING
 endif
 
-ifneq ($(TARGET_NAME), TARGET_STAX)
+ifneq ($(TARGET_NAME), $(filter $(TARGET_NAME), TARGET_STAX TARGET_FLEX))
     $(info Using BAGL)
     DEFINES += HAVE_BAGL
-    DEFINES += HAVE_UX_FLOW
     ifneq ($(TARGET_NAME), TARGET_NANOS)
         DEFINES += IO_SEPROXYHAL_BUFFER_SIZE_B=300
         DEFINES += HAVE_GLO096

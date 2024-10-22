@@ -4,8 +4,7 @@ from requests.exceptions import ConnectionError
 from .navigator import CustomNavInsID
 
 
-
-@pytest.mark.use_on_firmware("stax")
+@pytest.mark.use_on_firmware(["stax", "flex"])
 def test_settings_screens(navigator, functional_test_directory):
     instructions = [
         CustomNavInsID.DISCLAIMER_CONFIRM,

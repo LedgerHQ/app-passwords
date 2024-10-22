@@ -4,7 +4,7 @@ from ragger.navigator import NavInsID, BaseNavInsID
 from ragger.navigator.navigator import Navigator
 from time import sleep
 
-from .screen import CustomStaxScreen
+from .screen import CustomTouchScreen
 
 
 class CustomNavInsID(BaseNavInsID):
@@ -47,13 +47,14 @@ class CustomNavInsID(BaseNavInsID):
     DISCLAIMER_REJECT = auto()
 
 
-class CustomStaxNavigator(Navigator):
+class CustomTouchNavigator(Navigator):
 
-    def __init__(self, backend, firmware):
-        self.screen = CustomStaxScreen(backend, firmware)
+    def __init__(self, backend, firmware, golden_run=False):
+        self.screen = CustomTouchScreen(backend, firmware)
         callbacks = {
             # has to be defined for Ragger Navigator internals
             NavInsID.WAIT: sleep,
+            NavInsID.WAIT_FOR_SCREEN_CHANGE: backend.wait_for_screen_change,
             CustomNavInsID.WAIT: sleep,
             CustomNavInsID.TOUCH: backend.finger_touch,
             CustomNavInsID.HOME_TO_SETTINGS: self.screen.home.settings,
@@ -74,7 +75,7 @@ class CustomStaxNavigator(Navigator):
             CustomNavInsID.CONFIRM_YES: self.screen.confirmation.confirm,
             CustomNavInsID.CONFIRM_NO: self.screen.confirmation.reject,
             CustomNavInsID.KEYBOARD_WRITE: self.screen.keyboard.write,
-            CustomNavInsID.KEYBOARD_TO_CONFIRM: self.screen.keyboard_confirm.tap,
+            CustomNavInsID.KEYBOARD_TO_CONFIRM: self.screen.keyboard_confirm.confirm,
             CustomNavInsID.KEYBOARD_TO_MENU: self.screen.keyboard_cancel.tap,
             CustomNavInsID.LIST_CHOOSE: self._choose,
             CustomNavInsID.CHOOSE_KBL_QWERTY: partial(self._choose, 0),
@@ -83,7 +84,7 @@ class CustomStaxNavigator(Navigator):
             CustomNavInsID.DISCLAIMER_CONFIRM: self.screen.disclaimer.confirm,
             CustomNavInsID.DISCLAIMER_REJECT: self.screen.disclaimer.reject,
         }
-        super().__init__(backend, firmware, callbacks) #, golden_run=True)
+        super().__init__(backend, firmware, callbacks, golden_run=golden_run)
 
     def _choose(self, position: int):
         # Choosing a field in settings list will display a temporary screen where the chosen field

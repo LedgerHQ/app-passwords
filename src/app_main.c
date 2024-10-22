@@ -58,7 +58,8 @@ void app_main() {
     create_new_password("password1", sizeof("password1") - 1);
     create_new_password("password2", sizeof("password2") - 1);
     create_new_password("password3", sizeof("password3") - 1);
-#endif
+#endif  // POPULATE
+
     for (;;) {
         BEGIN_TRY {
             TRY {
