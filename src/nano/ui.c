@@ -1,5 +1,4 @@
 #include <io.h>
-#include <lib_stusb_impl/usbd_hid_impl.h>
 #include <stdbool.h>
 #include <string.h>
 

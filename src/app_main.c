@@ -26,7 +26,6 @@
 #include <ctr_drbg.h>
 #include <hid_mapping.h>
 #include <password_generation.h>
-#include <usbd_hid_impl.h>
 
 #include "glyphs.h"
 #include "dispatcher.h"
@@ -48,8 +47,8 @@ void app_main() {
 
     ui_idle();
 
-    app_state.io.output_len = 0;
-    app_state.io.state = READY;
+    io_init();
+    app_state.output_len = 0;
 
 #if defined(POPULATE)
 #include "password.h"
