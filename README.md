@@ -56,6 +56,19 @@ These nicknames are not confidential (meaning, someone who finds them will not b
 
 ### Unit
 
+#### Prerequisite
+
+Be sure to have installed:
+
+- CMake >= 3.10
+- CMocka >= 1.1.5
+
+and for code coverage generation:
+
+- lcov >= 1.14
+
+#### Overview
+
 Unit tests are in `C` and uses `cmake` to build and `cmocka` as a library.
 You will then need to compile the tests:
 
