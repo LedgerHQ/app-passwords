@@ -2,15 +2,15 @@ import pytest
 from pathlib import Path
 from ragger.backend import RaisePolicy
 
+from ledgered.devices import Device, Devices
 from passwordsManager_cmd import PasswordsManagerCommand
 from tests_vectors import tests_vectors
 from stax.navigator import CustomStaxNavigator
-from ragger.conftest import configuration
 
 pytest_plugins = ("ragger.conftest.base_conftest", )
 
 
-# Glue to call every test that depends on the firmware once for each required firmware
+# Glue to call every test that depends on the device once for each required device
 def pytest_generate_tests(metafunc):
     if "test_vector" in metafunc.fixturenames:
         metafunc.parametrize(
@@ -29,34 +29,34 @@ def custom_backend(backend):
 
 
 @pytest.fixture
-def cmd(custom_backend, firmware):
+def cmd(custom_backend, device):
     command = PasswordsManagerCommand(
         transport=custom_backend,
-        firmware=firmware,
+        device=device,
         debug=True
     )
     yield command
 
 
 @pytest.fixture
-def navigator(custom_backend, firmware):
-    navigator = CustomStaxNavigator(custom_backend, firmware)
+def navigator(custom_backend, device, golden_run):
+    navigator = CustomStaxNavigator(custom_backend, device, golden_run)
     yield navigator
 
 
 @pytest.fixture(autouse=True)
-def use_on_firmware(request, firmware):
-    if request.node.get_closest_marker('use_on_firmware'):
-        current_firmware = request.node.get_closest_marker('use_on_firmware').args[0].lower()
-        if current_firmware != firmware.device:
-            pytest.skip(f'skipped on this firmware: "{firmware.device}" is not '\
-                        f'"{current_firmware}"')
+def use_on_device(request, device: Device):
+    if request.node.get_closest_marker('use_on_device'):
+        current_device = request.node.get_closest_marker('use_on_device').args[0].lower()
+        if Devices.get_by_name(current_device).type != device.type:
+            pytest.skip(f'skipped on this device: "{device}" is not '\
+                        f'"{current_device}"')
 
 
 def pytest_configure(config):
     config.addinivalue_line(
         "markers",
-        "use_on_firmware(firmware): skip test if not on the specified firmware",
+        "use_on_device(device): skip test if not on the specified device",
     )
     config.addinivalue_line(
         "markers",

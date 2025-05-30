@@ -1,9 +1,9 @@
 import enum
 
 from exception import DeviceException
+from ledgered.devices import Device
 from ragger.backend import BackendInterface
-from ragger.firmware import Firmware
-from ragger.firmware.stax.positions import BUTTON_ABOVE_LOWER_MIDDLE
+from ragger.firmware.touch.positions import STAX_BUTTON_ABOVE_LOWER_MIDDLE
 
 CLA_SDK: int = 0xb0
 CLA: int = 0xe0
@@ -24,16 +24,16 @@ class TestInsType(enum.IntEnum):
 class PasswordsManagerCommand:
     def __init__(self,
                  transport: BackendInterface,
-                 firmware: Firmware,
+                 device: Device,
                  debug: bool = False) -> None:
         self.transport = transport
-        self.firmware = firmware
+        self.device = device
         self.debug = debug
         self.approved: bool = False
 
     def approve(self):
-        if self.firmware.has_nbgl:
-            self.transport.finger_touch(*BUTTON_ABOVE_LOWER_MIDDLE)
+        if self.device.touchable:
+            self.transport.finger_touch(*STAX_BUTTON_ABOVE_LOWER_MIDDLE)
         else:
             self.transport.both_click()
 

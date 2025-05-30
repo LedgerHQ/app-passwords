@@ -4,7 +4,7 @@ from requests.exceptions import ConnectionError
 from .navigator import CustomNavInsID
 
 
-@pytest.mark.use_on_firmware("stax")
+@pytest.mark.use_on_device("stax")
 def test_immediate_quit(navigator):
     instructions = [
         CustomNavInsID.DISCLAIMER_CONFIRM,
