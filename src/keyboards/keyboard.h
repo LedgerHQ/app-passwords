@@ -32,7 +32,7 @@
        // parameter
 #define KEYBOARD_RENDER_WORD \
     3  // callback is called with a -1 when requesting complete word, or the char
-       // index else, returnin 0 implies no char is to be displayed
+       // index else, returning 0 implies no char is to be displayed
 typedef const bagl_element_t* (*keyboard_callback_t)(unsigned int event, unsigned int value);
 
 // bolos ux context (not mandatory if redesigning a bolos ux)
