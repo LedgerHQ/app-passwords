@@ -1,17 +1,17 @@
+from ledgered.devices import Device
 from ragger.backend import BackendInterface
-from ragger.firmware import Firmware
-from ragger.firmware.stax import MetaScreen
-from ragger.firmware.stax.use_cases import UseCaseChoice, UseCaseHomeExt, UseCaseReview, \
+from ragger.firmware.touch import MetaScreen
+from ragger.firmware.touch.use_cases import UseCaseChoice, UseCaseHomeExt, UseCaseReview, \
     UseCaseSettings
-from ragger.firmware.stax.layouts import ChoiceList, FullKeyboardLetters, \
+from ragger.firmware.touch.layouts import ChoiceList, FullKeyboardLetters, \
     LeftHeader, TappableCenter
 
 
 class RadioList:
 
-    def __init__(self, backend: BackendInterface, firmware: Firmware):
+    def __init__(self, backend: BackendInterface, device: Device):
         self.backend = backend
-        self.firmware = firmware
+        self.device = device
 
     def choose(self, index: int):
         positions = [(200, 130), (200, 210), (200, 290), (200, 370), (200, 450)]

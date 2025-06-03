@@ -49,8 +49,8 @@ class CustomNavInsID(BaseNavInsID):
 
 class CustomStaxNavigator(Navigator):
 
-    def __init__(self, backend, firmware):
-        self.screen = CustomStaxScreen(backend, firmware)
+    def __init__(self, backend, device, golden_run):
+        self.screen = CustomStaxScreen(backend, device)
         callbacks = {
             # has to be defined for Ragger Navigator internals
             NavInsID.WAIT: sleep,
@@ -83,7 +83,7 @@ class CustomStaxNavigator(Navigator):
             CustomNavInsID.DISCLAIMER_CONFIRM: self.screen.disclaimer.confirm,
             CustomNavInsID.DISCLAIMER_REJECT: self.screen.disclaimer.reject,
         }
-        super().__init__(backend, firmware, callbacks) #, golden_run=True)
+        super().__init__(backend, device, callbacks, golden_run)
 
     def _choose(self, position: int):
         # Choosing a field in settings list will display a temporary screen where the chosen field

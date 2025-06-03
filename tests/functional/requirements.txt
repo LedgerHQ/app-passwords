@@ -1,2 +1,3 @@
 pytest>=6.1.1
+ledgered
 ragger[tests,speculos]

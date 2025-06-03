@@ -6,6 +6,7 @@ obj
 src/glyphs.c
 src/glyphs.h
 *.pyc
+.python-version
 *~
 speculos.log
 scan-build
