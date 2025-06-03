@@ -31,10 +31,7 @@ typedef enum {
 } cmd_e;
 
 typedef struct app_state_s {
-    struct {
-        io_state_e state;
-        size_t output_len;
-    } io;
+    size_t output_len;
     cmd_e current_command;
     size_t bytes_transferred;
     bool user_approval;

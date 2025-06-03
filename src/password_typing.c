@@ -5,6 +5,10 @@
 #include <hid_mapping.h>
 #include <usbd_hid_impl.h>
 
+#ifdef REVAMPED_IO
+#include "usbd_ledger.h"
+#endif  // REVAMPED_IO
+
 #include "password_typing.h"
 #include "globals.h"
 
@@ -31,6 +35,12 @@ static int entropyProvider2(__attribute__((unused)) void *context,
 }
 
 #ifndef TESTING
+#ifdef REVAMPED_IO
+static void usb_write_wait(unsigned char *buf) {
+    USBD_LEDGER_send(USBD_LEDGER_CLASS_HID_KBD, 0, buf, REPORT_SIZE, 0);
+    os_io_seph_cmd_general_status();
+}
+#else   // REVAMPED_IO
 static void usb_write_wait(unsigned char *buf) {
     io_usb_send_ep(HID_EPIN_ADDR, buf, REPORT_SIZE, 60);
 
@@ -43,6 +53,7 @@ static void usb_write_wait(unsigned char *buf) {
         io_seproxyhal_handle_event();
     }
 }
+#endif  // !REVAMPED_IO
 #else
 static void usb_write_wait(__attribute__((unused)) unsigned char *buf) {
     return;
