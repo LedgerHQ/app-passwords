@@ -1,6 +1,6 @@
 /*******************************************************************************
- *   Ledger Blue - Secure firmware
- *   (c) 2016, 2017 Ledger
+ *   Password Manager application
+ *   (c) 2017-2023 Ledger SAS
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -15,11 +15,12 @@
  *  limitations under the License.
  ********************************************************************************/
 
-#ifndef BOLOS_UX_H
-#define BOLOS_UX_H
+#pragma once
 
-#include "os_io_seproxyhal.h"
-#include "ux.h"
+#if !defined(TARGET_STAX)
+
+#include <os_io_seproxyhal.h>
+#include <ux.h>
 
 #define KEYBOARD_ITEM_VALIDATED \
     1  // callback is called with the entered item index, tmp_element is
@@ -31,7 +32,7 @@
        // parameter
 #define KEYBOARD_RENDER_WORD \
     3  // callback is called with a -1 when requesting complete word, or the char
-       // index else, returnin 0 implies no char is to be displayed
+       // index else, returning 0 implies no char is to be displayed
 typedef const bagl_element_t* (*keyboard_callback_t)(unsigned int event, unsigned int value);
 
 // bolos ux context (not mandatory if redesigning a bolos ux)
@@ -78,4 +79,4 @@ void screen_common_keyboard_init(unsigned int stack_slot,
                                  keyboard_callback_t callback);
 void screen_text_keyboard_init(char* buffer, unsigned int maxsize, appmain_t validation_callback);
 
-#endif  // BOLOS_UX_H
+#endif

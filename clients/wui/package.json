@@ -1,0 +1,50 @@
+{
+  "name": "passwords-backup",
+  "version": "0.1.0",
+  "private": true,
+  "homepage": "https://passwords.ledger.com",
+  "dependencies": {
+    "@ledgerhq/hw-transport-webusb": "^5.49.0",
+    "install": "^0.13.0",
+    "react": "^17.0.1",
+    "react-accessible-accordion": "^3.3.3",
+    "react-dom": "^17.0.1",
+    "react-markdown": "^5.0.2",
+    "react-toastify": "^6.0.9",
+    "web-vitals": "^0.2.4"
+  },
+  "scripts": {
+    "start": "react-scripts start",
+    "build": "react-scripts build",
+    "test": "react-scripts test",
+    "eject": "react-scripts eject",
+    "predeploy": "npm run build",
+    "deploy": "gh-pages -d build"
+  },
+  "eslintConfig": {
+    "extends": [
+      "react-app",
+      "react-app/jest"
+    ]
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  },
+  "devDependencies": {
+    "@testing-library/jest-dom": "^5.11.4",
+    "@testing-library/react": "^11.1.0",
+    "@testing-library/user-event": "^12.1.10",
+    "gh-pages": "^3.1.0",
+    "prettier": "^2.1.2",
+    "react-scripts": "4.0.0"
+  }
+}

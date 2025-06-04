@@ -7,7 +7,7 @@
 
 #include "keyboard.h"
 
-#ifdef TARGET_NANOS
+#if defined(TARGET_NANOS)
 
 const bagl_element_t screen_common_keyboard_elements[] = {
 
@@ -211,7 +211,7 @@ const bagl_element_t* screen_common_keyboard_before_element_display_callback(
     const bagl_element_t* element) {
     const bagl_element_t* e;
     // copy element to be displayed
-    os_memmove(&G_ux.tmp_element, (void*) PIC(element), sizeof(G_ux.tmp_element));
+    memmove(&G_ux.tmp_element, (void*) PIC(element), sizeof(G_ux.tmp_element));
 
     switch (element->component.userid) {
         case 0x01:
@@ -269,9 +269,8 @@ const bagl_element_t* screen_common_keyboard_before_element_display_callback(
 }
 
 unsigned int screen_common_keyboard_button(unsigned int button_mask,
-                                           unsigned int button_mask_counter) {
-    UNUSED(button_mask_counter);
-
+                                           unsigned int button_mask_counter
+                                           __attribute__((unused))) {
     switch (button_mask) {
         case BUTTON_EVT_RELEASED | BUTTON_LEFT | BUTTON_RIGHT:  // validate current digit
 

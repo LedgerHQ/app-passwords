@@ -1,6 +1,6 @@
 /*******************************************************************************
  *   Password Manager application
- *   (c) 2017 Ledger
+ *   (c) 2017-2023 Ledger SAS
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -15,10 +15,8 @@
  *  limitations under the License.
  ********************************************************************************/
 
-#include <string.h>
-#include "os.h"
-#include "cx.h"
-#include "password_generation.h"
+#include <cx.h>
+#include <password_generation.h>
 
 static const char *SETS[] = {"ABCDEFGHIJKLMNOPQRSTUVWXYZ",  // 26
                              "abcdefghijklmnopqrstuvwxyz",  // 26
@@ -30,7 +28,10 @@ static const char *SETS[] = {"ABCDEFGHIJKLMNOPQRSTUVWXYZ",  // 26
                              "[]{}()<>",                  // 8
                              NULL};
 
-uint8_t rng_u8_modulo(mbedtls_ctr_drbg_context *drbg, uint8_t modulo) {
+static uint8_t rng_u8_modulo(mbedtls_ctr_drbg_context *drbg, uint8_t modulo) {
+    if (modulo == 0) {
+        THROW(EXCEPTION);
+    }
     uint32_t rng_max = 256 % modulo;
     uint32_t rng_limit = 256 - rng_max;
     uint8_t candidate = 0;
@@ -43,7 +44,7 @@ uint8_t rng_u8_modulo(mbedtls_ctr_drbg_context *drbg, uint8_t modulo) {
     return (candidate % modulo);
 }
 
-void shuffle_array(mbedtls_ctr_drbg_context *drbg, uint8_t *buffer, uint32_t size) {
+static void shuffle_array(mbedtls_ctr_drbg_context *drbg, uint8_t *buffer, uint32_t size) {
     uint32_t i;
     for (i = size - 1; i > 0; i--) {
         uint32_t index = rng_u8_modulo(drbg, i + 1);
@@ -54,11 +55,11 @@ void shuffle_array(mbedtls_ctr_drbg_context *drbg, uint8_t *buffer, uint32_t siz
 }
 
 /* Sample from set with replacement */
-void sample(mbedtls_ctr_drbg_context *drbg,
-            const uint8_t *set,
-            uint32_t setSize,
-            uint8_t *out,
-            uint32_t size) {
+static void sample(mbedtls_ctr_drbg_context *drbg,
+                   const uint8_t *set,
+                   uint32_t setSize,
+                   uint8_t *out,
+                   uint32_t size) {
     uint32_t i;
     for (i = 0; i < size; i++) {
         uint32_t index = rng_u8_modulo(drbg, setSize);
@@ -80,7 +81,7 @@ uint32_t generate_password(mbedtls_ctr_drbg_context *drbg,
         if (setMask & 1) {
             const uint8_t *set = (const uint8_t *) PIC(SETS[i]);
             uint32_t setSize = strlen((const char *) set);
-            os_memcpy(setChars + setCharsOffset, set, setSize);
+            memcpy(setChars + setCharsOffset, set, setSize);
             setCharsOffset += setSize;
 
             // for at least requested minimum chars from that set

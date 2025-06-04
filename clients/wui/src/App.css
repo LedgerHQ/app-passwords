@@ -1,0 +1,71 @@
+.App {
+  text-align: center;
+}
+
+html {background-color: #232123}
+
+.App-banner {
+  margin-top: 10vh;
+  margin-bottom: 10vh;
+  justify-content: center;
+  display: flex;
+  flex-direction: row;
+  max-height: 10vh;
+  color: white;
+}
+
+.App-header {
+  min-width: 100vw;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: white;
+}
+
+.App-logo {
+  width: 10vh;
+  height: auto;
+  pointer-events: none;
+}
+
+.App-title {
+  margin-left: 1.5vh;
+  font-size: 3vh;
+  font-weight: 1;
+}
+
+.App-link {
+  color: #61dafb;
+}
+
+.Commands {
+  /* margin-top: 10vh; */
+  margin-bottom: 6vh;
+  display: flex;
+  flex-direction: row;
+
+}
+
+.Toastify__toast-container {
+  width: 400px;
+}
+
+.App-footer a {
+    color: #61dafb;
+    text-decoration: none;
+  }
+
+@media only screen and (orientation: landscape) {
+  .App-footer {
+    margin-top: 6vh;
+    font-size: 1.2vh;
+  }
+}
+
+@media only screen and (orientation: portrait) {
+  .App-footer {
+    margin-top: 6vw;
+    font-size: 1.2vw;
+  }
+}

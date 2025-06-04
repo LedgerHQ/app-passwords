@@ -1,2 +1,0 @@
-pytest>=6.1.1
-ledgercomm>=1.0.2

@@ -5,7 +5,7 @@
 
 #include "keyboard.h"
 
-#define ARRAYLEN(array) (sizeof(array) / sizeof(array[0]))
+#if !defined(TARGET_STAX)
 
 void bolos_ux_hslider3_init(unsigned int total_count) {
     G_keyboard_ctx.hslider3_total = total_count;
@@ -100,3 +100,5 @@ void bolos_ux_hslider3_previous(void) {
             break;
     }
 }
+
+#endif

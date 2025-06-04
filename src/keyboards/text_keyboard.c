@@ -1,7 +1,10 @@
-#include "os.h"
-#include "ux.h"
-#include "string.h"
-#include "stdint.h"
+#include <os.h>
+#include <string.h>
+#include <stdint.h>
+#include <ux.h>
+
+#if !defined(TARGET_STAX)
+
 #include "keyboard.h"
 
 const char* const screen_keyboard_classes_elements[] = {
@@ -107,24 +110,22 @@ const bagl_element_t* screen_keyboard_item_callback(unsigned int event, unsigned
                     screen_keyboard_item_callback);
                 return NULL;
             }
+            break;
 
         case KEYBOARD_RENDER_ITEM:
             G_ux.tmp_element.text = G_ux.string_buffer;
-            os_memset(G_ux.string_buffer, 0, 3);
+            memset(G_ux.string_buffer, 0, 3);
             if (GET_CHAR(G_keyboard_ctx.onboarding_step, value) == '\b') {
                 value = 3;
-                goto set_bitmap;
             } else if (GET_CHAR(G_keyboard_ctx.onboarding_step, value) == '\r') {
                 value = 5;
-                goto set_bitmap;
             } else if (GET_CHAR(G_keyboard_ctx.onboarding_step, value) == '\n') {
                 value = 4;
-
-            set_bitmap:
-                screen_keyboard_render_icon(value);
             } else {
                 G_ux.string_buffer[0] = GET_CHAR(G_keyboard_ctx.onboarding_step, value);
+                break;
             }
+            screen_keyboard_render_icon(value);
             break;
 
         case KEYBOARD_RENDER_WORD: {
@@ -182,7 +183,11 @@ const bagl_element_t* screen_keyboard_class_callback(unsigned int event, unsigne
                     return NULL;
 
                 case 0:
+                    /* fallthrough */
+                    __attribute__((fallthrough));
                 case 1:
+                    /* fallthrough */
+                    __attribute__((fallthrough));
                 case 2:
                     G_keyboard_ctx.onboarding_step = value + (strlen(PP_BUFFER) ? 0 : 3);
                     screen_common_keyboard_init(
@@ -214,3 +219,5 @@ void screen_text_keyboard_init(char* buffer, unsigned int maxsize, appmain_t val
     screen_keyboard_validation = validation_callback;
     screen_common_keyboard_init(0, 0, 3, screen_keyboard_class_callback);
 }
+
+#endif

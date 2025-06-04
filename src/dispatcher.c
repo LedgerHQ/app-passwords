@@ -1,6 +1,6 @@
-/*****************************************************************************
- *   Ledger App Boilerplate.
- *   (c) 2020 Ledger SAS.
+/*******************************************************************************
+ *   Password Manager application
+ *   (c) 2017-2023 Ledger SAS
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -13,23 +13,22 @@
  *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
- *****************************************************************************/
+ ********************************************************************************/
 
+#include <io.h>
+#include <lib_standard_app/offsets.h>
 #include <stdint.h>
 
+#include "apdu_handlers/handlers.h"
 #include "dispatcher.h"
-#include "types.h"
+#include "error.h"
 #include "globals.h"
-#include "io.h"
-#include "sw.h"
-#include "apdu_handlers/dump_metadatas.h"
-#include "apdu_handlers/load_metadatas.h"
-#include "apdu_handlers/get_app_config.h"
 #include "tests/tests.h"
+#include "types.h"
 
 int dispatch() {
     if (G_io_apdu_buffer[OFFSET_CLA] != CLA) {
-        return send_sw(SW_CLA_NOT_SUPPORTED);
+        return io_send_sw(SW_CLA_NOT_SUPPORTED);
     }
 
     uint8_t ins = G_io_apdu_buffer[OFFSET_INS];
@@ -54,9 +53,8 @@ int dispatch() {
 #ifdef TESTING
         case RUN_TEST:
             return test_dispatcher(p1, p2, &input);
-            break;
 #endif
         default:
-            return send_sw(SW_INS_NOT_SUPPORTED);
+            return io_send_sw(SW_INS_NOT_SUPPORTED);
     }
 }

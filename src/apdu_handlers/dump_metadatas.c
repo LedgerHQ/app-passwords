@@ -1,8 +1,8 @@
-#include "dump_metadatas.h"
+#include "error.h"
 #include "globals.h"
+#include "handlers.h"
 #include "io.h"
-#include "sw.h"
-#include "password_ui_flows.h"
+#include "ui.h"
 
 int dump_metadatas() {
     if (app_state.user_approval == false) {
@@ -25,14 +25,13 @@ int dump_metadatas() {
         G_io_apdu_buffer[TRANSFER_FLAG_OFFSET] = MORE_DATA_INCOMING;
     }
 
-    os_memcpy(&G_io_apdu_buffer[TRANSFER_PAYLOAD_OFFSET],
-              (const void*) N_storage.metadatas + app_state.bytes_transferred,
-              payload_size);
+    memcpy(&G_io_apdu_buffer[TRANSFER_PAYLOAD_OFFSET],
+           (const void*) N_storage.metadatas + app_state.bytes_transferred,
+           payload_size);
 
     app_state.bytes_transferred += payload_size;
 
-    const buf_t response = {.bytes = G_io_apdu_buffer,
-                            .size = payload_size + TRANSFER_PAYLOAD_OFFSET};
-
-    return send(&response, SW_OK);
+    return io_send_response_pointer(G_io_apdu_buffer,
+                                    payload_size + TRANSFER_PAYLOAD_OFFSET,
+                                    SW_OK);
 }

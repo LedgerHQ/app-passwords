@@ -54,21 +54,63 @@ These nicknames are not confidential (meaning, someone who finds them will not b
 
 ## Tests
 
-Tests are written with Pytest. Before running them, you first need to compile the application with env variable `TESTING=1`:
+### Unit
 
-`make all TESTING=1 `
+#### Prerequisite
+
+Be sure to have installed:
+
+- CMake >= 3.10
+- CMocka >= 1.1.5
+
+and for code coverage generation:
+
+- lcov >= 1.14
+
+#### Overview
+
+Unit tests are in `C` and uses `cmake` to build and `cmocka` as a library.
+You will then need to compile the tests:
+
+```bash
+(cd tests/unit/ && \
+ rm -rf build/ && \
+ cmake -B build -H. && \
+ make -C build)
+```
+
+You can then run the tests:
+
+```bash
+(cd tests/unit/ && \
+ CTEST_OUTPUT_ON_FAILURE=1 make -C build test)
+```
+
+### Functional
+
+Functional tests are written with Pytest. Before running them, you first need to compile the application with env variables `TESTING=1` and `POPULATE=1`:
+
+```bash
+make all TESTING=1 POPULATE=1
+```
 
 Then you can execute tests on speculos with:
 
-`pytest`
+```bash
+pytest tests/functional
+```
 
 To run tests on a real device, load the app on it:
 
-`make load TESTING=1 `
+```bash
+make load TESTING=1 POPULATE=1
+```
 
 Then open the app on your device and run:
 
-`pytest --hid`
+```bash
+pytest --hid
+```
 
 ## Future work
 
