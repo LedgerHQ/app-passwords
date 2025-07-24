@@ -32,6 +32,12 @@ char line_buffer_2[PASSWORD_MAX_SIZE + 1];
 #include "keyboard.h"
 #include "options.h"
 
+#if defined(TARGET_NANOS)
+extern void __attribute__((noreturn)) app_exit(void);
+#else
+#include <main_std_app.h>
+#endif /* #if defined(TARGET_NANOS) */
+
 keyboard_ctx_t G_keyboard_ctx;
 
 ///////////////////////////////// USER APPROVAL //////////////////////////////////////////////
@@ -578,7 +584,7 @@ bn,
 UX_STEP_CB(
 idle_quit_step,
 pb,
-os_sched_exit(-1),
+app_exit(),
 {
     &C_icon_dashboard,
     "Quit",
