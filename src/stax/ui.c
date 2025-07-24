@@ -26,6 +26,7 @@
 
 #include "error.h"
 #include "globals.h"
+#include <main_std_app.h>
 #include "metadata.h"
 #include "options.h"
 #include "password.h"
@@ -586,7 +587,7 @@ static void display_choice_page() {
  */
 static void quit() {
     release_context();
-    os_sched_exit(-1);
+    app_exit();
 }
 
 static void display_startup();
