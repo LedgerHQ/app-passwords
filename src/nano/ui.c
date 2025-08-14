@@ -53,7 +53,7 @@ generic_cancel_step,
 pb,
 io_send_sw(SW_CONDITIONS_OF_USE_NOT_SATISFIED); ui_idle(),
 {
-    &C_icon_back,
+    &C_icon_back_x,
     "Cancel",
 });
 // clang-format on

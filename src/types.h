@@ -5,6 +5,9 @@
 #include <stdbool.h>
 #include "io.h"
 
+#define MAX_METADATAS 4096
+#define MAX_METANAME  20
+
 typedef struct internalStorage_t {
 #define STORAGE_MAGIC 0xDEAD1337
     uint32_t magic;

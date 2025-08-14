@@ -5,6 +5,7 @@
 #endif
 
 #include "password_list.h"
+#include "types.h"
 
 typedef struct passwordList_s {
     /*
