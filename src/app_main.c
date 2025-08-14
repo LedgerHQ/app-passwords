@@ -15,17 +15,17 @@
  *  limitations under the License.
  ********************************************************************************/
 
-#include <cx.h>
-#include <io.h>
-#include <os.h>
-#include <os_io_seproxyhal.h>
-#include <lib_standard_app/offsets.h>
 #include <stdbool.h>
 #include <string.h>
+#include "cx.h"
+#include "io.h"
+#include "os.h"
+#include "os_io_seproxyhal.h"
+#include "offsets.h"
 
-#include <ctr_drbg.h>
-#include <hid_mapping.h>
-#include <password_generation.h>
+#include "ctr_drbg.h"
+#include "hid_mapping.h"
+#include "password_generation.h"
 
 #include "glyphs.h"
 #include "dispatcher.h"
@@ -57,7 +57,8 @@ void app_main() {
     create_new_password("password1", sizeof("password1") - 1);
     create_new_password("password2", sizeof("password2") - 1);
     create_new_password("password3", sizeof("password3") - 1);
-#endif
+#endif  // POPULATE
+
     for (;;) {
         BEGIN_TRY {
             TRY {
@@ -68,7 +69,7 @@ void app_main() {
                 PRINTF("=> %.*H\n", input_len, G_io_apdu_buffer);
                 if (input_len < OFFSET_CDATA ||
                     input_len - OFFSET_CDATA != G_io_apdu_buffer[OFFSET_LC]) {
-                    io_send_sw(SW_WRONG_DATA_LENGTH);
+                    io_send_sw(SWO_WRONG_DATA_LENGTH);
                     continue;
                 }
                 if (dispatch() < 0) {

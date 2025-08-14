@@ -1,5 +1,5 @@
-#include <os_nvm.h>
 #include <stdbool.h>
+#include "os_nvm.h"
 
 #include "options.h"
 #include "globals.h"

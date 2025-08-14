@@ -1,5 +1,5 @@
 def test_app_info(cmd):
-    assert cmd.get_app_info() == ("Passwords", "1.2.1")
+    assert cmd.get_app_info() == ("Passwords", "1.3.0")
 
 
 def test_app_config(cmd):

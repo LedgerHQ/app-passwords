@@ -1,8 +1,9 @@
 from enum import auto
 from functools import partial
+from time import sleep
+
 from ragger.navigator import NavInsID, BaseNavInsID
 from ragger.navigator.navigator import Navigator
-from time import sleep
 
 from .screen import CustomStaxScreen
 

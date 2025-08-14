@@ -1,5 +1,5 @@
-import pytest
 from pathlib import Path
+import pytest
 from ragger.backend import RaisePolicy
 
 from ledgered.devices import Device, Devices
@@ -40,8 +40,8 @@ def cmd(custom_backend, device):
 
 @pytest.fixture
 def navigator(custom_backend, device, golden_run):
-    navigator = CustomStaxNavigator(custom_backend, device, golden_run)
-    yield navigator
+    touchNav = CustomStaxNavigator(custom_backend, device, golden_run)
+    yield touchNav
 
 
 @pytest.fixture(autouse=True)

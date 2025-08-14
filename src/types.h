@@ -1,9 +1,9 @@
 #pragma once
 
-#include <io.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdbool.h>
+#include "io.h"
 
 typedef struct internalStorage_t {
 #define STORAGE_MAGIC 0xDEAD1337

@@ -120,7 +120,7 @@ class PasswordsManagerCommand:
             metadatas += response[1:]
 
             if response[0] == 0xFF and len(metadatas) < size:
-                raise Exception(
+                raise ValueError(
                     f"{size} bytes requested but only {len(metadatas)} bytes available")
 
         return metadatas[:size]
@@ -151,5 +151,4 @@ class PasswordsManagerCommand:
 
         self.approved = False
         for i, chunk in enumerate(chunks):
-            is_last_chunk = True if i+1 == len(chunks) else False
-            self.load_metadatas_chunk(chunk, is_last_chunk)
+            self.load_metadatas_chunk(chunk, i+1 == len(chunks))

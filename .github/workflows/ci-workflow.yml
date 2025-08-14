@@ -1,7 +1,16 @@
-name: Compilation & tests
+name: Build and run functional tests using ragger through reusable workflow
 
 on:
   workflow_dispatch:
+    inputs:
+      golden_run:
+        type: choice
+        required: true
+        default: 'Raise an error (default)'
+        description: CI behavior if the test snapshots are different than expected.
+        options:
+          - 'Raise an error (default)'
+          - 'Open a PR'
   push:
     branches:
       - master
@@ -9,49 +18,17 @@ on:
   pull_request:
 
 jobs:
-  unittesting:
-    name: C unit testing
-    runs-on: ubuntu-latest
-    steps:
-      - name: Clone
-        uses: actions/checkout@v4
-      - name: Install cmocka
-        run: |
-          sudo apt update
-          sudo apt install libcmocka-dev lcov libbsd-dev
-      - name: Compile the tests
-        run: |
-          cd tests/unit/
-          rm -rf build/
-          cmake -B build -H.
-          make -C build
-      - name: Run the tests
-        run: |
-          cd tests/unit/
-          CTEST_OUTPUT_ON_FAILURE=1 make -C build test
-      - name: Generate code coverage
-        run: |
-          cd tests/unit/
-          lcov --directory . -b "$(realpath build/)" --capture --initial -o coverage.base
-          lcov --rc lcov_branch_coverage=1 --directory . -b "$(realpath build/)" --capture -o coverage.capture
-          lcov --directory . -b "$(realpath build/)" --add-tracefile coverage.base --add-tracefile coverage.capture -o coverage.info
-          lcov --directory . -b "$(realpath build/)" --remove coverage.info '*/unit/*' -o coverage.info
-          genhtml coverage.info -o coverage
-      - uses: actions/upload-artifact@v4
-        with:
-          name: code-coverage
-          path: tests/unit/coverage
-
   build:
     name: Build application using the reusable workflow
     uses: LedgerHQ/ledger-app-workflows/.github/workflows/reusable_build.yml@v1
     with:
-      flags: "TESTING=1 POPULATE=1"
+      flags: "use_test"
       upload_app_binaries_artifact: apps
 
   test:
-    name: Test the application using the reusable workflow
+    name: Run ragger tests using the reusable workflow
     uses: LedgerHQ/ledger-app-workflows/.github/workflows/reusable_ragger_tests.yml@v1
     needs: build
     with:
       download_app_binaries_artifact: apps
+      regenerate_snapshots: ${{ inputs.golden_run == 'Open a PR' }}

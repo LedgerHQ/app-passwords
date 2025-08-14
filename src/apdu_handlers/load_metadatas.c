@@ -1,4 +1,4 @@
-#include <io.h>
+#include "io.h"
 
 #include "error.h"
 #include "globals.h"
@@ -8,7 +8,7 @@
 
 int load_metadatas(uint8_t p1, uint8_t p2, const buf_t *input) {
     if ((p1 != 0 && p1 != LAST_CHUNK) || p2 != 0) {
-        return io_send_sw(SW_WRONG_P1P2);
+        return io_send_sw(SWO_INCORRECT_P1_P2);
     }
     if (app_state.user_approval == false) {
         app_state.bytes_transferred = 0;
@@ -18,7 +18,7 @@ int load_metadatas(uint8_t p1, uint8_t p2, const buf_t *input) {
     }
 
     if (input->size > sizeof(N_storage.metadatas) - app_state.bytes_transferred) {
-        return io_send_sw(SW_WRONG_DATA_LENGTH);
+        return io_send_sw(SWO_WRONG_DATA_LENGTH);
     }
 
     override_metadatas(app_state.bytes_transferred, (void *) input->bytes, input->size);
@@ -33,5 +33,5 @@ int load_metadatas(uint8_t p1, uint8_t p2, const buf_t *input) {
         }
     }
 
-    return io_send_sw(SW_OK);
+    return io_send_sw(SWO_SUCCESS);
 }

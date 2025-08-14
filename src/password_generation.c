@@ -15,8 +15,8 @@
  *  limitations under the License.
  ********************************************************************************/
 
-#include <cx.h>
-#include <password_generation.h>
+#include "cx.h"
+#include "password_generation.h"
 
 static const char *SETS[] = {"ABCDEFGHIJKLMNOPQRSTUVWXYZ",  // 26
                              "abcdefghijklmnopqrstuvwxyz",  // 26

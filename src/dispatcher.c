@@ -15,20 +15,20 @@
  *  limitations under the License.
  ********************************************************************************/
 
-#include <io.h>
-#include <lib_standard_app/offsets.h>
 #include <stdint.h>
+#include "io.h"
+#include "offsets.h"
 
-#include "apdu_handlers/handlers.h"
+#include "handlers.h"
 #include "dispatcher.h"
 #include "error.h"
 #include "globals.h"
-#include "tests/tests.h"
+#include "tests.h"
 #include "types.h"
 
 int dispatch() {
     if (G_io_apdu_buffer[OFFSET_CLA] != CLA) {
-        return io_send_sw(SW_CLA_NOT_SUPPORTED);
+        return io_send_sw(SWO_INVALID_CLA);
     }
 
     uint8_t ins = G_io_apdu_buffer[OFFSET_INS];
@@ -55,6 +55,6 @@ int dispatch() {
             return test_dispatcher(p1, p2, &input);
 #endif
         default:
-            return io_send_sw(SW_INS_NOT_SUPPORTED);
+            return io_send_sw(SWO_INVALID_INS);
     }
 }

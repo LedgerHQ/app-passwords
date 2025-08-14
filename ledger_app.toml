@@ -6,3 +6,7 @@ sdk = "c"
 [tests]
 unit_directory = "./tests/unit"
 pytest_directory = "./tests/functional"
+
+[use_cases]
+use_test = "TESTING=1 POPULATE=1"
+dbg_use_test = "DEBUG=1 TESTING=1 POPULATE=1"
