@@ -2,7 +2,7 @@
 #include <stdbool.h>
 #include <string.h>
 
-#if !defined(TARGET_STAX)
+#if !defined(SCREEN_SIZE_WALLET)
 
 #include <hid_mapping.h>
 
@@ -32,7 +32,6 @@ char line_buffer_2[PASSWORD_MAX_SIZE + 1];
 
 #include "keyboard.h"
 #include "options.h"
-
 
 keyboard_ctx_t G_keyboard_ctx;
 
@@ -620,4 +619,4 @@ void ui_idle() {
     }
 }
 
-#endif  // if !defined(TARGET_STAX)
+#endif  // if !defined(SCREEN_SIZE_WALLET)

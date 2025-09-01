@@ -1,6 +1,6 @@
 #*******************************************************************************
 #   Ledger App
-#   (c) 2017 Ledger
+#   (c) 2017-2025 Ledger
 #
 #  Licensed under the Apache License, Version 2.0 (the "License");
 #  you may not use this file except in compliance with the License.
@@ -35,9 +35,11 @@ APPVERSION=$(APPVERSION_M).$(APPVERSION_N).$(APPVERSION_P)
 # Application source files
 APP_SOURCE_PATH += src
 
-ICON_NANOSP = icons/nanox_icon_password_manager.gif
-ICON_NANOX = icons/nanox_icon_password_manager.gif
-ICON_STAX = icons/stax_icon_password_manager_32px.gif
+# Application icons following guidelines:
+ICON_NANOSP = icons/nanox_icon_passwords.gif
+ICON_NANOX = icons/nanox_icon_passwords.gif
+ICON_STAX = icons/stax_icon_passwords.gif
+ICON_FLEX = icons/flex_icon_passwords.png
 
 ifeq ($(TARGET_NAME),$(filter $(TARGET_NAME),TARGET_NANOX TARGET_NANOS2))
     # Nano Home Screen icon

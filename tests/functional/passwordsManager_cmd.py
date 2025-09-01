@@ -2,8 +2,12 @@ import enum
 
 from exception import DeviceException
 from ledgered.devices import Device
+
 from ragger.backend import BackendInterface
-from ragger.firmware.touch.positions import STAX_BUTTON_ABOVE_LOWER_MIDDLE
+from ragger.navigator import Navigator
+
+from touch.navigator import CustomNavInsID
+
 
 CLA_SDK: int = 0xb0
 CLA: int = 0xe0
@@ -24,18 +28,14 @@ class TestInsType(enum.IntEnum):
 class PasswordsManagerCommand:
     def __init__(self,
                  transport: BackendInterface,
+                 navigation: Navigator,
                  device: Device,
                  debug: bool = False) -> None:
         self.transport = transport
+        self.navigation = navigation
         self.device = device
         self.debug = debug
         self.approved: bool = False
-
-    def approve(self):
-        if self.device.touchable:
-            self.transport.finger_touch(*STAX_BUTTON_ABOVE_LOWER_MIDDLE)
-        else:
-            self.transport.both_click()
 
     def get_app_info(self) -> str:
         ins: InsType = InsType.INS_GET_APP_INFO
@@ -86,8 +86,7 @@ class PasswordsManagerCommand:
         ins: InsType = InsType.INS_RUN_TEST
         testIns: TestInsType = TestInsType.INS_GENERATE_PASSWORD
 
-        payload = charsets.to_bytes(
-            1, "big") + bytes(seed, "utf-8")
+        payload = charsets.to_bytes(1, "big") + bytes(seed, "utf-8")
 
         response = self.transport.exchange(cla=CLA,
                                            ins=ins,
@@ -108,7 +107,7 @@ class PasswordsManagerCommand:
         while len(metadatas) < size:
             if not self.approved:
                 with self.transport.exchange_async(cla=CLA, ins=ins):
-                    self.approve()
+                    self.navigation.navigate([CustomNavInsID.BUTTON_APPROVE])
                 response = self.transport.last_async_response
                 self.approved = True
             else:
@@ -132,7 +131,7 @@ class PasswordsManagerCommand:
                                                ins=ins,
                                                p1=0xFF if is_last else 0x00,
                                                data=chunk):
-                self.approve()
+                self.navigation.navigate([CustomNavInsID.BUTTON_APPROVE])
             response = self.transport.last_async_response
             self.approved = True
         else:
@@ -146,7 +145,6 @@ class PasswordsManagerCommand:
             raise DeviceException(error_code=sw, ins=ins)
 
     def load_metadatas(self, metadatas):
-
         chunks = [metadatas[i:i+255] for i in range(0, len(metadatas), 255)]
 
         self.approved = False

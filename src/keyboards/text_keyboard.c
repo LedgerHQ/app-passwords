@@ -3,7 +3,7 @@
 #include <stdint.h>
 #include <ux.h>
 
-#if !defined(TARGET_STAX)
+#if !defined(SCREEN_SIZE_WALLET)
 
 #include "keyboard.h"
 

@@ -1,11 +1,11 @@
-from pathlib import Path
 import pytest
-from ragger.backend import RaisePolicy
+from ragger.backend import RaisePolicy, BackendInterface
+from ragger.navigator import Navigator
 
-from ledgered.devices import Device, Devices
+from ledgered.devices import Device
 from passwordsManager_cmd import PasswordsManagerCommand
 from tests_vectors import tests_vectors
-from stax.navigator import CustomStaxNavigator
+from touch.navigator import CustomTouchNavigator
 
 pytest_plugins = ("ragger.conftest.base_conftest", )
 
@@ -17,11 +17,6 @@ def pytest_generate_tests(metafunc):
             "test_vector", tests_vectors[metafunc.definition.name])
 
 
-@pytest.fixture(scope="session")
-def functional_test_directory(root_pytest_dir) -> Path:
-    return root_pytest_dir / "tests" / "functional"
-
-
 @pytest.fixture
 def custom_backend(backend):
     backend.raise_policy = RaisePolicy.RAISE_NOTHING
@@ -29,28 +24,24 @@ def custom_backend(backend):
 
 
 @pytest.fixture
-def cmd(custom_backend, device):
-    command = PasswordsManagerCommand(
-        transport=custom_backend,
-        device=device,
-        debug=True
-    )
+def cmd(custom_backend: BackendInterface, navigator: Navigator, device: Device):
+    command = PasswordsManagerCommand(custom_backend, navigator, device, True)
     yield command
 
 
 @pytest.fixture
 def navigator(custom_backend, device, golden_run):
-    touchNav = CustomStaxNavigator(custom_backend, device, golden_run)
+    touchNav = CustomTouchNavigator(custom_backend, device, golden_run)
     yield touchNav
 
 
 @pytest.fixture(autouse=True)
 def use_on_device(request, device: Device):
     if request.node.get_closest_marker('use_on_device'):
-        current_device = request.node.get_closest_marker('use_on_device').args[0].lower()
-        if Devices.get_by_name(current_device).type != device.type:
-            pytest.skip(f'skipped on this device: "{device}" is not '\
-                        f'"{current_device}"')
+        dev_list = [d.lower() for d in request.node.get_closest_marker('use_on_device').args[0]]
+        if device.name not in dev_list:
+            pytest.skip(f'skipped on this device: "{device}" is not in '
+                        f'{dev_list}')
 
 
 def pytest_configure(config):
