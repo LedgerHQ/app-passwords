@@ -48,14 +48,9 @@ unsigned int screen_keyboard_buffer_maxsize;
 
 void screen_keyboard_render_icon(unsigned int value) {
     const bagl_icon_details_t* icon;
-#if defined(TARGET_NANOS)
-    icon = (bagl_icon_details_t*) PIC(screen_keyboard_classes_icons[value]);
-    G_ux.tmp_element.component.y = 5;
-#elif defined(TARGET_NANOX) || defined(TARGET_NANOS2)
     uint8_t inverted = G_ux.tmp_element.component.userid == 0x02;
     icon = (bagl_icon_details_t*) PIC(screen_keyboard_classes_icons[value + (inverted ? 6 : 0)]);
     G_ux.tmp_element.component.y -= 7;
-#endif
     G_ux.tmp_element.component.x += G_ux.tmp_element.component.width / 2 - icon->width / 2;
     G_ux.tmp_element.component.width = icon->width;
     G_ux.tmp_element.component.height = icon->height;

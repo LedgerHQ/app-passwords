@@ -2,7 +2,7 @@
 
 ## Quick summary
 
-The Passwords application for Ledger Nano S and Nano X is available for download on the [Ledger Live](https://www.ledger.com/ledger-live/download).
+The Passwords application for Ledger Device is available for download on the [Ledger Live](https://www.ledger.com/ledger-live/download).
 
 This application demonstrates a Password Manager implemented with no support from the host.
 The passwords are typed from the device interacting as a keyboard to the connected computer / phone.

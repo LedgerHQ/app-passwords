@@ -13,6 +13,7 @@
 #include "password.h"
 #include "password_typing.h"
 #include "ui.h"
+#include "main_std_app.h"
 
 #define LINE_1_SIZE 16
 char line_buffer_1[LINE_1_SIZE];
@@ -32,11 +33,6 @@ char line_buffer_2[PASSWORD_MAX_SIZE + 1];
 #include "keyboard.h"
 #include "options.h"
 
-#if defined(TARGET_NANOS)
-extern void __attribute__((noreturn)) app_exit(void);
-#else
-#include <main_std_app.h>
-#endif /* #if defined(TARGET_NANOS) */
 
 keyboard_ctx_t G_keyboard_ctx;
 
@@ -224,9 +220,6 @@ static void show_password_cb(const size_t offset) {
 static void get_current_charset_setting_value(uint8_t symbols_bitflag);
 static void toggle_password_setting(uint8_t caller_id, uint8_t symbols_bitflag);
 static void create_password_entry();
-#if defined(TARGET_NANOS)
-static void display_nickname_explanation();
-#endif  // #if defined(TARGET_NANOS)
 static void enter_password_nickname();
 
 // clang-format off
@@ -278,11 +271,7 @@ toggle_password_setting(4, EXT_SYMBOLS_BITFLAG),
 UX_STEP_CB(
 new_password_approve_step,
 pb,
-#if defined(TARGET_NANOS)
-display_nickname_explanation(),
-#elif defined(TARGET_NANOX) || defined(TARGET_NANOS2)
 enter_password_nickname(),
-#endif
 {
     &C_icon_validate_14,
     "Create password",
@@ -329,9 +318,7 @@ static void create_password_entry() {
 }
 
 static void enter_password_nickname() {
-#if defined(TARGET_NANOX) || defined(TARGET_NANOS2)
     strlcpy(G_keyboard_ctx.title, TXT_ENTER_NICKNAME, sizeof(line_buffer_2));
-#endif
     memset(G_keyboard_ctx.words_buffer, 0, sizeof(G_keyboard_ctx.words_buffer));
     screen_text_keyboard_init(G_keyboard_ctx.words_buffer, MAX_METANAME, create_password_entry);
 }
@@ -348,12 +335,6 @@ enter_password_nickname(),
 // clang-format on
 
 UX_FLOW(explain_password_nickname_flow, &explain_password_nickname_step);
-
-#if defined(TARGET_NANOS)
-static void display_nickname_explanation() {
-    ux_flow_init(0, explain_password_nickname_flow, NULL);
-}
-#endif
 
 // clang-format off
 UX_STEP_NOCB(
@@ -460,11 +441,7 @@ get_current_keyboard_setting_value(HID_MAPPING_QWERTY_INTL),
 enter_keyboard_setting(1, HID_MAPPING_QWERTY_INTL),
 {
     &is_selected_icon,
-    #if defined(TARGET_NANOS)
-    "Qwerty Intl",
-    #elif defined(TARGET_NANOX) || defined(TARGET_NANOS2)
     "Qwerty International",
-    #endif
 });
 UX_STEP_CB_INIT(
 kbl_azerty_step,
