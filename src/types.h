@@ -19,9 +19,7 @@ typedef struct internalStorage_t {
      */
     size_t metadata_count;
     uint8_t metadatas[MAX_METADATAS];
-#if defined(SCREEN_SIZE_WALLET)
     uint8_t charset_options;
-#endif
 } internalStorage_t;
 
 typedef enum {

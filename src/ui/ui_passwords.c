@@ -56,8 +56,12 @@ static bool all_passwords;
 static char password_name[MAX_METANAME + 1] = {0};
 static int keyboardIndex = 0;
 
+#ifdef SCREEN_SIZE_WALLET
 static nbgl_layoutConfirmationButton_t confirmButton = {0};
 static nbgl_layoutKeyboardContent_t keyboardContent = {0};
+#else
+static int textIndex = 0;
+#endif
 
 /**
  * @brief Delete error message
@@ -137,9 +141,11 @@ static void reviewDeletePassword_callback(bool confirm) {
  *
  */
 static void confirm_password_deletion(const size_t index) {
+#ifdef SCREEN_SIZE_WALLET
     nbgl_contentInfoLongPress_t infoLongPress = {.icon = NULL,
                                                  .text = msgBuffer,
                                                  .longPressText = "Hold to confirm"};
+#endif
 
     if (index == -1UL) {
         // All passwords
@@ -157,10 +163,11 @@ static void confirm_password_deletion(const size_t index) {
                  password_list_get_password(index));
         password_list_set_current(index);
     }
-    nbgl_useCaseStaticReview(NULL,
-                             &infoLongPress,
-                             NULL,
-                             reviewDeletePassword_callback);
+#ifdef SCREEN_SIZE_WALLET
+    nbgl_useCaseStaticReview(NULL, &infoLongPress, NULL, reviewDeletePassword_callback);
+#else
+    nbgl_useCaseChoice(NULL, msgBuffer, NULL, "Confirm", "Reject", reviewDeletePassword_callback);
+#endif
 }
 
 /**
@@ -322,6 +329,7 @@ static void create_password(void) {
     }
 }
 
+#ifdef SCREEN_SIZE_WALLET
 /**
  * @brief Keyboard control callback
  *
@@ -343,6 +351,7 @@ static void keyboard_control_callback(const int token, const uint8_t index) {
             break;
     }
 };
+#endif
 
 /**
  * @brief Keyboard press callback
@@ -358,6 +367,11 @@ static void key_press_callback(const char touchedKey) {
             return;
         }
         password_name[--textLen] = '\0';
+#ifdef SCREEN_SIZE_NANO
+    } else if (touchedKey == VALIDATE_KEY) {
+        create_password();
+        return;
+#endif
     } else {
         password_name[textLen] = touchedKey;
         password_name[++textLen] = '\0';
@@ -367,9 +381,15 @@ static void key_press_callback(const char touchedKey) {
         // every characters
         mask = -1;
     }
+#ifdef SCREEN_SIZE_WALLET
     nbgl_layoutUpdateKeyboardContent(layoutContext, &keyboardContent);
     nbgl_layoutUpdateKeyboard(layoutContext, keyboardIndex, mask, false, LOWER_CASE);
     nbgl_refreshSpecialWithPostRefresh(BLACK_AND_WHITE_REFRESH, POST_REFRESH_FORCE_POWER_ON);
+#else
+    nbgl_layoutUpdateKeyboard(layoutContext, keyboardIndex, mask);
+    nbgl_layoutUpdateEnteredText(layoutContext, textIndex, password_name);
+    nbgl_refresh();
+#endif
 }
 
 /**
@@ -377,17 +397,10 @@ static void key_press_callback(const char touchedKey) {
  *
  */
 void display_create_pwd(void) {
-    nbgl_layoutDescription_t layoutDescription = {
-        .modal = false,
-        .onActionCallback = &keyboard_control_callback
-    };
-    nbgl_layoutKbd_t kbdInfo = {
-        .lettersOnly = false,
-        .mode = MODE_LETTERS,
-        .keyMask = 0,
-        .casing = LOWER_CASE,
-        .callback = &key_press_callback
-    };
+    nbgl_layoutDescription_t layoutDescription = {0};
+    nbgl_layoutKbd_t kbdInfo = {.callback = &key_press_callback};
+
+#ifdef SCREEN_SIZE_WALLET
     nbgl_layoutHeader_t headerDesc = {
         .type = HEADER_BACK_AND_TEXT,
         .backAndText.token = BACK_BUTTON_TOKEN,
@@ -410,7 +423,9 @@ void display_create_pwd(void) {
         .tuneId = TUNE_TAP_CASUAL,
 #endif
     };
-
+    layoutDescription.onActionCallback = &keyboard_control_callback;
+    kbdInfo.mode = MODE_LETTERS;
+    kbdInfo.casing = LOWER_CASE;
     password_name[0] = '\0';
 
     // Create page layout
@@ -429,6 +444,40 @@ void display_create_pwd(void) {
     }
 
     nbgl_layoutAddKeyboardContent(layoutContext, &keyboardContent);
+
+#else  // SCREEN_SIZE_WALLET
+
+    nbgl_layoutCenteredInfo_t centeredInfo = {.text1 = "Create password", .onTop = true};
+    nbgl_layoutNavigation_t navInfo = {.direction = HORIZONTAL_NAV,
+                                       .indication = LEFT_ARROW | RIGHT_ARROW};
+    password_name[0] = '\0';
+
+    // Create page layout
+    release_context();
+    layoutContext = nbgl_layoutGet(&layoutDescription);
+
+    // add description
+    nbgl_layoutAddCenteredInfo(layoutContext, &centeredInfo);
+
+    // Add keyboard
+    keyboardIndex = nbgl_layoutAddKeyboard(layoutContext, &kbdInfo);
+    if (keyboardIndex < 0) {
+        // Error
+        release_context();
+        return;
+    }
+
+    // add empty entered text
+    textIndex = nbgl_layoutAddEnteredText(layoutContext, "", true);
+    if (textIndex < 0) {
+        // Error
+        release_context();
+        return;
+    }
+    nbgl_layoutAddNavigation(layoutContext, &navInfo);
+
+#endif  // SCREEN_SIZE_WALLET
+
     nbgl_layoutDraw(layoutContext);
     nbgl_refresh();
 }

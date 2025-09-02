@@ -3,6 +3,12 @@
 #include "ux.h"
 #include "types.h"
 
+#if defined(TARGET_NANOX) || defined(TARGET_NANOS2)
+#define ICON_APP_HOME C_home_passwords_14px
+#elif defined(TARGET_STAX) || defined(TARGET_FLEX)
+#define ICON_APP_HOME C_app_passwords_64px
+#endif
+
 /**
  * @brief prototype of function to be called when an page of settings is double-pressed
  * @param page page index (0->(nb_pages-1))

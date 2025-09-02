@@ -4,8 +4,6 @@
 
 #define DISPLAYED_PASSWORD_PER_PAGE 5
 
-#if defined(SCREEN_SIZE_WALLET)
-
 void password_list_reset();
 
 size_t password_list_get_offset(const size_t index);
@@ -24,5 +22,3 @@ size_t password_list_get_current_offset();
 void password_list_reset_buffer();
 
 const char *const *password_list_passwords();
-
-#endif

@@ -239,7 +239,11 @@ static void init_settings(void) {
 #endif
 
     switches[EXT_SYMBOLS_ID].initState = has_charset_option(EXT_SYMBOLS_BITFLAG);
+#ifdef SCREEN_SIZE_WALLET
     switches[EXT_SYMBOLS_ID].text = "Use special characters";
+#else
+    switches[EXT_SYMBOLS_ID].text = "Use special chars";
+#endif
     switches[EXT_SYMBOLS_ID].token = EXT_SYMBOLS_TOKEN;
 #ifdef HAVE_PIEZO_SOUND
     switches[EXT_SYMBOLS_ID].tuneId = TUNE_TAP_CASUAL;
@@ -337,12 +341,17 @@ static bool choice_navigation_callback(const uint8_t page, nbgl_pageContent_t *c
  *
  */
 void display_choice_page(void) {
-    nbgl_useCaseNavigableContent("What do you want to do?",
-                                 0,
-                                 1,
-                                 display_home_page,
-                                 choice_navigation_callback,
-                                 choice_callback);
+    nbgl_useCaseNavigableContent(
+#ifdef SCREEN_SIZE_WALLET
+        "What do you want to do?",
+#else
+        "Which action?",
+#endif
+        0,
+        1,
+        display_home_page,
+        choice_navigation_callback,
+        choice_callback);
 }
 
 /**
@@ -351,8 +360,12 @@ void display_choice_page(void) {
  */
 static void display_home_page(void) {
     nbgl_useCaseHomeAndSettings(APPNAME,
-                                &C_app_passwords_64px,
+                                &ICON_APP_HOME,
+#ifdef SCREEN_SIZE_WALLET
                                 "Create, type and display\npasswords through\nyour device",
+#else
+                                "Manage passwords on your device",
+#endif
                                 initSettingPage,
                                 &settingContents,
                                 &infoList,
@@ -402,7 +415,7 @@ void ui_idle(void) {
     init_settings();
     // First start: the keyboard layout is not selected yet
     if (N_storage.keyboard_layout == HID_MAPPING_NONE) {
-        nbgl_useCaseChoice(&C_app_passwords_64px,
+        nbgl_useCaseChoice(&ICON_APP_HOME,
                            "Disclaimer",
                            "Backup your passwords before any update: "
                            "\nhttps://passwords.ledger.com\n\nIf not, they "
