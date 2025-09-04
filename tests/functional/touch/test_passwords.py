@@ -6,7 +6,7 @@ from ragger.navigator import Navigator, NavIns, NavInsID
 from .navigator import CustomNavInsID
 
 
-@pytest.mark.use_on_device(["stax", "flex",])
+@pytest.mark.use_on_device(["stax", "flex", "apex_p"])
 def test_delete_one_password(navigator: Navigator, default_screenshot_path: Path):
     instructions = [
         CustomNavInsID.DISCLAIMER_CONFIRM,
@@ -26,7 +26,7 @@ def test_delete_one_password(navigator: Navigator, default_screenshot_path: Path
                                    screen_change_before_first_instruction=False)
 
 
-@pytest.mark.use_on_device(["stax", "flex"])
+@pytest.mark.use_on_device(["stax", "flex", "apex_p"])
 def test_delete_all_passwords(navigator: Navigator, default_screenshot_path: Path):
     instructions = [
         CustomNavInsID.DISCLAIMER_CONFIRM,
@@ -45,7 +45,7 @@ def test_delete_all_passwords(navigator: Navigator, default_screenshot_path: Pat
                                    screen_change_before_first_instruction=False)
 
 
-@pytest.mark.use_on_device(["stax", "flex"])
+@pytest.mark.use_on_device(["stax", "flex", "apex_p"])
 def test_create_password(navigator: Navigator, default_screenshot_path: Path):
     instructions = [
         CustomNavInsID.DISCLAIMER_CONFIRM,

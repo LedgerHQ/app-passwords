@@ -37,6 +37,13 @@ class PasswordsManagerCommand:
         self.debug = debug
         self.approved: bool = False
 
+    def approve(self):
+        if self.device.touchable:
+            self.navigation.navigate([CustomNavInsID.BUTTON_APPROVE])
+        else:
+            self.transport.right_click()
+            self.transport.both_click()
+
     def get_app_info(self) -> str:
         ins: InsType = InsType.INS_GET_APP_INFO
 
@@ -107,7 +114,7 @@ class PasswordsManagerCommand:
         while len(metadatas) < size:
             if not self.approved:
                 with self.transport.exchange_async(cla=CLA, ins=ins):
-                    self.navigation.navigate([CustomNavInsID.BUTTON_APPROVE])
+                    self.approve()
                 response = self.transport.last_async_response
                 self.approved = True
             else:
@@ -131,7 +138,7 @@ class PasswordsManagerCommand:
                                                ins=ins,
                                                p1=0xFF if is_last else 0x00,
                                                data=chunk):
-                self.navigation.navigate([CustomNavInsID.BUTTON_APPROVE])
+                self.approve()
             response = self.transport.last_async_response
             self.approved = True
         else:

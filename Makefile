@@ -40,6 +40,7 @@ ICON_NANOSP = icons/nanox_icon_passwords.gif
 ICON_NANOX = icons/nanox_icon_passwords.gif
 ICON_STAX = icons/stax_icon_passwords.gif
 ICON_FLEX = icons/flex_icon_passwords.png
+ICON_APEX_P = icons/apex_icon_passwords.png
 
 ifeq ($(TARGET_NAME),$(filter $(TARGET_NAME),TARGET_NANOX TARGET_NANOS2))
     # Nano Home Screen icon

@@ -6,7 +6,7 @@ from ragger.navigator import Navigator
 from .navigator import CustomNavInsID
 
 
-@pytest.mark.use_on_device(["stax", "flex"])
+@pytest.mark.use_on_device(["stax", "flex", "apex_p"])
 def test_settings_screens(navigator: Navigator, default_screenshot_path: Path):
     instructions = [
         CustomNavInsID.DISCLAIMER_CONFIRM,

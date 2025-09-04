@@ -16,6 +16,8 @@ class KeyboardConfirmationButton:
             position = (200, 300)
         elif self.device.type == DeviceType.FLEX:
             position = (240, 250)
+        elif self.device.type == DeviceType.APEX_P:
+            position = (140, 160)
         else:
             assert False, f"Device not supported: {self.device}"
         self.backend.finger_touch(*position)
