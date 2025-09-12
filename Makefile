@@ -1,6 +1,6 @@
 #*******************************************************************************
 #   Ledger App
-#   (c) 2017 Ledger
+#   (c) 2017-2025 Ledger
 #
 #  Licensed under the Apache License, Version 2.0 (the "License");
 #  you may not use this file except in compliance with the License.
@@ -18,82 +18,110 @@
 ifeq ($(BOLOS_SDK),)
     $(error Environment variable BOLOS_SDK is not set)
 endif
-include $(BOLOS_SDK)/Makefile.defines
+include $(BOLOS_SDK)/Makefile.target
 
-all: default
-
+########################################
+#        Mandatory configuration       #
+########################################
+# Application name
 APPNAME ="Passwords"
+
+# Application version
 APPVERSION_M=1
-APPVERSION_N=2
-APPVERSION_P=1
+APPVERSION_N=3
+APPVERSION_P=0
 APPVERSION=$(APPVERSION_M).$(APPVERSION_N).$(APPVERSION_P)
 
+# Application source files
+APP_SOURCE_PATH += src
+
+# Application icons following guidelines:
+ICON_NANOSP = icons/nanox_icon_passwords.gif
+ICON_NANOX = icons/nanox_icon_passwords.gif
+ICON_STAX = icons/stax_icon_passwords.gif
+ICON_FLEX = icons/flex_icon_passwords.png
+ICON_APEX_P = icons/apex_icon_passwords.png
+
+ifeq ($(TARGET_NAME),$(filter $(TARGET_NAME),TARGET_NANOX TARGET_NANOS2))
+    # Nano Home Screen icon
+    ICON_HOME_NANO = glyphs/home_passwords_14px.gif
+endif
+
+# Application allowed derivation curves.
+CURVE_APP_LOAD_PARAMS = secp256k1
+
+# Application allowed derivation paths.
+PATH_APP_LOAD_PARAMS = "5265220'"
+
+# Setting to allow building variant applications
+# - <VARIANT_PARAM> is the name of the parameter which should be set
+#   to specify the variant that should be build.
+# - <VARIANT_VALUES> a list of variant that can be build using this app code.
+#   * It must at least contains one value.
+#   * Values can be the app ticker or anything else but should be unique.
 VARIANT_PARAM = NONE
 VARIANT_VALUES = pwmgr
 
-CURVE_APP_LOAD_PARAMS = secp256k1
-PATH_APP_LOAD_PARAMS = "5265220'"
-HAVE_APPLICATION_FLAG_GLOBAL_PIN = 1
+# Enabling DEBUG flag will enable PRINTF and disable optimizations
+#DEBUG = 1
 
+########################################
+#     Application custom permissions   #
+########################################
+# See SDK `include/appflags.h` for the purpose of each permission
+#HAVE_APPLICATION_FLAG_DERIVE_MASTER = 1
+HAVE_APPLICATION_FLAG_GLOBAL_PIN = 1
+#HAVE_APPLICATION_FLAG_BOLOS_SETTINGS = 1
+#HAVE_APPLICATION_FLAG_LIBRARY = 1
+
+########################################
+# Application communication interfaces #
+########################################
+# ENABLE_BLUETOOTH = 1
+#ENABLE_NFC = 1
+ENABLE_NBGL_FOR_NANO_DEVICES = 1
+
+########################################
+#         NBGL custom features         #
+########################################
+# ENABLE_NBGL_QRCODE = 1
+ENABLE_NBGL_KEYBOARD = 1
+#ENABLE_NBGL_KEYPAD = 1
+
+########################################
+#          Features disablers          #
+########################################
+# These advanced settings allow to disable some feature that are by
+# default enabled in the SDK `Makefile.standard_app`.
+#DISABLE_STANDARD_APP_FILES = 1
+#DISABLE_DEFAULT_IO_SEPROXY_BUFFER_SIZE = 1 # To allow custom size declaration
+#DISABLE_STANDARD_APP_DEFINES = 1 # Will set all the following disablers
+#DISABLE_STANDARD_SNPRINTF = 1
+#DISABLE_STANDARD_USB = 1
+#DISABLE_STANDARD_WEBUSB = 1
+#DISABLE_DEBUG_LEDGER_ASSERT = 1
+#DISABLE_DEBUG_THROW = 1
 DISABLE_OS_IO_STACK_USE=1
 DISABLE_STANDARD_U2F=1
 
-DEFINES += APPNAME=\"$(APPNAME)\"
+########################################
+#        Main app configuration        #
+########################################
 
-ICON_NANOS = icons/nanos_icon_password_manager.gif
-ICON_NANOSP = icons/nanox_icon_password_manager.gif
-ICON_NANOX = icons/nanox_icon_password_manager.gif
-ICON_STAX = icons/stax_icon_password_manager_32px.gif
-
-DEFINES += OS_IO_SEPROXYHAL
-DEFINES += HAVE_IO_USB HAVE_L4_USBLIB IO_USB_MAX_ENDPOINTS=4 IO_HID_EP_LENGTH=64 HAVE_USB_APDU
-DEFINES += MAX_METADATAS=4096 MAX_METANAME=20
 DEFINES += USE_CTAES
-DEFINES += HAVE_WEBUSB WEBUSB_URL_SIZE_B=0 WEBUSB_URL=""
-DEFINES += HAVE_SPRINTF
 
 TESTING ?= 0
 ifeq ($(TESTING), 0)
-    $(info TESTING DISABLED)
-    DEFINES   += HAVE_USB_HIDKBD
+    DEFINES += HAVE_USB_HIDKBD
 else
     $(info TESTING ENABLED)
-    DEFINES   += TESTING
-endif
-
-ifneq ($(TARGET_NAME), TARGET_STAX)
-    $(info Using BAGL)
-    DEFINES += HAVE_BAGL
-    DEFINES += HAVE_UX_FLOW
-    ifneq ($(TARGET_NAME), TARGET_NANOS)
-        DEFINES += IO_SEPROXYHAL_BUFFER_SIZE_B=300
-        DEFINES += HAVE_GLO096
-        DEFINES += BAGL_WIDTH=128 BAGL_HEIGHT=64
-        DEFINES += HAVE_BAGL_ELLIPSIS # long label truncation feature
-        DEFINES += HAVE_BAGL_FONT_OPEN_SANS_REGULAR_11PX
-        DEFINES += HAVE_BAGL_FONT_OPEN_SANS_EXTRABOLD_11PX
-        DEFINES += HAVE_BAGL_FONT_OPEN_SANS_LIGHT_16PX
-    else
-        DEFINES += IO_SEPROXYHAL_BUFFER_SIZE_B=128
-    endif
-else
-    $(info Using NBGL)
-    DEFINES += IO_SEPROXYHAL_BUFFER_SIZE_B=300
-    DEFINES += NBGL_KEYBOARD
+    DEFINES += TESTING
 endif
 
 POPULATE ?= 0
-ifeq ($(POPULATE), 0)
-    $(info POPULATE DISABLED)
-else
+ifneq ($(POPULATE), 0)
     $(info POPULATE ENABLED)
-    DEFINES   += POPULATE
+    DEFINES += POPULATE
 endif
-
-### computed variables
-APP_SOURCE_PATH  += src
-
-#add dependency on custom makefile filename
-dep/%.d: %.c Makefile
 
 include $(BOLOS_SDK)/Makefile.standard_app

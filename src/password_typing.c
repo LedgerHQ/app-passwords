@@ -1,13 +1,9 @@
 #include <string.h>
-#include <os.h>
-#include <os_io_seproxyhal.h>
-
-#include <hid_mapping.h>
-#include <usbd_hid_impl.h>
-
-#ifdef REVAMPED_IO
+#include "os.h"
+#include "os_io_seproxyhal.h"
 #include "usbd_ledger.h"
-#endif  // REVAMPED_IO
+
+#include "hid_mapping.h"
 
 #include "password_typing.h"
 #include "globals.h"
@@ -35,25 +31,10 @@ static int entropyProvider2(__attribute__((unused)) void *context,
 }
 
 #ifndef TESTING
-#ifdef REVAMPED_IO
 static void usb_write_wait(unsigned char *buf) {
     USBD_LEDGER_send(USBD_LEDGER_CLASS_HID_KBD, 0, buf, REPORT_SIZE, 0);
     os_io_seph_cmd_general_status();
 }
-#else   // REVAMPED_IO
-static void usb_write_wait(unsigned char *buf) {
-    io_usb_send_ep(HID_EPIN_ADDR, buf, REPORT_SIZE, 60);
-
-    // wait until transfer timeout, or ended
-    while (G_io_app.usb_ep_timeouts[HID_EPIN_ADDR & 0x7F].timeout) {
-        if (!io_seproxyhal_spi_is_status_sent()) {
-            io_seproxyhal_general_status();
-        }
-        io_seproxyhal_spi_recv(G_io_seproxyhal_spi_buffer, sizeof(G_io_seproxyhal_spi_buffer), 0);
-        io_seproxyhal_handle_event();
-    }
-}
-#endif  // !REVAMPED_IO
 #else
 static void usb_write_wait(__attribute__((unused)) unsigned char *buf) {
     return;
@@ -69,7 +50,7 @@ bool type_password(uint8_t *data,
     uint32_t derive[9];
     uint32_t led_status;
     uint8_t tmp[64];
-    uint8_t i;
+    uint32_t i;
     uint8_t report[REPORT_SIZE] = {0};
 
     cx_hash_sha256(data, dataSize, tmp, sizeof(tmp));

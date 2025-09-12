@@ -2,8 +2,12 @@ import enum
 
 from exception import DeviceException
 from ledgered.devices import Device
+
 from ragger.backend import BackendInterface
-from ragger.firmware.touch.positions import STAX_BUTTON_ABOVE_LOWER_MIDDLE
+from ragger.navigator import Navigator
+
+from touch.navigator import CustomNavInsID
+
 
 CLA_SDK: int = 0xb0
 CLA: int = 0xe0
@@ -24,17 +28,20 @@ class TestInsType(enum.IntEnum):
 class PasswordsManagerCommand:
     def __init__(self,
                  transport: BackendInterface,
+                 navigation: Navigator,
                  device: Device,
                  debug: bool = False) -> None:
         self.transport = transport
+        self.navigation = navigation
         self.device = device
         self.debug = debug
         self.approved: bool = False
 
     def approve(self):
         if self.device.touchable:
-            self.transport.finger_touch(*STAX_BUTTON_ABOVE_LOWER_MIDDLE)
+            self.navigation.navigate([CustomNavInsID.BUTTON_APPROVE])
         else:
+            self.transport.right_click()
             self.transport.both_click()
 
     def get_app_info(self) -> str:
@@ -86,8 +93,7 @@ class PasswordsManagerCommand:
         ins: InsType = InsType.INS_RUN_TEST
         testIns: TestInsType = TestInsType.INS_GENERATE_PASSWORD
 
-        payload = charsets.to_bytes(
-            1, "big") + bytes(seed, "utf-8")
+        payload = charsets.to_bytes(1, "big") + bytes(seed, "utf-8")
 
         response = self.transport.exchange(cla=CLA,
                                            ins=ins,
@@ -120,7 +126,7 @@ class PasswordsManagerCommand:
             metadatas += response[1:]
 
             if response[0] == 0xFF and len(metadatas) < size:
-                raise Exception(
+                raise ValueError(
                     f"{size} bytes requested but only {len(metadatas)} bytes available")
 
         return metadatas[:size]
@@ -146,10 +152,8 @@ class PasswordsManagerCommand:
             raise DeviceException(error_code=sw, ins=ins)
 
     def load_metadatas(self, metadatas):
-
         chunks = [metadatas[i:i+255] for i in range(0, len(metadatas), 255)]
 
         self.approved = False
         for i, chunk in enumerate(chunks):
-            is_last_chunk = True if i+1 == len(chunks) else False
-            self.load_metadatas_chunk(chunk, is_last_chunk)
+            self.load_metadatas_chunk(chunk, i+1 == len(chunks))

@@ -1,9 +1,12 @@
 #pragma once
 
-#include <io.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdbool.h>
+#include "io.h"
+
+#define MAX_METADATAS 4096
+#define MAX_METANAME  20
 
 typedef struct internalStorage_t {
 #define STORAGE_MAGIC 0xDEAD1337
@@ -16,9 +19,7 @@ typedef struct internalStorage_t {
      */
     size_t metadata_count;
     uint8_t metadatas[MAX_METADATAS];
-#if defined(TARGET_STAX)
     uint8_t charset_options;
-#endif
 } internalStorage_t;
 
 typedef enum {

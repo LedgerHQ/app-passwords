@@ -18,10 +18,6 @@ class ClaNotSupportedError(Exception):
     pass
 
 
-class AppNameTooLongError(Exception):
-    pass
-
-
 class ActionCancelledError(Exception):
     pass
 
