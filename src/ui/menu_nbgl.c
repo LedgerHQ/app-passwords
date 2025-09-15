@@ -26,8 +26,6 @@
 #include "globals.h"
 #include "options.h"
 
-// #define WITH_KBD_MAPPING
-
 #define MAX_ERROR_MSG_SIZE 100
 static char errorMessage[MAX_ERROR_MSG_SIZE] = {0};
 
@@ -83,9 +81,7 @@ enum {
  */
 enum {
     SETTING_OPTIONS,
-#ifdef WITH_KBD_MAPPING
     SETTING_KBD_TYPE,
-#endif
     SETTING_CONTENTS_NB,
 };
 
@@ -97,11 +93,9 @@ uint8_t initSettingPage;
 // Settings switches
 static nbgl_contentSwitch_t switches[SETTINGS_SWITCHES_NB] = {0};
 
-#ifdef WITH_KBD_MAPPING
 // Settings keyboard layouts
 static const char *const availableKbd[KBD_OPTIONS_NB] = {"QWERTY", "QWERTY INT.", "AZERTY"};
 bool kbdMappingInit = false;
-#endif
 
 // App info
 #define SETTING_INFO_NB 2
@@ -175,7 +169,6 @@ static void controls_callback(int token, uint8_t index, int page) {
         case NO_ENTER_TOKEN:
             change_enter_options();
             break;
-#ifdef WITH_KBD_MAPPING
         case KBD_TOKEN:
             switch (index) {
                 case KBD_QWERTY_ID:
@@ -196,7 +189,6 @@ static void controls_callback(int token, uint8_t index, int page) {
                 display_home_page();
             }
             break;
-#endif  // WITH_KBD_MAPPING
         default:
             break;
     }
@@ -264,7 +256,6 @@ static void init_settings(void) {
     contents[SETTING_OPTIONS].content.switchesList.switches = switches;
     contents[SETTING_OPTIONS].contentActionCallback = controls_callback;
 
-#ifdef WITH_KBD_MAPPING
     contents[SETTING_KBD_TYPE].type = CHOICES_LIST;
     contents[SETTING_KBD_TYPE].content.choicesList.nbChoices = KBD_OPTIONS_NB;
     contents[SETTING_KBD_TYPE].content.choicesList.names = availableKbd;
@@ -277,7 +268,6 @@ static void init_settings(void) {
     if (N_storage.keyboard_layout != HID_MAPPING_NONE) {
         contents[SETTING_KBD_TYPE].content.choicesList.initChoice = N_storage.keyboard_layout - 1;
     }
-#endif  // WITH_KBD_MAPPING
 
     // Initialize Home page Action
     // ---------------------------
@@ -381,12 +371,9 @@ static void display_home_page(void) {
  *
  */
 static void startup_callback(bool confirm) {
-#ifdef WITH_KBD_MAPPING
     uint8_t index = 0;
-#endif
 
     if (confirm) {
-#ifdef WITH_KBD_MAPPING
         kbdMappingInit = true;
         initSettingPage = 0;
         // Find the page index after the switches, where the settings show the keyboard type
@@ -398,7 +385,6 @@ static void startup_callback(bool confirm) {
                                                 false);
             initSettingPage++;
         }
-#endif  // WITH_KBD_MAPPING
         display_home_page();
         initSettingPage = INIT_HOME_PAGE;
     } else {
