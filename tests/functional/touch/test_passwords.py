@@ -10,6 +10,7 @@ from .navigator import CustomNavInsID
 def test_delete_one_password(navigator: Navigator, default_screenshot_path: Path):
     instructions = [
         CustomNavInsID.DISCLAIMER_CONFIRM,
+        CustomNavInsID.CHOOSE_KBL_QWERTY,
         CustomNavInsID.HOME_TO_MENU,
         # ensure the password list is filled with populated passwords
         CustomNavInsID.MENU_TO_DELETE,
@@ -30,6 +31,7 @@ def test_delete_one_password(navigator: Navigator, default_screenshot_path: Path
 def test_delete_all_passwords(navigator: Navigator, default_screenshot_path: Path):
     instructions = [
         CustomNavInsID.DISCLAIMER_CONFIRM,
+        CustomNavInsID.CHOOSE_KBL_QWERTY,
         CustomNavInsID.HOME_TO_MENU,
         # ensure the password list is filled with populated passwords
         CustomNavInsID.MENU_TO_DELETE_ALL,
@@ -49,6 +51,7 @@ def test_delete_all_passwords(navigator: Navigator, default_screenshot_path: Pat
 def test_create_password(navigator: Navigator, default_screenshot_path: Path):
     instructions = [
         CustomNavInsID.DISCLAIMER_CONFIRM,
+        CustomNavInsID.CHOOSE_KBL_QWERTY,
         CustomNavInsID.HOME_TO_MENU,
         # ensure the password list is filled with populated passwords
         CustomNavInsID.MENU_TO_DISPLAY,

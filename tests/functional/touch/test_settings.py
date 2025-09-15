@@ -10,6 +10,7 @@ from .navigator import CustomNavInsID
 def test_settings_screens(navigator: Navigator, default_screenshot_path: Path):
     instructions = [
         CustomNavInsID.DISCLAIMER_CONFIRM,
+        CustomNavInsID.CHOOSE_KBL_QWERTY,
         CustomNavInsID.HOME_TO_SETTINGS,
         CustomNavInsID.SETTINGS_NEXT,
         CustomNavInsID.SETTINGS_NEXT,
