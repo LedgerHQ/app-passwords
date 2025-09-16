@@ -4,6 +4,7 @@
 #include <cmocka.h>
 
 #include "password_list.h"
+#include "types.h"
 
 static int setup(void **state __attribute__((unused))) {
     // resets the whole buffer with initial values
@@ -12,20 +13,20 @@ static int setup(void **state __attribute__((unused))) {
 }
 
 static void test_password_list_reset(void **state __attribute__((unused))) {
-    for (size_t i = 0; i < DISPLAYED_PASSWORD_PER_PAGE; i++) {
+    for (size_t i = 0; i < MAX_METADATA_COUNT; i++) {
         assert_int_equal(password_list_get_offset(i), 0);
         assert_null(password_list_get_password(i));
     }
 }
 
 static void test_password_list_get_offset_ok(void **state __attribute__((unused))) {
-    for (size_t i = 0; i < DISPLAYED_PASSWORD_PER_PAGE - 1; i++) {
+    for (size_t i = 0; i < MAX_METADATA_COUNT - 1; i++) {
         assert_int_equal(password_list_get_offset(i), 0);
     }
 }
 
 static void test_password_list_get_offset_nok(void **state __attribute__((unused))) {
-    const size_t index = DISPLAYED_PASSWORD_PER_PAGE;
+    const size_t index = MAX_METADATA_COUNT;
     assert_int_equal(password_list_get_offset(index), -1);
 }
 
@@ -54,12 +55,12 @@ static void test_password_list_passwords(void **state __attribute__((unused))) {
 }
 
 static void test_password_list_get_password_nok(void **state __attribute__((unused))) {
-    assert_null(password_list_get_password(DISPLAYED_PASSWORD_PER_PAGE + 1));
+    assert_null(password_list_get_password(MAX_METADATA_COUNT + 1));
 }
 
 static void test_password_list_passwords_nok(void **state __attribute__((unused))) {
     size_t i;
-    for (i = 0; i < DISPLAYED_PASSWORD_PER_PAGE; i++) {
+    for (i = 0; i < MAX_METADATA_COUNT; i++) {
         assert_true(password_list_add_password(i, 0, "whatever", 1));
     }
     // not enough space
