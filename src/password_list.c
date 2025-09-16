@@ -5,13 +5,14 @@
 #endif
 
 #include "password_list.h"
+#include "os.h"
 #include "types.h"
 
 typedef struct passwordList_s {
     /*
      * Buffer where password names are stored
      */
-    char buffer[DISPLAYED_PASSWORD_PER_PAGE * (MAX_METANAME + 1)];
+    char buffer[MAX_METADATA_COUNT * (MAX_METANAME + 1)];
     /*
      * Used to keep track of password store in buffer. Start at 0, is incremented with password
      * length (including trailing '\0' each time a password is stored.
@@ -21,13 +22,13 @@ typedef struct passwordList_s {
      * Placeholder for currently displayed password names, points to previous `buffer` locations.
      * Also used to display currently selected password name (for display or deletion)
      */
-    const char *passwords[DISPLAYED_PASSWORD_PER_PAGE];
+    const char *passwords[MAX_METADATA_COUNT];
     /*
      * Like `passwords` keeps a relation between currently displayed password indexes and their
      * names, this array keeps the relation between currently displayed password indexes and their
      * offset in metadatas.
      */
-    size_t offsets[DISPLAYED_PASSWORD_PER_PAGE];
+    size_t offsets[MAX_METADATA_COUNT];
     /*
      * Used to pin an index in order to retrieve the related offset with
      * `password_list_get_current_offset`. Needed as the offset is used in a callback function with
@@ -43,7 +44,8 @@ void password_list_reset() {
 }
 
 size_t password_list_get_offset(const size_t index) {
-    if (index >= DISPLAYED_PASSWORD_PER_PAGE) {
+    if (index >= MAX_METADATA_COUNT) {
+        PRINTF("[password_list_get_offset] Index %d out of bounds\n", index);
         return -1;
     }
     return passwordList.offsets[index];
@@ -54,7 +56,8 @@ size_t password_list_get_current_offset() {
 }
 
 const char *password_list_get_password(const size_t index) {
-    if (index >= DISPLAYED_PASSWORD_PER_PAGE) {
+    if (index >= MAX_METADATA_COUNT) {
+        PRINTF("[password_list_get_password] Index %d out of bounds\n", index);
         return NULL;
     }
     return passwordList.passwords[index];
@@ -68,7 +71,8 @@ bool password_list_add_password(const size_t index,
                                 const size_t offset,
                                 const char *const password,
                                 const size_t length) {
-    if (index >= DISPLAYED_PASSWORD_PER_PAGE) {
+    if (index >= MAX_METADATA_COUNT) {
+        PRINTF("[password_list_add_password] Index %d out of bounds\n", index);
         return false;
     }
     passwordList.offsets[index] = offset;
