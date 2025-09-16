@@ -56,12 +56,15 @@ static bool all_passwords;
 static char password_name[MAX_METANAME + 1] = {0};
 static int keyboardIndex = 0;
 
+static nbgl_genericContents_t genericContent = {0};
+static nbgl_content_t contentsList = {0};
 #ifdef SCREEN_SIZE_WALLET
 static nbgl_layoutConfirmationButton_t confirmButton = {0};
 static nbgl_layoutKeyboardContent_t keyboardContent = {0};
 #else
 static int textIndex = 0;
 #endif
+static size_t nbPasswordsPerPage = 0;
 
 /**
  * @brief Delete error message
@@ -195,51 +198,11 @@ void confirm_all_passwords_deletion(void) {
  * @param[in] index widget index on the page
  *
  */
-static void password_callback(const int token, const uint8_t index) {
-    UNUSED(index);
+static void password_callback(const int token, const uint8_t index, int page) {
     UNUSED(token);
     if (selector_callback) {
-        selector_callback(index);
+        selector_callback((page * nbPasswordsPerPage) + index);
     }
-}
-
-/**
- * @brief Passwords navigation callback
- *
- * @param[in] page index of the page
- * @param[out] content pointer to the content structure
- * @return true if the navigation was successful, false otherwise
- *
- */
-static bool passwords_list_callback(const uint8_t page, nbgl_pageContent_t *content) {
-    UNUSED(page);
-    size_t passwordIndex = page * DISPLAYED_PASSWORD_PER_PAGE;
-    password_list_reset_buffer();
-    size_t localIndex = 0;
-    while (localIndex < DISPLAYED_PASSWORD_PER_PAGE && passwordIndex < N_storage.metadata_count) {
-        size_t pwdOffset = get_metadata(passwordIndex);
-        if (pwdOffset == -1UL) {
-            break;
-        }
-        const size_t pwdLength = METADATA_NICKNAME_LEN(pwdOffset) + 1;
-        password_list_add_password(localIndex,
-                                   pwdOffset,
-                                   (void *) METADATA_NICKNAME(pwdOffset),
-                                   pwdLength);
-        localIndex++;
-        passwordIndex++;
-    }
-
-    content->type = CHOICES_LIST;
-    content->choicesList.names = password_list_passwords();
-    content->choicesList.localized = false;
-    content->choicesList.nbChoices = localIndex;
-    content->choicesList.initChoice = 0;
-    content->choicesList.token = -1;
-#ifdef HAVE_PIEZO_SOUND
-    content->choicesList.tuneId = TUNE_TAP_CASUAL;
-#endif
-    return true;
 }
 
 /**
@@ -247,44 +210,42 @@ static bool passwords_list_callback(const uint8_t page, nbgl_pageContent_t *cont
  *
  */
 void display_password_list(void) {
-    password_list_reset();
-    nbgl_useCaseNavigableContent("Passwords list",
-                                 0,
-                                 1,
-                                 display_choice_page,
-                                 passwords_list_callback,
-                                 password_callback);
-}
+    uint32_t pwdOffset = 0;
+    size_t nbPasswords = 0;
 
-/**
- * @brief Password show callback
- *
- * @param[in] page index of the page
- * @param[out] content pointer to the content structure
- * @return true if the navigation was successful, false otherwise
- *
- */
-static bool password_display_callback(const uint8_t page, nbgl_pageContent_t *content) {
-    UNUSED(page);
-    content->type = INFOS_LIST;
-    content->infosList.nbInfos = 1;
-    content->infosList.infoTypes = &ptrToPwd[0];
-    content->infosList.infoContents = &ptrToPwd[1];
-    return true;
-}
-
-/**
- * @brief Display the passwords list
- *
- */
-static void display_password(void) {
     password_list_reset();
-    nbgl_useCaseNavigableContent("Your Password",
-                                 0,
-                                 1,
-                                 display_choice_page,
-                                 password_display_callback,
-                                 NULL);
+    explicit_bzero(&genericContent, sizeof(genericContent));
+    explicit_bzero(&contentsList, sizeof(contentsList));
+    while (nbPasswords < N_storage.metadata_count) {
+        pwdOffset = get_metadata(nbPasswords);
+        if (pwdOffset == -1UL) {
+            break;
+        }
+        const size_t pwdLength = METADATA_NICKNAME_LEN(pwdOffset) + 1;
+        password_list_add_password(nbPasswords,
+                                   pwdOffset,
+                                   (void *) METADATA_NICKNAME(pwdOffset),
+                                   pwdLength);
+        nbPasswords++;
+    }
+    if (nbPasswords == 0) {
+        nbgl_useCaseStatus("No passwords available", false, display_choice_page);
+        return;
+    }
+    genericContent.nbContents = 1;
+    genericContent.contentsList = &contentsList;
+    contentsList.type = CHOICES_LIST;
+    contentsList.content.choicesList.nbChoices = nbPasswords;
+    contentsList.content.choicesList.names = password_list_passwords();
+    contentsList.content.choicesList.token = -1;
+#ifdef HAVE_PIEZO_SOUND
+    contentsList.content.choicesList.tuneId = TUNE_TAP_CASUAL;
+#endif
+    contentsList.contentActionCallback = &password_callback;
+    nbPasswordsPerPage =
+        nbgl_useCaseGetNbChoicesInPage(nbPasswords, &contentsList.content.choicesList, 0, false);
+
+    nbgl_useCaseGenericConfiguration("Passwords list", 0, &genericContent, display_choice_page);
 }
 
 /**
@@ -294,10 +255,22 @@ static void display_password(void) {
  *
  */
 void show_password_cb(const size_t index) {
-    ptrToPwd[0] = password_list_get_password(index);
+    strlcpy(password_name, password_list_get_password(index), sizeof(password_name));
+    ptrToPwd[0] = password_name;
     show_password_at_offset(password_list_get_offset(index), (uint8_t *) password_to_display);
     ptrToPwd[1] = &password_to_display[0];
-    display_password();
+
+    password_list_reset();
+    explicit_bzero(&genericContent, sizeof(genericContent));
+    explicit_bzero(&contentsList, sizeof(contentsList));
+    genericContent.nbContents = 1;
+    genericContent.contentsList = &contentsList;
+    contentsList.type = INFOS_LIST;
+    contentsList.content.infosList.nbInfos = 1;
+    contentsList.content.infosList.infoTypes = &ptrToPwd[0];
+    contentsList.content.infosList.infoContents = &ptrToPwd[1];
+
+    nbgl_useCaseGenericConfiguration("Your Password", 0, &genericContent, display_choice_page);
 }
 
 /**

@@ -2,8 +2,6 @@
 
 #include <stdbool.h>
 
-#define DISPLAYED_PASSWORD_PER_PAGE 5
-
 void password_list_reset();
 
 size_t password_list_get_offset(const size_t index);

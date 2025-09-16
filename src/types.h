@@ -3,10 +3,11 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <stdbool.h>
-#include "io.h"
 
 #define MAX_METADATAS 4096
 #define MAX_METANAME  20
+// Considering max metadata size (1+1+1+20) = 23, we can store at most 178 metadatas
+#define MAX_METADATA_COUNT (MAX_METADATAS / (1 + 1 + 1 + MAX_METANAME))
 
 typedef struct internalStorage_t {
 #define STORAGE_MAGIC 0xDEAD1337
