@@ -1,4 +1,4 @@
-#include <io.h>
+#include "io.h"
 
 #include "error.h"
 #include "password_typing.h"
@@ -13,13 +13,20 @@ int test_generate_password(const buf_t *input) {
     uint8_t *seed_ptr = input->bytes + 1;
     size_t seed_len = input->size - 1;
     uint8_t out_buffer[20];
+    int status = 0;
     type_password(seed_ptr,
                   seed_len,
                   out_buffer,
                   enabledSets,
                   (const uint8_t *) PIC(DEFAULT_MIN_SET),
                   sizeof(out_buffer));
-    return io_send_response_pointer(out_buffer, 20, SW_OK);
+    status = io_send_response_pointer(out_buffer, 20, SWO_SUCCESS);
+    if (status > 0) {
+        // API_LEVEL >= 24 status can be positive (response length) / negative (error)
+        // API_LEVEL  < 24 status is 0 / -1
+        status = 0;
+    }
+    return status;
 }
 
 int test_dispatcher(uint8_t p1, __attribute__((unused)) uint8_t p2, const buf_t *input) {
@@ -27,6 +34,6 @@ int test_dispatcher(uint8_t p1, __attribute__((unused)) uint8_t p2, const buf_t 
         case GENERATE_PASSWORD:
             return test_generate_password(input);
         default:
-            return io_send_sw(SW_INS_NOT_SUPPORTED + 1);
+            return io_send_sw(SWO_INVALID_INS + 1);
     }
 }

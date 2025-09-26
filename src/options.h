@@ -2,7 +2,7 @@
 
 #include <unistd.h>
 
-#include <hid_mapping.h>
+#include "hid_mapping.h"
 
 enum {
     UPPERCASE_BITFLAG = 1,

@@ -1,22 +1,8 @@
-#include <os_nvm.h>
 #include <stdbool.h>
+#include "os_nvm.h"
 
 #include "options.h"
 #include "globals.h"
-
-#if !defined(TARGET_STAX)
-
-static uint8_t charset_options;
-
-static void set_charset_options(uint8_t value) {
-    charset_options = value;
-}
-
-uint8_t get_charset_options() {
-    return charset_options;
-}
-
-#else
 
 static void set_charset_options(uint8_t value) {
     nvm_write((void*) &N_storage.charset_options, (void*) &value, sizeof(value));
@@ -25,8 +11,6 @@ static void set_charset_options(uint8_t value) {
 uint8_t get_charset_options() {
     return N_storage.charset_options;
 }
-
-#endif  // !defined(TARGET_STAX)
 
 void init_charset_options() {
     // default: uppercase (1) + lowercase (2) + numbers (4) = 7

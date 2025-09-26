@@ -2,9 +2,10 @@
 
 ## Quick summary
 
-The Passwords application for Ledger Nano S and Nano X is available for download on the [Ledger Live](https://www.ledger.com/ledger-live/download).
+The Passwords application for Ledger Device is available for download on the [Ledger Live](https://www.ledger.com/ledger-live/download).
 
-This application demonstrates a Password Manager implemented with no support from the host - the passwords are typed from the Nano S interacting as a keyboard to the connected computer / phone.
+This application demonstrates a Password Manager implemented with no support from the host.
+The passwords are typed from the device interacting as a keyboard to the connected computer / phone.
 
 ## Usage
 
@@ -16,23 +17,29 @@ To create a password:
 
 To type a password, just select it in your list of password.
 
-If you want to add a lot of passwords, this process can be pretty painful. Instead of doing it manually, you can use the [backup tool](https://blog.ledger.com/passwords-backup/) to load a custom list of password nicknames.
+If you want to add a lot of passwords, this process can be pretty painful. Instead of doing it manually,
+you can use the [backup tool](https://blog.ledger.com/passwords-backup/) to load a custom list of password nicknames.
 
 ### Application settings
 
 In the application settings, the user can configure
 
 - Which keyboard the device should emulate when typing a password (Qwerty, International Qwerty or Azerty).
-
-- If the `Enter` key should be pressed automatically after typing a password (this is convenient for typing start-up password at encrypted servers without attaching display and keyboard, for instance).
+- If the `Enter` key should be pressed automatically after typing a password
+  (this is convenient for typing start-up password at encrypted servers without attaching display and keyboard, for instance).
 
 ## Backup
 
-As passwords are deterministically derived, it's not a problem if you loose your device, as long as you remember the password nicknames and you still have you device recovery phrase to set up again the Passwords app on a new device.
+As passwords are deterministically derived, it's not a problem if you loose your device,
+as long as you remember the password nicknames and you still have you device recovery phrase
+to set up again the Passwords app on a new device.
 
-Same applies when updating the device firmware or the application itself, the list of password nicknames won't be restored automatically, so make sure to save a backup using [this tool](https://blog.ledger.com/passwords-backup/).
+Same applies when updating the device firmware or the application itself, the list of password nicknames
+won't be restored automatically, so make sure to save a backup using [this tool](https://blog.ledger.com/passwords-backup/).
 
-These nicknames are not confidential (meaning, someone who finds them will not be able to retrieve your passwords without your [24-words recovery phrase](https://www.ledger.com/academy/crypto/what-is-a-recovery-phrase)), so you don't have to hide your backup like you did with your recovery phrase. Sending it to yourself by e-mail is fine.
+These nicknames are not confidential (meaning, someone who finds them will not be able to retrieve your passwords
+without your [24-words recovery phrase](https://www.ledger.com/academy/crypto/what-is-a-recovery-phrase)),
+so you don't have to hide your backup like you did with your recovery phrase. Sending it to yourself by e-mail is fine.
 
 ## Password generation mechanism
 
@@ -48,9 +55,11 @@ These nicknames are not confidential (meaning, someone who finds them will not b
 
 ## Troobleshooting
 
-- If you configured a password with some charset only, and you get unwanted characters when typing it, check that you have configured the application with the right keyboard. It must be configured like the keyboard settings of your operating systems to type correctly.
+- If you configured a password with some charset only, and you get unwanted characters when typing it,
+  check that you have configured the application with the right keyboard.
+  It must be configured like the keyboard settings of your operating systems to type correctly.
 
-- If the keyboard is not recognized by your computer, have a look [here](https://support.ledger.com/hc/en-us/articles/115005165269-Fix-connection-issues)
+- If the keyboard is not recognized by your computer, have a look here: [Fix-connection-issues](https://support.ledger.com/hc/en-us/articles/115005165269-Fix-connection-issues)
 
 ## Tests
 
@@ -88,7 +97,8 @@ You can then run the tests:
 
 ### Functional
 
-Functional tests are written with Pytest. Before running them, you first need to compile the application with env variables `TESTING=1` and `POPULATE=1`:
+Functional tests are written with Pytest.
+Before running them, you first need to compile the application with env variables `TESTING=1` and `POPULATE=1`:
 
 ```bash
 make all TESTING=1 POPULATE=1
@@ -122,4 +132,4 @@ This release is an early alpha - among the missing parts :
 
 This application uses
 
-- MBED TLS AES DRBG implementation (https://tls.mbed.org/ctr-drbg-source-code)
+- MBED TLS AES DRBG implementation [source-code](https://tls.mbed.org/ctr-drbg-source-code)

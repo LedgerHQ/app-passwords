@@ -1,18 +1,34 @@
-bin
-debug
-dep
-build
-obj
-src/glyphs.c
-src/glyphs.h
-*.pyc
-.python-version
-*~
-speculos.log
-scan-build
+# Compilation files of the application
+build/
 
-tests/functional/elfs
-coverage*
+# Legacy compilation output
+bin/
+debug/
+
+# Nano NBGL reversed icon for Home Screen
+glyphs/home_passwords_14px.gif
+
+# Temporary directory with snapshots taken during test runs
 snapshots-tmp/
 
-node_modules
+# Unit tests and code coverage
+tests/unit/build/
+tests/unit/coverage/
+tests/unit/coverage.info
+
+# Fuzzing
+fuzzing/build/
+fuzzing/corpus/
+fuzzing/out/
+
+# Python
+*.pyc[cod]
+*.egg
+__pycache__/
+*.egg-info/
+.eggs/
+.python-version
+
+# Doxygen
+doc/html
+doc/latex

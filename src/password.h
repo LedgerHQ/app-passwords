@@ -2,6 +2,7 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include "error.h"
 
 #define PASSWORD_MAX_SIZE 20
 

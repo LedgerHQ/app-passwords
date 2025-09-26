@@ -2,7 +2,7 @@
 
 #include <stdint.h>
 
-#include <password_generation.h>
+#include "password_generation.h"
 
 bool type_password(uint8_t *data,
                    uint32_t dataSize,

@@ -5,9 +5,9 @@
 
 #include "hid_mapping.h"
 
-
-const char *test = "a&b~c#d  {e\"f'g(h  -i  _j)k=l+m  [n  |o  \\p^q  @r  ]s  }t$u!v:w/x;y.z,A?B  <C  >D`EFGHIJKLMNOPQRSTUVWXYZ0123456789";
-
+const char *test =
+    "a&b~c#d  {e\"f'g(h  -i  _j)k=l+m  [n  |o  \\p^q  @r  ]s  }t$u!v:w/x;y.z,A?B  <C  "
+    ">D`EFGHIJKLMNOPQRSTUVWXYZ0123456789";
 
 void check_map(uint8_t *map, uint8_t first, uint8_t third) {
     assert_int_equal(map[0], first);

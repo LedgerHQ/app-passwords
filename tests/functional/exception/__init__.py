@@ -4,7 +4,6 @@ from .types import (UnknownDeviceError,
                     WrongDataLengthError,
                     InsNotSupportedError,
                     ClaNotSupportedError,
-                    AppNameTooLongError,
                     ActionCancelledError,
                     MetadatasParsingError)
 
@@ -15,7 +14,6 @@ __all__ = [
     "WrongDataLengthError",
     "InsNotSupportedError",
     "ClaNotSupportedError",
-    "AppNameTooLongError",
     "ActionCancelledError",
     "MetadatasParsingError"
 ]

@@ -1,6 +1,7 @@
 name: "CodeQL"
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - master
@@ -17,27 +18,19 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - SDK: "$NANOS_SDK"
-            name: nanos
-          - SDK: "$NANOX_SDK"
-            name: nanox
-          - SDK: "$NANOSP_SDK"
-            name: nanos2
-          - SDK: "$STAX_SDK"
-            name: stax
-        #'cpp' covers C and C++
-        language: [ 'cpp' ]
+        sdk: ["$NANOX_SDK", "$NANOSP_SDK", "$STAX_SDK", "$FLEX_SDK", "$APEX_P_SDK"]
+        # 'cpp' covers C and C++
+        language: ['cpp']
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/ledgerhq/ledger-app-builder/ledger-app-dev-tools:latest
+      image: ghcr.io/ledgerhq/ledger-app-builder/ledger-app-builder-lite:latest
 
     steps:
       - name: Clone
         uses: actions/checkout@v4
 
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@v2
+        uses: github/codeql-action/init@v3
         with:
           languages: ${{ matrix.language }}
           queries: security-and-quality
@@ -45,7 +38,7 @@ jobs:
       # CodeQL will create the database during the compilation
       - name: Build
         run: |
-          make BOLOS_SDK=${{ matrix.SDK }} TARGET=${{ matrix.name }}
+          make BOLOS_SDK=${{ matrix.SDK }}
 
       - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@v2
+        uses: github/codeql-action/analyze@v3

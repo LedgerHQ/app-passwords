@@ -15,11 +15,11 @@
  *  limitations under the License.
  ********************************************************************************/
 
-#include <io.h>
 #include <stdint.h>
 #include <limits.h>
 #include <math.h>
 #include <stdlib.h>
+#include "io.h"
 
 #include "error.h"
 #include "globals.h"
@@ -29,11 +29,12 @@
 
 int get_app_config(uint8_t p1, uint8_t p2, __attribute__((unused)) const buf_t* input) {
     if (p1 != 0 || p2 != 0) {
-        return io_send_sw(SW_WRONG_P1P2);
+        return io_send_sw(SWO_INCORRECT_P1_P2);
     }
 
     uint8_t* config = G_io_apdu_buffer;
     size_t offset = 0;
+    int status = 0;
 
     config[offset++] = ((size_t) MAX_METADATAS) >> 8 * 3;
     config[offset++] = ((size_t) MAX_METADATAS) >> 8 * 2;
@@ -44,5 +45,11 @@ int get_app_config(uint8_t p1, uint8_t p2, __attribute__((unused)) const buf_t* 
     config[offset++] = N_storage.press_enter_after_typing;
 
     ui_idle();
-    return io_send_response_pointer(config, offset, SW_OK);
+    status = io_send_response_pointer(config, offset, SWO_SUCCESS);
+    if (status > 0) {
+        // API_LEVEL >= 24 status can be positive (response length) / negative (error)
+        // API_LEVEL  < 24 status is 0 / -1
+        status = 0;
+    }
+    return status;
 }

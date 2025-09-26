@@ -2,7 +2,7 @@ import enum
 from typing import Dict, Any, Optional
 
 from .types import WrongP1P2Error, WrongDataLengthError, InsNotSupportedError, \
-    ClaNotSupportedError, AppNameTooLongError, ActionCancelledError, MetadatasParsingError, \
+    ClaNotSupportedError, ActionCancelledError, MetadatasParsingError, \
     UnknownDeviceError
 
 class DeviceException(Exception):  # pylint: disable=too-few-public-methods
@@ -11,7 +11,6 @@ class DeviceException(Exception):  # pylint: disable=too-few-public-methods
         0x6A87: WrongDataLengthError,
         0x6D00: InsNotSupportedError,
         0x6E00: ClaNotSupportedError,
-        0xB000: AppNameTooLongError,
         0x6985: ActionCancelledError,
         0x6F10: MetadatasParsingError
     }

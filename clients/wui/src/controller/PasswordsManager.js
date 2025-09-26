@@ -29,7 +29,6 @@ class PasswordsManager {
       0x6a87,
       0x6d00,
       0x6e00,
-      0xb000,
     ];
     this.connected = false;
     this.busy = false;
@@ -75,7 +74,6 @@ class PasswordsManager {
       0x6a87: "SW_WRONG_DATA_LENGTH",
       0x6d00: "SW_INS_NOT_SUPPORTED",
       0x6e00: "SW_CLA_NOT_SUPPORTED",
-      0xb000: "SW_APPNAME_TOO_LONG",
       0x6f10: "SW_METADATAS_PARSING_ERROR",
     };
 
