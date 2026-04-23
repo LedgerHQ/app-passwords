@@ -2,7 +2,7 @@ from passwordsManager_cmd import PasswordsManagerCommand
 
 
 def test_app_info(cmd: PasswordsManagerCommand):
-    assert cmd.get_app_info() == ("Passwords", "1.3.0")
+    assert cmd.get_app_info() == ("Passwords", "1.3.1")
 
 
 def test_app_config(cmd: PasswordsManagerCommand):
