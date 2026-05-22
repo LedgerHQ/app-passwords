@@ -275,6 +275,8 @@ static void create_password(void) {
     const size_t password_size = strlen(password_name);
     if (password_size == 0) {
         nbgl_useCaseStatus("The nickname\ncan't be empty", false, &display_create_pwd);
+    } else if (nickname_exists(password_name, password_size)) {
+        nbgl_useCaseStatus("This nickname\nalready exists", false, &display_create_pwd);
     } else {
         error_type_t error = create_new_password(password_name, password_size);
         if (error == OK) {
