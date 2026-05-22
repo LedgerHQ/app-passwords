@@ -152,24 +152,33 @@ static void controls_callback(int token, uint8_t index, int page) {
     UNUSED(index);
     UNUSED(page);
 
+    // NBGL re-reads switches[].initState on every page re-render, so we must
+    // keep it in sync with NVM after each toggle (otherwise an exit/re-enter
+    // would show the pre-toggle value).
     switch (token) {
         case UPPERCASE_TOKEN:
             set_charset_option(UPPERCASE_BITFLAG);
+            switches[UPPERCASE_ID].initState = has_charset_option(UPPERCASE_BITFLAG);
             break;
         case LOWERCASE_TOKEN:
             set_charset_option(LOWERCASE_BITFLAG);
+            switches[LOWERCASE_ID].initState = has_charset_option(LOWERCASE_BITFLAG);
             break;
         case NUMBERS_TOKEN:
             set_charset_option(NUMBERS_BITFLAG);
+            switches[NUMBERS_ID].initState = has_charset_option(NUMBERS_BITFLAG);
             break;
         case BARS_TOKEN:
             set_charset_option(BARS_BITFLAG);
+            switches[BARS_ID].initState = has_charset_option(BARS_BITFLAG);
             break;
         case EXT_SYMBOLS_TOKEN:
             set_charset_option(EXT_SYMBOLS_BITFLAG);
+            switches[EXT_SYMBOLS_ID].initState = has_charset_option(EXT_SYMBOLS_BITFLAG);
             break;
         case NO_ENTER_TOKEN:
             change_enter_options();
+            switches[NO_ENTER_ID].initState = N_storage.press_enter_after_typing;
             break;
         case KBD_TOKEN:
             switch (index) {
