@@ -118,17 +118,19 @@ static nbgl_homeAction_t homeAction = {0};
 
 // Main Action menu choices
 #define ACTIONS_NB 5
+// "Create" stays first so it remains reachable when the database is empty
+// (see choice_navigation_callback: nbBars shrinks to 1 in that case).
 static const char *const barsTexts[ACTIONS_NB] = {
+    "Create a new password",
     "Type a password",
     "Show a password",
-    "Create a new password",
     "Delete a password",
     "Delete all passwords"
 };
 static const uint8_t barsToken[ACTIONS_NB] = {
+    CHOICE_CREATE_TOKEN,
     CHOICE_WRITE_TOKEN,
     CHOICE_DISPLAY_TOKEN,
-    CHOICE_CREATE_TOKEN,
     CHOICE_DELETE_TOKEN,
     CHOICE_DELETE_ALL_TOKENS
 };
@@ -317,7 +319,7 @@ static void choice_callback(const int token, const uint8_t index) {
 static bool choice_navigation_callback(const uint8_t page, nbgl_pageContent_t *content) {
     UNUSED(page);
     content->type = BARS_LIST;
-    content->barsList.nbBars = ACTIONS_NB;
+    content->barsList.nbBars = (N_storage.metadata_count == 0) ? 1 : ACTIONS_NB;
     content->barsList.barTexts = barsTexts;
     content->barsList.tokens = barsToken;
 #ifdef HAVE_PIEZO_SOUND
