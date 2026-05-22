@@ -167,6 +167,10 @@ void confirm_password_deletion_cb(const size_t index) {
  *
  */
 void confirm_all_passwords_deletion(void) {
+    if (N_storage.metadata_count == 0) {
+        nbgl_useCaseStatus("No passwords available", false, display_choice_page);
+        return;
+    }
     confirm_password_deletion(-1);
 }
 
