@@ -98,9 +98,9 @@ static const char *const availableKbd[KBD_OPTIONS_NB] = {"QWERTY", "QWERTY INT."
 bool kbdMappingInit = false;
 
 // App info
-#define SETTING_INFO_NB 2
-static const char* const INFO_TYPES[SETTING_INFO_NB] = {"Version", "Developer"};
-static const char* const INFO_CONTENTS[SETTING_INFO_NB] = {APPVERSION, "(c) 2017-2025 Ledger"};
+#define SETTING_INFO_NB 3
+static const char* const INFO_TYPES[SETTING_INFO_NB] = {"Version", "Developer", "Copyright"};
+static const char* const INFO_CONTENTS[SETTING_INFO_NB] = {APPVERSION, "Ledger", "Ledger (c) 2026"};
 static const nbgl_contentInfoList_t infoList = {
     .nbInfos = SETTING_INFO_NB,
     .infoTypes = INFO_TYPES,
