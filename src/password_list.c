@@ -45,7 +45,7 @@ void password_list_reset() {
 
 size_t password_list_get_offset(const size_t index) {
     if (index >= MAX_METADATA_COUNT) {
-        PRINTF("[password_list_get_offset] Index %d out of bounds\n", index);
+        PRINTF("[password_list_get_offset] Index %ld out of bounds\n", index);
         return -1;
     }
     return passwordList.offsets[index];
@@ -57,7 +57,7 @@ size_t password_list_get_current_offset() {
 
 const char *password_list_get_password(const size_t index) {
     if (index >= MAX_METADATA_COUNT) {
-        PRINTF("[password_list_get_password] Index %d out of bounds\n", index);
+        PRINTF("[password_list_get_password] Index %ld out of bounds\n", index);
         return NULL;
     }
     return passwordList.passwords[index];
@@ -72,7 +72,7 @@ bool password_list_add_password(const size_t index,
                                 const char *const password,
                                 const size_t length) {
     if (index >= MAX_METADATA_COUNT) {
-        PRINTF("[password_list_add_password] Index %d out of bounds\n", index);
+        PRINTF("[password_list_add_password] Index %ld out of bounds\n", index);
         return false;
     }
     passwordList.offsets[index] = offset;

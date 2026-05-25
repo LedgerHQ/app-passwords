@@ -54,7 +54,7 @@ bool nickname_exists(const char* const pwd_name, const size_t pwd_size) {
         (pwd_size > (size_t) (MAX_METANAME - 1)) ? (size_t) (MAX_METANAME - 1) : pwd_size;
     for (size_t i = 0; i < N_storage.metadata_count; i++) {
         uint32_t offset = get_metadata(i);
-        if (offset == -1UL) {
+        if (offset == UINT32_MAX) {
             break;
         }
         if (METADATA_NICKNAME_LEN(offset) == effective_size &&

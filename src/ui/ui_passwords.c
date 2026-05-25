@@ -201,7 +201,7 @@ void display_password_list(void) {
     explicit_bzero(&contentsList, sizeof(contentsList));
     while (nbPasswords < N_storage.metadata_count) {
         pwdOffset = get_metadata(nbPasswords);
-        if (pwdOffset == -1UL) {
+        if (pwdOffset == UINT32_MAX) {
             break;
         }
         const size_t pwdLength = METADATA_NICKNAME_LEN(pwdOffset) + 1;
