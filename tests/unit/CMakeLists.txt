@@ -27,7 +27,6 @@ set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -Wall -pedantic -g -O0 --coverag
 set(GCC_COVERAGE_LINK_FLAGS "--coverage -lgcov")
 set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} ${GCC_COVERAGE_LINK_FLAGS}")
 set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${GCC_COVERAGE_LINK_FLAGS}")
-set(SDK_DIR "$ENV{BOLOS_SDK}")
 
 # guard against in-source builds
 if(${CMAKE_SOURCE_DIR} STREQUAL ${CMAKE_BINARY_DIR})
@@ -48,12 +47,6 @@ include_directories(
   ../../src
   ../../include
   ./mocks/
-  ${SDK_DIR}/target/stax/include
-  ${SDK_DIR}/include
-  ${SDK_DIR}/lib_standard_app
-  ${SDK_DIR}/io/include
-  ${SDK_DIR}/io_legacy/include
-  ${SDK_DIR}/lib_cxng/include
 )
 
 add_executable(test_password_list test_password_list.c)
@@ -64,5 +57,10 @@ add_executable(test_hid_mapping test_hid_mapping.c)
 add_library(hid_mapping SHARED ../../src/hid_mapping.c)
 target_link_libraries(test_hid_mapping PUBLIC cmocka gcov hid_mapping bsd)
 
+add_executable(test_password test_password.c)
+add_library(password SHARED ../../src/password.c ../../src/metadata.c)
+target_link_libraries(test_password PUBLIC cmocka gcov password bsd)
+
 add_test(password_list test_password_list)
 add_test(hid_mapping test_hid_mapping)
+add_test(password test_password)
