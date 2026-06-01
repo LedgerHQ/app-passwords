@@ -11,6 +11,13 @@ on:
       - develop
       - master
 
+permissions:
+  contents: read
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
 jobs:
   generate:
     name: Generate the site
@@ -41,6 +48,8 @@ jobs:
     name: Deploy the site on GitHub pages
     runs-on: ubuntu-latest
     needs: generate
+    permissions:
+      contents: write
     if: |
       github.event_name == 'push' &&
       (github.ref == 'refs/heads/master' ||
@@ -57,3 +66,4 @@ jobs:
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: site
+          cname: passwords.ledger.com
