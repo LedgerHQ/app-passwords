@@ -15,6 +15,9 @@ jobs:
   generate:
     name: Generate the site
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: clients/wui/
     steps:
       - name: Clone
         uses: actions/checkout@v6
@@ -22,16 +25,12 @@ jobs:
         uses: actions/setup-node@v5
         with:
           node-version: 16.x
+          cache: yarn
+          cache-dependency-path: clients/wui/yarn.lock
       - name: Run install
-        uses: borales/actions-yarn@v4
-        with:
-          cmd: install
-          dir: clients/wui/
+        run: yarn install --frozen-lockfile
       - name: Run build
-        uses: borales/actions-yarn@v4
-        with:
-          cmd: build
-          dir: clients/wui/
+        run: yarn build
       - name: Upload documentation bundle
         uses: actions/upload-artifact@v6
         with:
@@ -50,6 +49,9 @@ jobs:
     steps:
       - name: Download documentation bundle
         uses: actions/download-artifact@v7
+        with:
+          name: site
+          path: site
       - name: Deploy documentation on pages
         uses: peaceiris/actions-gh-pages@v4
         with:
