@@ -62,7 +62,7 @@ uint32_t get_metadata(uint32_t nth) {
     unsigned int offset = 0;
     for (;;) {
         if (METADATA_DATALEN(offset) == 0) {
-            return -1UL;  // end of file
+            return UINT32_MAX;  // end of file
         }
         if (METADATA_KIND(offset) != META_ERASED) {
             if (nth == 0) {

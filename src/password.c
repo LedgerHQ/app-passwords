@@ -43,3 +43,24 @@ void show_password_at_offset(const size_t offset, uint8_t* dest_buffer) {
 error_type_t delete_password_at_offset(const size_t offset) {
     return erase_metadata(offset);
 }
+
+bool nickname_exists(const char* const pwd_name, const size_t pwd_size) {
+    // write_metadata silently caps the total data block at MAX_METANAME bytes
+    // (1 charset byte + nickname), so any nickname longer than MAX_METANAME - 1
+    // is truncated at storage time. Mirror that truncation here, otherwise a
+    // user could bypass duplicate detection just by typing a name longer than
+    // what the device can actually persist.
+    const size_t effective_size =
+        (pwd_size > (size_t) (MAX_METANAME - 1)) ? (size_t) (MAX_METANAME - 1) : pwd_size;
+    for (size_t i = 0; i < N_storage.metadata_count; i++) {
+        uint32_t offset = get_metadata(i);
+        if (offset == UINT32_MAX) {
+            break;
+        }
+        if (METADATA_NICKNAME_LEN(offset) == effective_size &&
+            memcmp((const void*) METADATA_NICKNAME(offset), pwd_name, effective_size) == 0) {
+            return true;
+        }
+    }
+    return false;
+}

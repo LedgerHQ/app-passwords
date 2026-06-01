@@ -43,6 +43,9 @@ enum {
     EXT_SYMBOLS_TOKEN,
     NO_ENTER_TOKEN,
     KBD_TOKEN,
+#ifndef SCREEN_SIZE_WALLET
+    KBD_BAR_TOKEN,
+#endif
     CHOICE_WRITE_TOKEN,
     CHOICE_DISPLAY_TOKEN,
     CHOICE_CREATE_TOKEN,
@@ -87,9 +90,6 @@ enum {
 
 static void display_home_page(void);
 
-// settings init display page index (allows to target keyboard layout)
-uint8_t initSettingPage;
-
 // Settings switches
 static nbgl_contentSwitch_t switches[SETTINGS_SWITCHES_NB] = {0};
 
@@ -98,9 +98,9 @@ static const char *const availableKbd[KBD_OPTIONS_NB] = {"QWERTY", "QWERTY INT."
 bool kbdMappingInit = false;
 
 // App info
-#define SETTING_INFO_NB 2
-static const char* const INFO_TYPES[SETTING_INFO_NB] = {"Version", "Developer"};
-static const char* const INFO_CONTENTS[SETTING_INFO_NB] = {APPVERSION, "(c) 2017-2025 Ledger"};
+#define SETTING_INFO_NB 3
+static const char* const INFO_TYPES[SETTING_INFO_NB] = {"Version", "Developer", "Copyright"};
+static const char* const INFO_CONTENTS[SETTING_INFO_NB] = {APPVERSION, "Ledger", "Ledger (c) 2026"};
 static const nbgl_contentInfoList_t infoList = {
     .nbInfos = SETTING_INFO_NB,
     .infoTypes = INFO_TYPES,
@@ -116,19 +116,33 @@ static const nbgl_genericContents_t settingContents = {
 };
 static nbgl_homeAction_t homeAction = {0};
 
+// "Host keyboard" is the BARS_LIST label on Nano AND the sub-menu /
+// first-launch page title on both platforms. Keep one source of truth.
+static const char *const kbdSettingsBarsTexts[1] = {"Host keyboard"};
+
+#ifdef SCREEN_SIZE_NANO
+// Nano-only: the keyboard layout CHOICES_LIST lives outside the inline
+// settings flow. Reused by the first-launch post-disclaimer
+// page and the settings sub-menu reached from the BARS_LIST entry.
+static nbgl_content_t kbdLayoutChoicesContent  = {0};
+static const uint8_t  kbdSettingsBarsTokens[1] = {KBD_BAR_TOKEN};
+#endif
+
 // Main Action menu choices
 #define ACTIONS_NB 5
+// "Create" stays first so it remains reachable when the database is empty
+// (see choice_navigation_callback: nbBars shrinks to 1 in that case).
 static const char *const barsTexts[ACTIONS_NB] = {
+    "Create a new password",
     "Type a password",
     "Show a password",
-    "Create a new password",
     "Delete a password",
     "Delete all passwords"
 };
 static const uint8_t barsToken[ACTIONS_NB] = {
+    CHOICE_CREATE_TOKEN,
     CHOICE_WRITE_TOKEN,
     CHOICE_DISPLAY_TOKEN,
-    CHOICE_CREATE_TOKEN,
     CHOICE_DELETE_TOKEN,
     CHOICE_DELETE_ALL_TOKENS
 };
@@ -137,6 +151,43 @@ static const uint8_t barsToken[ACTIONS_NB] = {
 pwd_actionCallback_t selector_callback = NULL;
 
 // clang-format on
+
+#ifdef SCREEN_SIZE_NANO
+/**
+ * @brief Quit callback for the layout sub-menu: re-enter settings on the
+ *        "Host keyboard" page. The Nano horizontal flow numbers
+ *        steps 0..SETTINGS_SWITCHES_NB-1 for the switches, then
+ *        SETTINGS_SWITCHES_NB for the BARS_LIST entry.
+ */
+static void return_to_settings(void) {
+    nbgl_useCaseHomeAndSettings(APPNAME,
+                                &ICON_APP_HOME,
+                                "Manage passwords on your device",
+                                SETTINGS_SWITCHES_NB,
+                                &settingContents,
+                                &infoList,
+                                &homeAction,
+                                app_exit);
+}
+
+/**
+ * @brief Nano-only: settings sub-menu opened from the "Host keyboard"
+ *        BARS_LIST entry. Reuses kbdLayoutChoicesContent (same CHOICES_LIST
+ *        as the first-launch page). Back returns to the settings page on
+ *        the BARS_LIST step.
+ */
+static void display_kbd_sub_menu(void) {
+    static const nbgl_genericContents_t kbdChoiceContents = {
+        .callbackCallNeeded = false,
+        .contentsList = &kbdLayoutChoicesContent,
+        .nbContents = 1,
+    };
+    nbgl_useCaseGenericConfiguration(kbdSettingsBarsTexts[0],
+                                     0,
+                                     &kbdChoiceContents,
+                                     return_to_settings);
+}
+#endif
 
 /**
  * @brief Settings Action callback
@@ -147,27 +198,35 @@ pwd_actionCallback_t selector_callback = NULL;
  *
  */
 static void controls_callback(int token, uint8_t index, int page) {
-    UNUSED(index);
     UNUSED(page);
 
+    // NBGL re-reads switches[].initState on every page re-render, so we must
+    // keep it in sync with NVM after each toggle (otherwise an exit/re-enter
+    // would show the pre-toggle value).
     switch (token) {
         case UPPERCASE_TOKEN:
             set_charset_option(UPPERCASE_BITFLAG);
+            switches[UPPERCASE_ID].initState = has_charset_option(UPPERCASE_BITFLAG);
             break;
         case LOWERCASE_TOKEN:
             set_charset_option(LOWERCASE_BITFLAG);
+            switches[LOWERCASE_ID].initState = has_charset_option(LOWERCASE_BITFLAG);
             break;
         case NUMBERS_TOKEN:
             set_charset_option(NUMBERS_BITFLAG);
+            switches[NUMBERS_ID].initState = has_charset_option(NUMBERS_BITFLAG);
             break;
         case BARS_TOKEN:
             set_charset_option(BARS_BITFLAG);
+            switches[BARS_ID].initState = has_charset_option(BARS_BITFLAG);
             break;
         case EXT_SYMBOLS_TOKEN:
             set_charset_option(EXT_SYMBOLS_BITFLAG);
+            switches[EXT_SYMBOLS_ID].initState = has_charset_option(EXT_SYMBOLS_BITFLAG);
             break;
         case NO_ENTER_TOKEN:
             change_enter_options();
+            switches[NO_ENTER_ID].initState = N_storage.press_enter_after_typing;
             break;
         case KBD_TOKEN:
             switch (index) {
@@ -183,12 +242,22 @@ static void controls_callback(int token, uint8_t index, int page) {
                 default:
                     break;
             }
+#ifdef SCREEN_SIZE_WALLET
             contents[SETTING_KBD_TYPE].content.choicesList.initChoice = index;
+#else
+            kbdLayoutChoicesContent.content.choicesList.initChoice = index;
+#endif
+            // Auto-exit only on the first-launch (post-disclaimer) flow.
             if (kbdMappingInit) {
                 kbdMappingInit = false;
                 display_home_page();
             }
             break;
+#ifndef SCREEN_SIZE_WALLET
+        case KBD_BAR_TOKEN:
+            display_kbd_sub_menu();
+            break;
+#endif
         default:
             break;
     }
@@ -256,18 +325,41 @@ static void init_settings(void) {
     contents[SETTING_OPTIONS].content.switchesList.switches = switches;
     contents[SETTING_OPTIONS].contentActionCallback = controls_callback;
 
+#ifdef SCREEN_SIZE_WALLET
     contents[SETTING_KBD_TYPE].type = CHOICES_LIST;
     contents[SETTING_KBD_TYPE].content.choicesList.nbChoices = KBD_OPTIONS_NB;
     contents[SETTING_KBD_TYPE].content.choicesList.names = availableKbd;
     contents[SETTING_KBD_TYPE].content.choicesList.token = KBD_TOKEN;
     contents[SETTING_KBD_TYPE].contentActionCallback = controls_callback;
-#ifdef HAVE_PIEZO_SOUND
     contents[SETTING_KBD_TYPE].content.choicesList.tuneId = TUNE_TAP_CASUAL;
-#endif
 
     if (N_storage.keyboard_layout != HID_MAPPING_NONE) {
         contents[SETTING_KBD_TYPE].content.choicesList.initChoice = N_storage.keyboard_layout - 1;
     }
+#else
+    // Nano: settings show a single "Host keyboard" bar; selecting it opens
+    // the layout CHOICES_LIST in a sub-menu (kbdLayoutChoicesContent). The
+    // SDK automatically draws a downward chevron at the bottom of every
+    // BARS_LIST bar on Nano (counterpart of Stax/Flex's PUSH_ICON), so no
+    // app-side icon configuration is needed.
+    contents[SETTING_KBD_TYPE].type = BARS_LIST;
+    contents[SETTING_KBD_TYPE].content.barsList.nbBars = 1;
+    contents[SETTING_KBD_TYPE].content.barsList.barTexts = kbdSettingsBarsTexts;
+    contents[SETTING_KBD_TYPE].content.barsList.tokens = kbdSettingsBarsTokens;
+    contents[SETTING_KBD_TYPE].contentActionCallback = controls_callback;
+
+    kbdLayoutChoicesContent.type = CHOICES_LIST;
+    kbdLayoutChoicesContent.content.choicesList.nbChoices = KBD_OPTIONS_NB;
+    kbdLayoutChoicesContent.content.choicesList.names = availableKbd;
+    kbdLayoutChoicesContent.content.choicesList.token = KBD_TOKEN;
+    kbdLayoutChoicesContent.contentActionCallback = controls_callback;
+    kbdLayoutChoicesContent.content.choicesList.selectionIcon = &C_icon_validate_10;
+    kbdLayoutChoicesContent.content.choicesList.title = kbdSettingsBarsTexts[0];
+
+    if (N_storage.keyboard_layout != HID_MAPPING_NONE) {
+        kbdLayoutChoicesContent.content.choicesList.initChoice = N_storage.keyboard_layout - 1;
+    }
+#endif
 
     // Initialize Home page Action
     // ---------------------------
@@ -317,7 +409,7 @@ static void choice_callback(const int token, const uint8_t index) {
 static bool choice_navigation_callback(const uint8_t page, nbgl_pageContent_t *content) {
     UNUSED(page);
     content->type = BARS_LIST;
-    content->barsList.nbBars = ACTIONS_NB;
+    content->barsList.nbBars = (N_storage.metadata_count == 0) ? 1 : ACTIONS_NB;
     content->barsList.barTexts = barsTexts;
     content->barsList.tokens = barsToken;
 #ifdef HAVE_PIEZO_SOUND
@@ -356,11 +448,58 @@ static void display_home_page(void) {
 #else
                                 "Manage passwords on your device",
 #endif
-                                initSettingPage,
+                                INIT_HOME_PAGE,
                                 &settingContents,
                                 &infoList,
                                 &homeAction,
                                 app_exit);
+}
+
+/**
+ * @brief Back/quit callback while on the first-launch keyboard layout page
+ * @note If the user exits without picking a layout, default to QWERTY in NVM
+ *       (rather than leaving keyboard_layout at HID_MAPPING_NONE, which would
+ *       force the disclaimer + layout page to re-appear at every startup
+ *       while still silently behaving like QWERTY at typing time). The user
+ *       can change the layout later via the regular settings.
+ *       kbdMappingInit is also cleared so a subsequent layout selection
+ *       through the regular settings does not unexpectedly re-trigger the
+ *       transition-to-home redirect in controls_callback().
+ */
+static void startup_kbd_quit_callback(void) {
+    set_keyboard_layout(HID_MAPPING_QWERTY);
+#ifdef SCREEN_SIZE_WALLET
+    contents[SETTING_KBD_TYPE].content.choicesList.initChoice = KBD_QWERTY_ID;
+#else
+    kbdLayoutChoicesContent.content.choicesList.initChoice = KBD_QWERTY_ID;
+#endif
+    kbdMappingInit = false;
+    display_home_page();
+}
+
+/**
+ * @brief First-launch keyboard layout selection page
+ * @note Shown right after the disclaimer is accepted. We deliberately use
+ *       nbgl_useCaseGenericConfiguration with only the KBD_TYPE content
+ *       rather than jumping into the full settings flow: this keeps the
+ *       startup navigation isolated from the home/settings navigation.
+ *       Once the user picks a layout, controls_callback's KBD_TOKEN branch
+ *       clears kbdMappingInit and calls display_home_page().
+ */
+static void display_kbd_layout_selection(void) {
+    static const nbgl_genericContents_t kbdLayoutOnlyContents = {
+        .callbackCallNeeded = false,
+#ifdef SCREEN_SIZE_WALLET
+        .contentsList = &contents[SETTING_KBD_TYPE],
+#else
+        .contentsList = &kbdLayoutChoicesContent,
+#endif
+        .nbContents = 1,
+    };
+    nbgl_useCaseGenericConfiguration(kbdSettingsBarsTexts[0],
+                                     0,
+                                     &kbdLayoutOnlyContents,
+                                     startup_kbd_quit_callback);
 }
 
 /**
@@ -371,22 +510,9 @@ static void display_home_page(void) {
  *
  */
 static void startup_callback(bool confirm) {
-    uint8_t index = 0;
-
     if (confirm) {
         kbdMappingInit = true;
-        initSettingPage = 0;
-        // Find the page index after the switches, where the settings show the keyboard type
-        while (index < SETTINGS_SWITCHES_NB) {
-            index +=
-                nbgl_useCaseGetNbSwitchesInPage(SETTINGS_SWITCHES_NB - index,
-                                                &contents[SETTING_OPTIONS].content.switchesList,
-                                                index,
-                                                false);
-            initSettingPage++;
-        }
-        display_home_page();
-        initSettingPage = INIT_HOME_PAGE;
+        display_kbd_layout_selection();
     } else {
         app_exit();
     }
@@ -397,7 +523,6 @@ static void startup_callback(bool confirm) {
  *
  */
 void ui_idle(void) {
-    initSettingPage = INIT_HOME_PAGE;
     init_settings();
     // First start: the keyboard layout is not selected yet
     if (N_storage.keyboard_layout == HID_MAPPING_NONE) {
