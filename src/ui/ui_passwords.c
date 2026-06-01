@@ -46,24 +46,14 @@ static char msgBuffer[MAX_MSG_BUFFER_SIZE] = {0};
 static char password_to_display[PASSWORD_MAX_SIZE + 1] = {0};
 static const char *ptrToPwd[2] = {0};
 
-// Pointer to the layout context
-static nbgl_layout_t *layoutContext = NULL;
-
 // Flag to indicate if all passwords are being deleted
 static bool all_passwords;
 
 // Keyboard contexts
 static char password_name[MAX_METANAME + 1] = {0};
-static int keyboardIndex = 0;
 
 static nbgl_genericContents_t genericContent = {0};
 static nbgl_content_t contentsList = {0};
-#ifdef SCREEN_SIZE_WALLET
-static nbgl_layoutConfirmationButton_t confirmButton = {0};
-static nbgl_layoutKeyboardContent_t keyboardContent = {0};
-#else
-static int textIndex = 0;
-#endif
 static size_t nbPasswordsPerPage = 0;
 
 /**
@@ -90,17 +80,6 @@ static void display_error_page(error_type_t error) {
  */
 static void display_success_page(const char *string) {
     nbgl_useCaseStatus(string, true, display_choice_page);
-}
-
-/**
- * @brief Cleanup UI context
- *
- */
-static void release_context(void) {
-    if (layoutContext != NULL) {
-        nbgl_layoutRelease(layoutContext);
-        layoutContext = NULL;
-    }
 }
 
 /**
@@ -188,6 +167,10 @@ void confirm_password_deletion_cb(const size_t index) {
  *
  */
 void confirm_all_passwords_deletion(void) {
+    if (N_storage.metadata_count == 0) {
+        nbgl_useCaseStatus("No passwords available", false, display_choice_page);
+        return;
+    }
     confirm_password_deletion(-1);
 }
 
@@ -218,7 +201,7 @@ void display_password_list(void) {
     explicit_bzero(&contentsList, sizeof(contentsList));
     while (nbPasswords < N_storage.metadata_count) {
         pwdOffset = get_metadata(nbPasswords);
-        if (pwdOffset == -1UL) {
+        if (pwdOffset == UINT32_MAX) {
             break;
         }
         const size_t pwdLength = METADATA_NICKNAME_LEN(pwdOffset) + 1;
@@ -292,6 +275,8 @@ static void create_password(void) {
     const size_t password_size = strlen(password_name);
     if (password_size == 0) {
         nbgl_useCaseStatus("The nickname\ncan't be empty", false, &display_create_pwd);
+    } else if (nickname_exists(password_name, password_size)) {
+        nbgl_useCaseStatus("This nickname\nalready exists", false, &display_create_pwd);
     } else {
         error_type_t error = create_new_password(password_name, password_size);
         if (error == OK) {
@@ -302,155 +287,36 @@ static void create_password(void) {
     }
 }
 
-#ifdef SCREEN_SIZE_WALLET
-/**
- * @brief Keyboard control callback
- *
- * @param[in] token button Id pressed
- * @param[in] index widget index on the page
- *
- */
-static void keyboard_control_callback(const int token, const uint8_t index) {
-    UNUSED(index);
-    switch (token) {
-        case BACK_BUTTON_TOKEN:
-            release_context();
-            display_choice_page();
-            break;
-        case CREATE_TOKEN:
-            create_password();
-            break;
-        default:
-            break;
-    }
-};
-#endif
-
-/**
- * @brief Keyboard press callback
- *
- * @param[in] touchedKey key pressed
- *
- */
-static void key_press_callback(const char touchedKey) {
-    uint32_t mask = 0;
-    size_t textLen = strlen(password_name);
-    if (touchedKey == BACKSPACE_KEY) {
-        if (textLen == 0) {
-            return;
-        }
-        password_name[--textLen] = '\0';
-#ifdef SCREEN_SIZE_NANO
-    } else if (touchedKey == VALIDATE_KEY) {
-        create_password();
-        return;
-#endif
-    } else {
-        password_name[textLen] = touchedKey;
-        password_name[++textLen] = '\0';
-    }
-    if (textLen >= MAX_METANAME) {
-        // password name length can't be greater than MAX_METANAME, so we mask
-        // every characters
-        mask = -1;
-    }
-#ifdef SCREEN_SIZE_WALLET
-    nbgl_layoutUpdateKeyboardContent(layoutContext, &keyboardContent);
-    nbgl_layoutUpdateKeyboard(layoutContext, keyboardIndex, mask, false, LOWER_CASE);
-    nbgl_refreshSpecialWithPostRefresh(BLACK_AND_WHITE_REFRESH, POST_REFRESH_FORCE_POWER_ON);
-#else
-    nbgl_layoutUpdateKeyboard(layoutContext, keyboardIndex, mask);
-    nbgl_layoutUpdateEnteredText(layoutContext, textIndex, password_name);
-    nbgl_refresh();
-#endif
-}
-
 /**
  * @brief Display the passwords creation page
  *
  */
 void display_create_pwd(void) {
-    nbgl_layoutDescription_t layoutDescription = {0};
-    nbgl_layoutKbd_t kbdInfo = {.callback = &key_press_callback};
-
+    nbgl_kbdButtonParams_t confirmParams = {
 #ifdef SCREEN_SIZE_WALLET
-    nbgl_layoutHeader_t headerDesc = {
-        .type = HEADER_BACK_AND_TEXT,
-        .backAndText.token = BACK_BUTTON_TOKEN,
-#ifdef HAVE_PIEZO_SOUND
-        .backAndText.tuneId = TUNE_TAP_CASUAL,
+        .buttonText = "Create password",
 #endif
+        .onButtonCallback = &create_password,
     };
-    confirmButton = (nbgl_layoutConfirmationButton_t){
-        .text = "Create password",
-        .token = CREATE_TOKEN,
-        .active = true,
-    };
-    keyboardContent = (nbgl_layoutKeyboardContent_t){
+
+    nbgl_keyboardParams_t keyboardParams = {
         .type = KEYBOARD_WITH_BUTTON,
+#ifdef SCREEN_SIZE_WALLET
         .title = "New password nickname",
-        .text = password_name,
-        .textToken = KBD_TEXT_TOKEN,
-        .confirmationButton = confirmButton,
-#ifdef HAVE_PIEZO_SOUND
-        .tuneId = TUNE_TAP_CASUAL,
+#else
+        .title = "Create password",
 #endif
+        .entryBuffer = password_name,
+        .entryMaxLen = sizeof(password_name),
+        .lettersOnly = false,
+#ifdef SCREEN_SIZE_WALLET
+        .mode = MODE_LETTERS,
+        .casing = LOWER_CASE,
+#else
+        .mode = MODE_NONE,
+#endif
+        .confirmationParams = confirmParams,
     };
-    layoutDescription.onActionCallback = &keyboard_control_callback;
-    kbdInfo.mode = MODE_LETTERS;
-    kbdInfo.casing = LOWER_CASE;
     password_name[0] = '\0';
-
-    // Create page layout
-    release_context();
-    layoutContext = nbgl_layoutGet(&layoutDescription);
-
-    // Add header
-    nbgl_layoutAddHeader(layoutContext, &headerDesc);
-
-    // Add keyboard
-    keyboardIndex = nbgl_layoutAddKeyboard(layoutContext, &kbdInfo);
-    if (keyboardIndex < 0) {
-        // Error
-        release_context();
-        return;
-    }
-
-    nbgl_layoutAddKeyboardContent(layoutContext, &keyboardContent);
-
-#else  // SCREEN_SIZE_WALLET
-
-    nbgl_layoutCenteredInfo_t centeredInfo = {.text1 = "Create password", .onTop = true};
-    nbgl_layoutNavigation_t navInfo = {.direction = HORIZONTAL_NAV,
-                                       .indication = LEFT_ARROW | RIGHT_ARROW};
-    password_name[0] = '\0';
-
-    // Create page layout
-    release_context();
-    layoutContext = nbgl_layoutGet(&layoutDescription);
-
-    // add description
-    nbgl_layoutAddCenteredInfo(layoutContext, &centeredInfo);
-
-    // Add keyboard
-    keyboardIndex = nbgl_layoutAddKeyboard(layoutContext, &kbdInfo);
-    if (keyboardIndex < 0) {
-        // Error
-        release_context();
-        return;
-    }
-
-    // add empty entered text
-    textIndex = nbgl_layoutAddEnteredText(layoutContext, "", true);
-    if (textIndex < 0) {
-        // Error
-        release_context();
-        return;
-    }
-    nbgl_layoutAddNavigation(layoutContext, &navInfo);
-
-#endif  // SCREEN_SIZE_WALLET
-
-    nbgl_layoutDraw(layoutContext);
-    nbgl_refresh();
+    nbgl_useCaseKeyboard(&keyboardParams, &display_choice_page);
 }

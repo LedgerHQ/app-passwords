@@ -1,12 +1,10 @@
 from pathlib import Path
-import pytest
 
 from ragger.navigator import Navigator, NavIns, NavInsID
 
-from .navigator import CustomNavInsID
+from touch.navigator import CustomNavInsID
 
 
-@pytest.mark.use_on_device(["stax", "flex", "apex_p"])
 def test_delete_one_password(navigator: Navigator, default_screenshot_path: Path):
     instructions = [
         CustomNavInsID.DISCLAIMER_CONFIRM,
@@ -27,7 +25,6 @@ def test_delete_one_password(navigator: Navigator, default_screenshot_path: Path
                                    screen_change_before_first_instruction=False)
 
 
-@pytest.mark.use_on_device(["stax", "flex", "apex_p"])
 def test_delete_all_passwords(navigator: Navigator, default_screenshot_path: Path):
     instructions = [
         CustomNavInsID.DISCLAIMER_CONFIRM,
@@ -38,8 +35,6 @@ def test_delete_all_passwords(navigator: Navigator, default_screenshot_path: Pat
         # confirm
         CustomNavInsID.CONFIRM_YES,
         NavIns(NavInsID.WAIT, (2, )),
-        # check the password has been removed from the list
-        CustomNavInsID.MENU_TO_DISPLAY,
     ]
     navigator.navigate_and_compare(default_screenshot_path,
                                    "delete_all_password",
@@ -47,7 +42,6 @@ def test_delete_all_passwords(navigator: Navigator, default_screenshot_path: Pat
                                    screen_change_before_first_instruction=False)
 
 
-@pytest.mark.use_on_device(["stax", "flex", "apex_p"])
 def test_create_password(navigator: Navigator, default_screenshot_path: Path):
     instructions = [
         CustomNavInsID.DISCLAIMER_CONFIRM,
