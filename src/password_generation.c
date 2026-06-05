@@ -46,6 +46,11 @@ static uint8_t rng_u8_modulo(mbedtls_ctr_drbg_context *drbg, uint8_t modulo) {
 
 static void shuffle_array(mbedtls_ctr_drbg_context *drbg, uint8_t *buffer, uint32_t size) {
     uint32_t i;
+    // Nothing to shuffle for an empty array, and guard against the unsigned
+    // underflow of `size - 1` (which would index buffer way out of bounds).
+    if (size == 0) {
+        return;
+    }
     for (i = size - 1; i > 0; i--) {
         uint32_t index = rng_u8_modulo(drbg, i + 1);
         uint8_t tmp = buffer[i];

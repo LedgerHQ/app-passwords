@@ -90,9 +90,23 @@ static void test_map_char_azerty_shift(void **state __attribute__((unused))) {
 static void test_map_char_azerty_alt(void **state __attribute__((unused))) {
     uint8_t map[3] = {0, 0, 0};
     map_char(HID_MAPPING_AZERTY, '@', map);
-    check_map(map, ALT_KEY, 0x27);
+    check_map(map, RIGHT_ALT_KEY, 0x27);
     map_char(HID_MAPPING_AZERTY, '`', map);
-    check_map(map, ALT_KEY, 0x24);
+    check_map(map, RIGHT_ALT_KEY, 0x24);
+    map_char(HID_MAPPING_AZERTY, '[', map);
+    check_map(map, RIGHT_ALT_KEY, 0x22);
+    map_char(HID_MAPPING_AZERTY, '\\', map);
+    check_map(map, RIGHT_ALT_KEY, 0x25);
+    map_char(HID_MAPPING_AZERTY, ']', map);
+    check_map(map, RIGHT_ALT_KEY, 0x2d);
+    map_char(HID_MAPPING_AZERTY, '{', map);
+    check_map(map, RIGHT_ALT_KEY, 0x21);
+    map_char(HID_MAPPING_AZERTY, '|', map);
+    check_map(map, RIGHT_ALT_KEY, 0x23);
+    map_char(HID_MAPPING_AZERTY, '}', map);
+    check_map(map, RIGHT_ALT_KEY, 0x2e);
+    map_char(HID_MAPPING_AZERTY, '~', map);
+    check_map(map, RIGHT_ALT_KEY, 0x1f);
 }
 
 int main() {
