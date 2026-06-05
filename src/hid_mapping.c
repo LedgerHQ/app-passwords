@@ -165,6 +165,15 @@ static uint8_t get_char(uint8_t index, hid_mapping_t mapping) {
     return (mapping == HID_MAPPING_AZERTY ? MAP[index].azerty : MAP[index].qwerty);
 }
 
+static uint8_t get_alt_modifier(hid_mapping_t mapping, bool altUsed) {
+    if (!altUsed) {
+        return 0x00;
+    }
+    // On AZERTY third-level characters (e.g. # @ [ \ ] ^ ` { | } ~) are reached
+    // with AltGr (Right Alt), whereas the QWERTY mappings use Left Alt.
+    return (mapping == HID_MAPPING_AZERTY ? RIGHT_ALT_KEY : ALT_KEY);
+}
+
 void map_char(hid_mapping_t mapping, uint8_t key, uint8_t *out) {
     uint8_t keyDiv8, twoPower, keyCode;
     bool altUsed, shiftUsed;
@@ -181,7 +190,7 @@ void map_char(hid_mapping_t mapping, uint8_t key, uint8_t *out) {
     altUsed = ((get_char(keyDiv8, mapping) & twoPower) != 0);
     shiftUsed = ((get_char(MOD_MASK_LENGTH + keyDiv8, mapping) & twoPower) != 0);
     keyCode = get_char(MOD2_MASK_LENGTH + key, mapping);
-    out[0] = (altUsed ? ALT_KEY : 0x00) | (shiftUsed ? SHIFT_KEY : 0x00);
+    out[0] = get_alt_modifier(mapping, altUsed) | (shiftUsed ? SHIFT_KEY : 0x00);
     out[1] = 0x00;
     out[2] = keyCode;
 }
