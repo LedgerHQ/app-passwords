@@ -54,7 +54,9 @@ static char password_name[MAX_METANAME + 1] = {0};
 
 static nbgl_genericContents_t genericContent = {0};
 static nbgl_content_t contentsList = {0};
+#ifdef SCREEN_SIZE_WALLET
 static size_t nbPasswordsPerPage = 0;
+#endif
 
 /**
  * @brief Delete error message
@@ -184,7 +186,17 @@ void confirm_all_passwords_deletion(void) {
 static void password_callback(const int token, const uint8_t index, int page) {
     UNUSED(token);
     if (selector_callback) {
+#ifdef SCREEN_SIZE_WALLET
+        // On wallet devices the choices list is paginated: NBGL forwards the
+        // index relative to the current page, so the absolute index must be
+        // rebuilt from the page number and the number of choices per page.
         selector_callback((page * nbPasswordsPerPage) + index);
+#else
+        // On Nano each choice has its own page and NBGL already forwards the
+        // absolute choice index, so it must be used as-is.
+        UNUSED(page);
+        selector_callback(index);
+#endif
     }
 }
 
@@ -225,8 +237,10 @@ void display_password_list(void) {
     contentsList.content.choicesList.tuneId = TUNE_TAP_CASUAL;
 #endif
     contentsList.contentActionCallback = &password_callback;
+#ifdef SCREEN_SIZE_WALLET
     nbPasswordsPerPage =
         nbgl_useCaseGetNbChoicesInPage(nbPasswords, &contentsList.content.choicesList, 0, false);
+#endif
 
     nbgl_useCaseGenericConfiguration("Passwords list", 0, &genericContent, display_choice_page);
 }
