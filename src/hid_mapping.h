@@ -18,8 +18,9 @@
 #pragma once
 
 #define HID_MAPPING_H
-#define SHIFT_KEY 0x02
-#define ALT_KEY   0x04
+#define SHIFT_KEY     0x02
+#define ALT_KEY       0x04
+#define RIGHT_ALT_KEY 0x40
 
 #include <stdint.h>
 
