@@ -2,49 +2,46 @@
   "name": "passwords-backup",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "homepage": "https://passwords.ledger.com",
-  "dependencies": {
-    "@ledgerhq/hw-transport-webusb": "^5.49.0",
-    "install": "^0.13.0",
-    "react": "^17.0.1",
-    "react-accessible-accordion": "^3.3.3",
-    "react-dom": "^17.0.1",
-    "react-markdown": "^5.0.2",
-    "react-toastify": "^6.0.9",
-    "web-vitals": "^0.2.4"
-  },
+  "packageManager": "pnpm@11.7.0",
   "scripts": {
-    "start": "react-scripts start",
-    "build": "react-scripts build",
-    "test": "react-scripts test",
-    "eject": "react-scripts eject",
-    "predeploy": "npm run build",
-    "deploy": "gh-pages -d build"
+    "dev": "vite",
+    "mock": "vite --open '/?mock'",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
-  "eslintConfig": {
-    "extends": [
-      "react-app",
-      "react-app/jest"
-    ]
-  },
-  "browserslist": {
-    "production": [
-      ">0.2%",
-      "not dead",
-      "not op_mini all"
-    ],
-    "development": [
-      "last 1 chrome version",
-      "last 1 firefox version",
-      "last 1 safari version"
-    ]
+  "dependencies": {
+    "@base-ui/react": "1.5.0",
+    "@ledgerhq/hw-transport-webusb": "6.29.7",
+    "@ledgerhq/logs": "6.17.0",
+    "@ledgerhq/lumen-design-core": "0.1.17",
+    "@ledgerhq/lumen-ui-react": "0.1.40",
+    "@radix-ui/react-checkbox": "1.3.4",
+    "@radix-ui/react-dialog": "1.1.16",
+    "@radix-ui/react-slot": "1.2.5",
+    "@radix-ui/react-switch": "1.3.0",
+    "@radix-ui/react-tooltip": "1.2.9",
+    "class-variance-authority": "0.7.1",
+    "clsx": "2.1.1",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "react-markdown": "9.0.1",
+    "tailwind-merge": "2.6.1"
   },
   "devDependencies": {
-    "@testing-library/jest-dom": "^5.11.4",
-    "@testing-library/react": "^11.1.0",
-    "@testing-library/user-event": "^12.1.10",
-    "gh-pages": "^5.0.0",
-    "prettier": "^2.1.2",
-    "react-scripts": "4.0.0"
+    "@testing-library/jest-dom": "6.9.1",
+    "@testing-library/react": "16.3.2",
+    "@vitejs/plugin-react": "6.0.2",
+    "autoprefixer": "10.5.0",
+    "jsdom": "29.1.1",
+    "postcss": "8.5.15",
+    "prettier": "3.8.4",
+    "tailwindcss": "3.4.19",
+    "vite": "8.0.16",
+    "vite-plugin-node-polyfills": "0.28.0",
+    "vitest": "4.1.9"
   }
 }

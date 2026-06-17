@@ -18,6 +18,9 @@ repos:
     hooks:
       - id: codespell
         args: ['--ignore-words-list', 'ontop, NaX, bU, vEw, trough']
+        # Lockfiles contain dependency names (e.g. the "devlop" package) that
+        # trip the spell-checker; don't spell-check them.
+        exclude: (?:^|/)pnpm-lock\.yaml$
 
   - repo: https://github.com/pre-commit/mirrors-clang-format
     rev: v14.0.6

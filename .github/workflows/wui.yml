@@ -28,21 +28,26 @@ jobs:
     steps:
       - name: Clone
         uses: actions/checkout@v6
-      - name: Set Node.js 16.x
-        uses: actions/setup-node@v5
+      - name: Set up Node
+        uses: actions/setup-node@v6
         with:
-          node-version: 16.x
-          cache: yarn
-          cache-dependency-path: clients/wui/yarn.lock
+          # Node >= 22.5: pnpm 11 loads node:sqlite, which older Node lacks.
+          node-version: '22'
       - name: Run install
-        run: yarn install --frozen-lockfile
+        env:
+          COREPACK_ENABLE_DOWNLOAD_PROMPT: '0'
+        run: |
+          # pnpm is provisioned by corepack from the "packageManager" field.
+          corepack enable
+          # --frozen-lockfile: install exactly what pnpm-lock.yaml pins (fail on drift).
+          pnpm install --frozen-lockfile
       - name: Run build
-        run: yarn build
+        run: pnpm build
       - name: Upload documentation bundle
         uses: actions/upload-artifact@v6
         with:
           name: site
-          path: clients/wui/build/
+          path: clients/wui/dist/
 
   deploy:
     name: Deploy the site on GitHub pages

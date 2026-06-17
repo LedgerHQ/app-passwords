@@ -18,4 +18,4 @@ jobs:
     uses: LedgerHQ/ledger-app-workflows/.github/workflows/reusable_spell_check.yml@v1
     with:
       ignore_words_list: ontop
-      skip_path: ./clients/wui/yarn.lock,
+      skip_path: ./clients/wui/pnpm-lock.yaml,

@@ -33,22 +33,33 @@ class PasswordsManager {
     this.connected = false;
     this.busy = false;
     this.transport = null;
+    this.appName = null;
+    this.version = null;
+    this.storage_size = null;
+    // Optional callback invoked when the device is unplugged mid-session.
+    this.onDisconnect = null;
   }
 
   async connect() {
     if (!this.connected) {
       if (!this.transport) this.transport = await TransportWebUSB.create();
+      // Surface physical unplugs to the UI.
+      this.transport.on("disconnect", () => {
+        this.connected = false;
+        this.transport = null;
+        if (this.onDisconnect) this.onDisconnect();
+      });
       try {
         const [appName, version] = await this.getAppInfo();
         if (appName.toString() !== "Passwords")
           throw new Error("The Passwords app is not opened on the device");
+        this.appName = appName;
         this.version = version;
         let appConfig = await this.getAppConfig();
         this.storage_size = appConfig["storage_size"];
         this.connected = true;
       } catch (error) {
-        await this.transport.close();
-        this.disconnect();
+        await this.disconnect();
         throw error;
       }
     }
@@ -60,7 +71,14 @@ class PasswordsManager {
     );
   }
 
-  disconnect() {
+  async disconnect() {
+    if (this.transport) {
+      try {
+        await this.transport.close();
+      } catch {
+        // Ignore close errors (device may already be gone).
+      }
+    }
     this.connected = false;
     this.transport = null;
   }
@@ -187,7 +205,7 @@ class PasswordsManager {
         insAPDU.GET_APP_INFO_COMMAND,
         0x00,
         0x00,
-        Buffer(0),
+        Buffer.alloc(0),
         this.allowedStatuses
       );
       if (!this.isSuccess(result)) this.mapProtocolError(result);
@@ -222,7 +240,7 @@ class PasswordsManager {
         insAPDU.GET_APP_CONFIG_COMMAND,
         0x00,
         0x00,
-        Buffer(0),
+        Buffer.alloc(0),
         this.allowedStatuses
       );
       if (!this.isSuccess(result)) this.mapProtocolError(result);
@@ -249,7 +267,7 @@ class PasswordsManager {
           insAPDU.DUMP_METADATAS_COMMAND,
           0x00,
           0x00,
-          Buffer(0),
+          Buffer.alloc(0),
           this.allowedStatuses
         );
         if (!this.isSuccess(result)) this.mapProtocolError(result);
