@@ -30,9 +30,9 @@
 // #include MBEDTLS_CONFIG_FILE
 // #endif
 
-//#if defined(MBEDTLS_CTR_DRBG_C)
+// #if defined(MBEDTLS_CTR_DRBG_C)
 
-//#include "mbedtls/ctr_drbg.h"
+// #include "mbedtls/ctr_drbg.h"
 #include "ctr_drbg.h"
 
 #include <string.h>
@@ -46,7 +46,7 @@
 #include "mbedtls/platform.h"
 #else
 #include <stdio.h>
-//#define mbedtls_PRINTF PRINTF
+// #define mbedtls_PRINTF PRINTF
 #define mbedtls_PRINTF(x)
 #endif /* MBEDTLS_PLATFORM_C */
 #endif /* MBEDTLS_SELF_TEST */
@@ -153,7 +153,7 @@ static int block_cipher_df(unsigned char *output, const unsigned char *data, siz
     *p++ = (data_len >> 24) & 0xff;
     *p++ = (data_len >> 16) & 0xff;
     *p++ = (data_len >> 8) & 0xff;
-    *p++ = (data_len) &0xff;
+    *p++ = (data_len) & 0xff;
     p += 3;
     *p++ = MBEDTLS_CTR_DRBG_SEEDLEN;
     memcpy(p, data, data_len);
@@ -601,4 +601,4 @@ int mbedtls_ctr_drbg_self_test(int verbose, int group) {
 }
 #endif /* MBEDTLS_SELF_TEST */
 
-//#endif /* MBEDTLS_CTR_DRBG_C */
+// #endif /* MBEDTLS_CTR_DRBG_C */

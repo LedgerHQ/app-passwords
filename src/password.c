@@ -4,7 +4,7 @@
 #include "password.h"
 #include "password_typing.h"
 
-error_type_t create_new_password(const char* const pwd_name, const size_t pwd_size) {
+error_type_t create_new_password(const char *const pwd_name, const size_t pwd_size) {
     // use the G_io_seproxyhal_spi_buffer as temp buffer to build the entry (and include the
     // requested set of chars)
     memmove(G_io_seproxyhal_spi_buffer + 1, pwd_name, pwd_size);
@@ -19,24 +19,24 @@ void type_password_at_offset(const size_t offset) {
     if (enabledSets == 0) {
         enabledSets = ALL_SETS;
     }
-    type_password((uint8_t*) METADATA_NICKNAME(offset),
+    type_password((uint8_t *) METADATA_NICKNAME(offset),
                   METADATA_NICKNAME_LEN(offset),
                   NULL,
                   enabledSets,
-                  (const uint8_t*) PIC(DEFAULT_MIN_SET),
+                  (const uint8_t *) PIC(DEFAULT_MIN_SET),
                   PASSWORD_MAX_SIZE);
 }
 
-void show_password_at_offset(const size_t offset, uint8_t* dest_buffer) {
+void show_password_at_offset(const size_t offset, uint8_t *dest_buffer) {
     unsigned char enabledSets = METADATA_SETS(offset);
     if (enabledSets == 0) {
         enabledSets = ALL_SETS;
     }
-    type_password((uint8_t*) METADATA_NICKNAME(offset),
+    type_password((uint8_t *) METADATA_NICKNAME(offset),
                   METADATA_NICKNAME_LEN(offset),
                   dest_buffer,
                   enabledSets,
-                  (const uint8_t*) PIC(DEFAULT_MIN_SET),
+                  (const uint8_t *) PIC(DEFAULT_MIN_SET),
                   PASSWORD_MAX_SIZE);
 }
 
@@ -44,7 +44,7 @@ error_type_t delete_password_at_offset(const size_t offset) {
     return erase_metadata(offset);
 }
 
-bool nickname_exists(const char* const pwd_name, const size_t pwd_size) {
+bool nickname_exists(const char *const pwd_name, const size_t pwd_size) {
     // write_metadata silently caps the total data block at MAX_METANAME bytes
     // (1 charset byte + nickname), so any nickname longer than MAX_METANAME - 1
     // is truncated at storage time. Mirror that truncation here, otherwise a
@@ -58,7 +58,7 @@ bool nickname_exists(const char* const pwd_name, const size_t pwd_size) {
             break;
         }
         if (METADATA_NICKNAME_LEN(offset) == effective_size &&
-            memcmp((const void*) METADATA_NICKNAME(offset), pwd_name, effective_size) == 0) {
+            memcmp((const void *) METADATA_NICKNAME(offset), pwd_name, effective_size) == 0) {
             return true;
         }
     }
