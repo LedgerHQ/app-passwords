@@ -2,6 +2,8 @@
 # functions intentionally match module-level fixture names. Silence the noisy
 # pylint warning for the whole file rather than per-function.
 # pylint: disable=redefined-outer-name
+from pathlib import Path
+import re
 import pytest
 from ragger.backend import RaisePolicy, BackendInterface
 from ragger.navigator import Navigator
@@ -40,3 +42,11 @@ def navigator(custom_backend, device, golden_run):
         yield CustomNanoNavigator(custom_backend, device, golden_run)
     else:
         yield CustomTouchNavigator(custom_backend, device, golden_run)
+
+@pytest.fixture(name="app_version")
+def app_version_fixture() -> tuple[int, int, int]:
+    with open(Path(__file__).parent.parent.parent / "Makefile", encoding="utf-8") as f:
+        parsed = {}
+        for m in re.findall(r"^APPVERSION_(\w)\s*=\s*(\d*)$", f.read(), re.MULTILINE):
+            parsed[m[0]] = int(m[1])
+    return (parsed["M"], parsed["N"], parsed["P"])
