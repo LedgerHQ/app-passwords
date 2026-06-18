@@ -1,10 +1,10 @@
 #include "globals.h"
 #include "options.h"
 
-void init_storage() {
+bool init_storage() {
     if (N_storage.magic == STORAGE_MAGIC) {
         // already initialized
-        return;
+        return false;
     }
     uint32_t tmp = STORAGE_MAGIC;
     nvm_write((void *) &N_storage.magic, (void *) &tmp, sizeof(uint32_t));
@@ -18,4 +18,5 @@ void init_storage() {
     nvm_write((void *) &N_storage.metadata_count, (void *) &tmp, sizeof(N_storage.metadata_count));
     nvm_write((void *) N_storage.metadatas, (void *) &tmp, 2);
     init_charset_options();
+    return true;
 }
