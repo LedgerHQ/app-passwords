@@ -129,7 +129,7 @@ export default function App() {
   async function onBackup() {
     setBusy(true);
     setPendingBackup(null);
-    setNotice({ appearance: "info", title: 'Approve "Transfer metadatas?" on your device' });
+    setNotice({ appearance: "info", title: 'Approve "Backup password list?" on your device' });
     try {
       // Read the card first. The file dialog can't be opened here (the device
       // approval consumed the click's activation), so hold the data and let the
@@ -168,7 +168,7 @@ export default function App() {
     const reader = new FileReader();
     reader.onload = async () => {
       setBusy(true);
-      setNotice({ appearance: "info", title: 'Approve "Overwrite metadatas?" on your device' });
+      setNotice({ appearance: "info", title: 'Approve "Restore password list?" on your device' });
       try {
         await passwords.load_metadatas(reader.result);
         setNotice({ appearance: "success", title: "Restore complete" });

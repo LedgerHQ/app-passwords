@@ -22,8 +22,8 @@ const ITEMS = [
     a:
       "* Connect your Ledger device to your computer and open the `Passwords app`.\n" +
       "* Click on the big `Connect` button — on success the `Backup` and `Restore` buttons appear. If you have trouble with this step, have a look [here](https://support.ledger.com/article/115005165269-zd).\n" +
-      "* `Backup` will prompt a screen requesting your approval on your device (\"Transfer metadatas?\"), then save a backup file. This backup is not confidential, so you can for instance e-mail it to yourself to never lose it.\n" +
-      "* `Restore` will prompt a file input dialog where you should indicate a previous backup file. A prompt (\"Overwrite metadatas?\") will then request your approval on your device.",
+      "* `Backup` will prompt a screen requesting your approval on your device (\"Backup password list?\"), then save a backup file. This backup is not confidential, so you can for instance e-mail it to yourself to never lose it.\n" +
+      "* `Restore` will prompt a file input dialog where you should indicate a previous backup file. A prompt (\"Restore password list?\") will then request your approval on your device.",
   },
   {
     q: "Which web browsers and operating systems are supported?",

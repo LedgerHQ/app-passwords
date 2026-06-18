@@ -37,9 +37,9 @@ For more information on the device application itself, see the
 - Click **Connect** — on success the Backup / Restore actions appear.
   (Connection trouble? See
   [Fix connection issues](https://support.ledger.com/article/115005165269-zd).)
-- **Backup** prompts "Transfer metadatas?" on the device, then saves the file.
-- **Restore** asks for a previous backup file, then prompts "Overwrite
-  metadatas?" on the device.
+- **Backup** prompts "Backup password list?" on the device, then saves the file.
+- **Restore** asks for a previous backup file, then prompts "Restore password
+  list?" on the device.
 
 ## Develop
 

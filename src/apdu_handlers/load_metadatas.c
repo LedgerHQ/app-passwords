@@ -12,7 +12,11 @@ int load_metadatas(uint8_t p1, uint8_t p2, const buf_t *input) {
     }
     if (app_state.user_approval == false) {
         app_state.bytes_transferred = 0;
-        message_pair_t msg = {"Overwrite", "metadatas ?"};
+#ifdef SCREEN_SIZE_WALLET
+        message_pair_t msg = {"Restore", "password list?"};
+#else
+        message_pair_t msg = {"Restore", "password list"};
+#endif
         ui_request_user_approval(&msg);
         return 0;
     }
