@@ -5,7 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.3.2]
+## [1.3.3] - 2026-06-18
+
+### Fix
+
+- WUI: saving a backup no longer fails with a `SecurityError` — the save dialog now opens on click,
+  before the on-device approval.
+- Demo passwords from the developer `POPULATE` build are seeded only once (on first storage initialization).
+
+### Change
+
+- Rebuild the backup Web UI on Vite + React 18 with Ledger's lumen design system; built with pnpm on Node 22.
+- Publish the Web UI through GitHub's native Pages workflow.
+
+## [1.3.2] - 2026-06-05
 
 ### Fix
 
