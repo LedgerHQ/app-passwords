@@ -9,8 +9,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fix
 
-- WUI: saving a backup no longer fails with a `SecurityError` — the save dialog now opens on click,
-  before the on-device approval.
 - Demo passwords from the developer `POPULATE` build are seeded only once (on first storage initialization).
 
 ### Change

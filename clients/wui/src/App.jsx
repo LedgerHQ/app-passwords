@@ -26,50 +26,48 @@ import packageJson from "../package.json";
 const passwords = new PasswordsManager();
 listen((log) => console.log(log));
 
-// showSaveFilePicker() requires transient user activation (a recent gesture),
-// so it must be called synchronously from the click handler — before the
-// device exchange, which takes too long and would otherwise let the activation
-// expire ("Must be handling a user gesture"). This picks the destination up
-// front and returns a target the caller writes to once the data is ready.
-// Falls back to a Blob/anchor download when the File System Access API is
-// unavailable or refuses (returns { cancelled } if the user dismisses it).
-async function pickSaveTarget(suggestedName) {
+// Save the backup, preferring the native "Save As" dialog so the user can
+// choose the file name/location. showSaveFilePicker requires transient user
+// activation, so this MUST be called from its own click handler — not from the
+// async continuation of the device exchange (the original activation would have
+// expired -> "Must be handling a user gesture"). Hence the two-step flow:
+// backup first, then a separate "Save" click. Returns false if the user
+// cancels the dialog (so the caller can keep the data for a retry). Falls back
+// to a plain anchor download where the File System Access API is unavailable.
+async function saveBackupFile(payload, filename) {
+  const text = JSON.stringify(payload, null, 4);
+
   if (window.showSaveFilePicker) {
+    let handle = null;
     try {
-      const handle = await window.showSaveFilePicker({
-        suggestedName,
+      handle = await window.showSaveFilePicker({
+        suggestedName: filename,
         types: [
           { description: "Passwords backup", accept: { "application/json": [".json"] } },
         ],
       });
-      return { handle, suggestedName };
     } catch (error) {
-      if (error.name === "AbortError") return { cancelled: true };
-      // SecurityError / NotAllowedError / unsupported: fall back to anchor.
+      if (error.name === "AbortError") return false; // user dismissed the dialog
+      // Other errors (unsupported / SecurityError): fall through to the anchor.
     }
-  }
-  return { suggestedName };
-}
-
-async function writeJSON(target, payload) {
-  const text = JSON.stringify(payload, null, 4);
-
-  if (target.handle) {
-    const writable = await target.handle.createWritable();
-    await writable.write(text);
-    await writable.close();
-    return;
+    if (handle) {
+      const writable = await handle.createWritable();
+      await writable.write(text);
+      await writable.close();
+      return true;
+    }
   }
 
   const blob = new Blob([text], { type: "application/json;charset=utf-8" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = target.suggestedName;
+  a.download = filename;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
+  return true;
 }
 
 export default function App() {
@@ -82,6 +80,10 @@ export default function App() {
   const [version, setVersion] = useState(mock ? "1.0.0" : null);
   const [storageSize, setStorageSize] = useState(mock ? 4096 : null);
   const [notice, setNotice] = useState(null);
+  // Backup data read from the card, waiting for the user to pick a file. The
+  // save dialog needs its own click (transient activation), so it can't be
+  // chained onto the device exchange.
+  const [pendingBackup, setPendingBackup] = useState(null);
 
   const fileInput = useRef(null);
 
@@ -130,24 +132,37 @@ export default function App() {
   }
 
   async function onBackup() {
-    // Pick the destination first, while the click's user activation is still
-    // valid (the device exchange below is too slow for showSaveFilePicker).
-    const target = await pickSaveTarget("passwords_backup.json");
-    if (target.cancelled) {
-      setNotice({ appearance: "info", title: "Backup cancelled" });
-      return;
-    }
-
     setBusy(true);
+    setPendingBackup(null);
     setNotice({ appearance: "info", title: 'Approve "Transfer metadatas?" on your device' });
     try {
+      // Read the card first. The file dialog can't be opened here (the device
+      // approval consumed the click's activation), so hold the data and let the
+      // user trigger the save with a fresh click.
       const payload = await passwords.dump_metadatas();
-      await writeJSON(target, payload);
-      setNotice({ appearance: "success", title: "Backup saved" });
+      setPendingBackup(payload);
+      setNotice({
+        appearance: "success",
+        title: "Backup ready",
+        description: "Click Save to choose where to store the file.",
+      });
     } catch (error) {
       setNotice({ appearance: "error", title: "Backup failed", description: String(error) });
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function onSaveBackup() {
+    try {
+      const saved = await saveBackupFile(pendingBackup, "passwords_backup.json");
+      if (saved) {
+        setPendingBackup(null);
+        setNotice({ appearance: "success", title: "Backup saved" });
+      }
+      // If cancelled, keep pendingBackup so the user can try saving again.
+    } catch (error) {
+      setNotice({ appearance: "error", title: "Save failed", description: String(error) });
     }
   }
 
@@ -193,6 +208,20 @@ export default function App() {
                 title={notice.title}
                 description={notice.description}
                 onClose={() => setNotice(null)}
+              />
+            )}
+
+            {/* Backup ready: the save dialog needs its own click. */}
+            {pendingBackup && (
+              <Banner
+                appearance="info"
+                title="Backup ready to save"
+                description="Choose where to store your backup file."
+                primaryAction={
+                  <Button appearance="accent" size="sm" icon={CloudDownload} onClick={onSaveBackup}>
+                    Save…
+                  </Button>
+                }
               />
             )}
 
