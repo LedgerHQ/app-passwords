@@ -26,38 +26,50 @@ import packageJson from "../package.json";
 const passwords = new PasswordsManager();
 listen((log) => console.log(log));
 
-async function saveJSON(payload, suggestedName) {
-  const text = JSON.stringify(payload, null, 4);
-
+// showSaveFilePicker() requires transient user activation (a recent gesture),
+// so it must be called synchronously from the click handler — before the
+// device exchange, which takes too long and would otherwise let the activation
+// expire ("Must be handling a user gesture"). This picks the destination up
+// front and returns a target the caller writes to once the data is ready.
+// Falls back to a Blob/anchor download when the File System Access API is
+// unavailable or refuses (returns { cancelled } if the user dismisses it).
+async function pickSaveTarget(suggestedName) {
   if (window.showSaveFilePicker) {
-    let handle;
     try {
-      handle = await window.showSaveFilePicker({
+      const handle = await window.showSaveFilePicker({
         suggestedName,
         types: [
           { description: "Passwords backup", accept: { "application/json": [".json"] } },
         ],
       });
+      return { handle, suggestedName };
     } catch (error) {
-      if (error.name === "AbortError") return false;
-      throw error;
+      if (error.name === "AbortError") return { cancelled: true };
+      // SecurityError / NotAllowedError / unsupported: fall back to anchor.
     }
-    const writable = await handle.createWritable();
+  }
+  return { suggestedName };
+}
+
+async function writeJSON(target, payload) {
+  const text = JSON.stringify(payload, null, 4);
+
+  if (target.handle) {
+    const writable = await target.handle.createWritable();
     await writable.write(text);
     await writable.close();
-    return true;
+    return;
   }
 
   const blob = new Blob([text], { type: "application/json;charset=utf-8" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = suggestedName;
+  a.download = target.suggestedName;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
-  return true;
 }
 
 export default function App() {
@@ -118,16 +130,20 @@ export default function App() {
   }
 
   async function onBackup() {
+    // Pick the destination first, while the click's user activation is still
+    // valid (the device exchange below is too slow for showSaveFilePicker).
+    const target = await pickSaveTarget("passwords_backup.json");
+    if (target.cancelled) {
+      setNotice({ appearance: "info", title: "Backup cancelled" });
+      return;
+    }
+
     setBusy(true);
     setNotice({ appearance: "info", title: 'Approve "Transfer metadatas?" on your device' });
     try {
       const payload = await passwords.dump_metadatas();
-      const saved = await saveJSON(payload, "passwords_backup.json");
-      setNotice(
-        saved
-          ? { appearance: "success", title: "Backup saved" }
-          : { appearance: "info", title: "Backup cancelled" }
-      );
+      await writeJSON(target, payload);
+      setNotice({ appearance: "success", title: "Backup saved" });
     } catch (error) {
       setNotice({ appearance: "error", title: "Backup failed", description: String(error) });
     } finally {
