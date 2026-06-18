@@ -5,16 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.3.3] - 2026-06-18
+## [1.3.3] - 2026-06-19
 
 ### Fix
 
+- Restore no longer corrupts password lists larger than ~255 bytes.
 - Demo passwords from the developer `POPULATE` build are seeded only once (on first storage initialization).
+- Use correct `printf` format specifiers for `size_t` values (CodeQL).
 
 ### Change
 
 - Rebuild the backup Web UI on Vite + React 18 with Ledger's lumen design system; built with pnpm on Node 22.
 - Publish the Web UI through GitHub's native Pages workflow.
+- Reword the device confirmation prompts for the Backup/Restore actions.
+- Web UI: save the backup through the browser's native save dialog
+- Web UI: drop the (constant) storage-size row from the device card.
+- Only compile the test APDU handler when built with `TESTING=1`, so production builds contain no test code.
+
+### Add
+
+- Unit tests for the metadata write offset and capacity limits
+- ragger tests for the backup/restore confirmation screens.
+- ragger test checking that showing a password located beyond the first list page selects the right entry on touch devices.
 
 ## [1.3.2] - 2026-06-05
 
