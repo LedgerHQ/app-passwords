@@ -27,7 +27,7 @@ int dump_metadatas() {
     }
 
     memcpy(&G_io_apdu_buffer[TRANSFER_PAYLOAD_OFFSET],
-           (const unsigned char*) N_storage.metadatas + app_state.bytes_transferred,
+           (const unsigned char *) N_storage.metadatas + app_state.bytes_transferred,
            payload_size);
 
     app_state.bytes_transferred += payload_size;

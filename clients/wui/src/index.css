@@ -1,11 +1,36 @@
-body {
-  margin: 0;
-  font-family: museo-sans,Open sans,arial,sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Lumen's Dialog uses the Tailwind v4 class `translate-[-50%]` which maps to
+   the CSS `translate` property.  This project runs Tailwind v3 where that
+   utility is not generated, so the dialog ends up positioned at 50%/50%
+   without the centering offset.  Polyfill it here. */
+.\-translate-x-1\/2.\-translate-y-1\/2,
+.translate-\[-50\%\] {
+  transform: translate(-50%, -50%);
 }
 
-code {
-  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
-    monospace;
+/* Markdown rendered inside the FAQ uses lumen tokens for typography, but links
+   and inline code still need a little styling to read well on the dark canvas. */
+.markdown a {
+  color: var(--color-text-interactive, #7c8fff);
+  text-decoration: underline;
+}
+
+.markdown code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.9em;
+}
+
+.markdown p {
+  margin: 0;
+}
+
+.markdown ul {
+  list-style: disc;
+  padding-left: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }

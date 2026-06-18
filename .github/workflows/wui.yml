@@ -19,8 +19,8 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  generate:
-    name: Generate the site
+  build:
+    name: Build the site
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -28,42 +28,44 @@ jobs:
     steps:
       - name: Clone
         uses: actions/checkout@v6
-      - name: Set Node.js 16.x
-        uses: actions/setup-node@v5
+      - name: Set up Node
+        uses: actions/setup-node@v6
         with:
-          node-version: 16.x
-          cache: yarn
-          cache-dependency-path: clients/wui/yarn.lock
+          # Node >= 22.5: pnpm 11 loads node:sqlite, which older Node lacks.
+          node-version: '22'
       - name: Run install
-        run: yarn install --frozen-lockfile
+        env:
+          COREPACK_ENABLE_DOWNLOAD_PROMPT: '0'
+        run: |
+          # pnpm is provisioned by corepack from the "packageManager" field.
+          corepack enable
+          # --frozen-lockfile: install exactly what pnpm-lock.yaml pins (fail on drift).
+          pnpm install --frozen-lockfile
       - name: Run build
-        run: yarn build
-      - name: Upload documentation bundle
-        uses: actions/upload-artifact@v6
+        run: pnpm build
+      - name: Setup Pages
+        uses: actions/configure-pages@v6
+      - name: Upload Pages artifact
+        # path is relative to the repo root (not the job's working-directory).
+        # dist/ already contains the CNAME file copied from public/CNAME, which
+        # keeps the passwords.ledger.com custom domain.
+        uses: actions/upload-pages-artifact@v5
         with:
-          name: site
-          path: clients/wui/build/
+          path: clients/wui/dist/
 
   deploy:
-    name: Deploy the site on GitHub pages
+    name: Deploy to GitHub Pages
     runs-on: ubuntu-latest
-    needs: generate
+    needs: build
+    # Build on PRs for validation, but only deploy on pushes / manual runs.
+    if: github.event_name != 'pull_request'
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     permissions:
-      contents: write
-    if: |
-      github.event_name == 'push' &&
-      (github.ref == 'refs/heads/master' ||
-       github.ref == 'refs/heads/develop' ||
-       startsWith(github.ref, 'refs/tags/'))
+      pages: write
+      id-token: write
     steps:
-      - name: Download documentation bundle
-        uses: actions/download-artifact@v7
-        with:
-          name: site
-          path: site
-      - name: Deploy documentation on pages
-        uses: peaceiris/actions-gh-pages@v4
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: site
-          cname: passwords.ledger.com
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v5

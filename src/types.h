@@ -40,11 +40,11 @@ typedef struct app_state_s {
 } app_state_t;
 
 typedef struct {
-    uint8_t* bytes;
+    uint8_t *bytes;
     size_t size;
 } buf_t;
 
 typedef struct message_pair_s {
-    const char* first;
-    const char* second;
+    const char *first;
+    const char *second;
 } message_pair_t;

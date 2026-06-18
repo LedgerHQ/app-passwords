@@ -27,12 +27,12 @@
 #include "types.h"
 #include "ui.h"
 
-int get_app_config(uint8_t p1, uint8_t p2, __attribute__((unused)) const buf_t* input) {
+int get_app_config(uint8_t p1, uint8_t p2, __attribute__((unused)) const buf_t *input) {
     if (p1 != 0 || p2 != 0) {
         return io_send_sw(SWO_INCORRECT_P1_P2);
     }
 
-    uint8_t* config = G_io_apdu_buffer;
+    uint8_t *config = G_io_apdu_buffer;
     size_t offset = 0;
     int status = 0;
 
