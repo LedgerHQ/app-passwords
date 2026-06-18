@@ -78,7 +78,6 @@ export default function App() {
   const [busy, setBusy] = useState(false);
   const [connected, setConnected] = useState(mock);
   const [version, setVersion] = useState(mock ? "1.0.0" : null);
-  const [storageSize, setStorageSize] = useState(mock ? 4096 : null);
   const [notice, setNotice] = useState(null);
   // Backup data read from the card, waiting for the user to pick a file. The
   // save dialog needs its own click (transient activation), so it can't be
@@ -92,7 +91,6 @@ export default function App() {
       setConnected(false);
       setBusy(false);
       setVersion(null);
-      setStorageSize(null);
       setNotice({
         appearance: "warning",
         title: "Device disconnected",
@@ -109,14 +107,12 @@ export default function App() {
     try {
       await passwords.connect();
       setVersion(passwords.version);
-      setStorageSize(passwords.storage_size);
       setConnected(true);
       setNotice({ appearance: "success", title: "Device connected" });
     } catch (error) {
       await passwords.disconnect();
       setConnected(false);
       setVersion(null);
-      setStorageSize(null);
       setNotice({ appearance: "error", title: "Connection failed", description: String(error) });
     } finally {
       setBusy(false);
@@ -127,7 +123,6 @@ export default function App() {
     await passwords.disconnect();
     setConnected(false);
     setVersion(null);
-    setStorageSize(null);
     setNotice({ appearance: "info", title: "Disconnected" });
   }
 
@@ -250,12 +245,6 @@ export default function App() {
                     <div className="flex items-center justify-between">
                       <span className="body-3 text-muted">Version</span>
                       <Tag appearance="gray" label={version || "—"} />
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="body-3 text-muted">Storage</span>
-                      <span className="body-3 text-base">
-                        {storageSize ? `${storageSize} bytes` : "—"}
-                      </span>
                     </div>
                   </div>
                 </>
