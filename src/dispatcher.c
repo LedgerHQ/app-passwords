@@ -23,7 +23,9 @@
 #include "dispatcher.h"
 #include "error.h"
 #include "globals.h"
+#ifdef TESTING
 #include "tests.h"
+#endif
 #include "types.h"
 
 int dispatch() {
