@@ -18,7 +18,7 @@ import {
   CheckmarkCircleFill,
 } from "@ledgerhq/lumen-ui-react/symbols";
 import { listen } from "@ledgerhq/logs";
-import PasswordsManager from "./controller/PasswordsManager.js";
+import PasswordsManager, { SW_ACTION_CANCELLED } from "./controller/PasswordsManager.js";
 import Faq from "./components/Faq.jsx";
 import logo from "./assets/logo-padlock.png";
 import packageJson from "../package.json";
@@ -142,7 +142,11 @@ export default function App() {
         description: "Click Save to choose where to store the file.",
       });
     } catch (error) {
-      setNotice({ appearance: "error", title: "Backup failed", description: String(error) });
+      if (error.statusWord === SW_ACTION_CANCELLED) {
+        setNotice({ appearance: "info", title: "Backup cancelled on the device" });
+      } else {
+        setNotice({ appearance: "error", title: "Backup failed", description: String(error) });
+      }
     } finally {
       setBusy(false);
     }
@@ -173,7 +177,11 @@ export default function App() {
         await passwords.load_metadatas(reader.result);
         setNotice({ appearance: "success", title: "Restore complete" });
       } catch (error) {
-        setNotice({ appearance: "error", title: "Restore failed", description: String(error) });
+        if (error.statusWord === SW_ACTION_CANCELLED) {
+          setNotice({ appearance: "info", title: "Restore cancelled on the device" });
+        } else {
+          setNotice({ appearance: "error", title: "Restore failed", description: String(error) });
+        }
       } finally {
         setBusy(false);
       }
