@@ -10,6 +10,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fix
 
 - Restore no longer corrupts password lists larger than ~255 bytes.
+- Refusing a Backup/Restore on the device now answers the host (0x6985) instead of
+  leaving it waiting, which froze the Web UI with greyed-out buttons.
 - Demo passwords from the developer `POPULATE` build are seeded only once (on first storage initialization).
 - Use correct `printf` format specifiers for `size_t` values (CodeQL).
 
@@ -20,6 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Reword the device confirmation prompts for the Backup/Restore actions.
 - Web UI: save the backup through the browser's native save dialog
 - Web UI: drop the (constant) storage-size row from the device card.
+- Web UI: show an informational notice (not an error) when a Backup/Restore is refused on the device.
 - Only compile the test APDU handler when built with `TESTING=1`, so production builds contain no test code.
 
 ### Add

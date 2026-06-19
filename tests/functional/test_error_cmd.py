@@ -1,7 +1,7 @@
 import pytest
 
 from exception import ClaNotSupportedError, InsNotSupportedError, WrongP1P2Error, \
-    WrongDataLengthError, MetadatasParsingError, DeviceException
+    WrongDataLengthError, MetadatasParsingError, ActionCancelledError, DeviceException
 
 from passwordsManager_cmd import PasswordsManagerCommand
 
@@ -61,3 +61,20 @@ def test_load_metadatas_with_name_too_long(cmd: PasswordsManagerCommand, test_ve
     # Instead, it is filled with the data index
     metadatas = test_vector[0]
     cmd.load_metadatas(metadatas)
+
+
+@pytest.mark.xfail(raises=ActionCancelledError)
+def test_dump_metadatas_refused(cmd: PasswordsManagerCommand):
+    # Refusing the backup on the device must answer 0x6985 instead of leaving
+    # the host waiting forever (which froze the WebUI with greyed-out buttons).
+    sw = cmd.dump_metadatas_refused()
+    cmd.reset_approval_state()
+    raise DeviceException(error_code=sw)
+
+
+@pytest.mark.xfail(raises=ActionCancelledError)
+def test_load_metadatas_refused(cmd: PasswordsManagerCommand):
+    # Same for the restore confirmation prompt.
+    sw = cmd.load_metadatas_refused(bytes.fromhex("0500416263"))
+    cmd.reset_approval_state()
+    raise DeviceException(error_code=sw)

@@ -55,6 +55,11 @@ class PasswordsManagerCommand:
             self.transport.right_click()
             self.transport.both_click()
 
+    def refuse(self):
+        # Press "Refuse" on the on-device approval screen. The device replies
+        # with SWO_CONDITIONS_NOT_SATISFIED (0x6985) so the host stops waiting.
+        self.navigation.navigate([CustomNavInsID.APDU_REJECT])
+
     def get_app_info(self) -> str:
         ins: InsType = InsType.INS_GET_APP_INFO
 
@@ -141,6 +146,20 @@ class PasswordsManagerCommand:
                     f"{size} bytes requested but only {len(metadatas)} bytes available")
 
         return metadatas[:size]
+
+    def dump_metadatas_refused(self) -> int:
+        # Trigger a backup, refuse it on the device and return the status word.
+        ins: InsType = InsType.INS_DUMP_METADATAS
+        with self.transport.exchange_async(cla=CLA, ins=ins):
+            self.refuse()
+        return self.transport.last_async_response.status
+
+    def load_metadatas_refused(self, chunk) -> int:
+        # Trigger a restore, refuse it on the device and return the status word.
+        ins: InsType = InsType.INS_LOAD_METADATAS
+        with self.transport.exchange_async(cla=CLA, ins=ins, p1=0xFF, data=chunk):
+            self.refuse()
+        return self.transport.last_async_response.status
 
     def load_metadatas_chunk(self, chunk, is_last, compare=None):
         ins: InsType = InsType.INS_LOAD_METADATAS

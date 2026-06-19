@@ -40,8 +40,10 @@ class CustomNavInsID(BaseNavInsID):
     DISCLAIMER_CONFIRM = auto()
     # Generic "select/validate" tap (settings switches, BARS_LIST entries, ...)
     BUTTON_APPROVE = auto()
-    # Approve an APDU confirmation prompt (nbgl_useCaseConfirm)
+    # Approve an APDU confirmation prompt (nbgl_useCaseChoice)
     APDU_APPROVE = auto()
+    # Refuse an APDU confirmation prompt (nbgl_useCaseChoice)
+    APDU_REJECT = auto()
 
 
 class CustomTouchNavigator(Navigator):
@@ -70,6 +72,9 @@ class CustomTouchNavigator(Navigator):
             CustomNavInsID.DISCLAIMER_CONFIRM: self.screen.disclaimer.confirm,
             CustomNavInsID.BUTTON_APPROVE: self.screen.button.tap,
             CustomNavInsID.APDU_APPROVE: self.screen.button.tap,
+            # The "Refuse" footer of the nbgl_useCaseChoice approval screen
+            # (same layout as the disclaimer choice).
+            CustomNavInsID.APDU_REJECT: self.screen.disclaimer.reject,
         }
         super().__init__(backend, device, callbacks, golden_run)
 

@@ -1,5 +1,9 @@
 import TransportWebUSB from "@ledgerhq/hw-transport-webusb";
 
+// Status word returned by the device when the user refuses the on-device
+// Backup/Restore confirmation. Not a real failure, so the UI treats it apart.
+export const SW_ACTION_CANCELLED = 0x6985;
+
 const insAPDU = Object.freeze({
   GET_APP_INFO_COMMAND: 0x01,
   GET_APP_CONFIG_COMMAND: 0x03,
@@ -87,7 +91,7 @@ class PasswordsManager {
     if (result.length < 2) throw new Error("Response length is too small");
 
     var errors = {
-      0x6985: "Action cancelled",
+      [SW_ACTION_CANCELLED]: "Action cancelled",
       0x6a86: "SW_WRONG_P1P2",
       0x6a87: "SW_WRONG_DATA_LENGTH",
       0x6d00: "SW_INS_NOT_SUPPORTED",
@@ -97,7 +101,11 @@ class PasswordsManager {
 
     let error = result.readUInt16BE(result.length - 2);
     if (error in errors) {
-      throw new Error(errors[error]);
+      const err = new Error(errors[error]);
+      // Expose the raw status word so callers can tell a user refusal apart
+      // from an actual failure.
+      err.statusWord = error;
+      throw err;
     }
   }
 

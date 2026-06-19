@@ -1,10 +1,32 @@
-import PasswordsManager from "./PasswordsManager.js";
+import PasswordsManager, { SW_ACTION_CANCELLED } from "./PasswordsManager.js";
 
 function makeManager() {
   const m = new PasswordsManager();
   m.storage_size = 4096;
   return m;
 }
+
+describe("protocol error mapping", () => {
+  const m = makeManager();
+
+  test("a user refusal throws with the cancellation status word", () => {
+    const refused = Buffer.from([0x69, 0x85]);
+    expect(() => m.mapProtocolError(refused)).toThrow(/Action cancelled/i);
+    try {
+      m.mapProtocolError(refused);
+    } catch (error) {
+      expect(error.statusWord).toBe(SW_ACTION_CANCELLED);
+    }
+  });
+
+  test("other known errors carry their own status word", () => {
+    try {
+      m.mapProtocolError(Buffer.from([0x6a, 0x86]));
+    } catch (error) {
+      expect(error.statusWord).toBe(0x6a86);
+    }
+  });
+});
 
 describe("charset bitmask mapping", () => {
   const m = makeManager();
