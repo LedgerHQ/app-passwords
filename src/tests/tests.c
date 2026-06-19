@@ -4,6 +4,10 @@
 #include "password_typing.h"
 #include "tests.h"
 
+// Test-only APDU handler: compiled into nothing unless built with TESTING=1,
+// matching the `#ifdef TESTING` guard on the dispatch site in dispatcher.c.
+#ifdef TESTING
+
 /* Takes a metadata as an input (charset + seed) and returns a 20 char password*/
 int test_generate_password(const buf_t *input) {
     uint8_t enabledSets = input->bytes[0];
@@ -37,3 +41,5 @@ int test_dispatcher(uint8_t p1, __attribute__((unused)) uint8_t p2, const buf_t 
             return io_send_sw(SWO_INVALID_INS + 1);
     }
 }
+
+#endif  // TESTING
