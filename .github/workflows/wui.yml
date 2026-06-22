@@ -47,8 +47,6 @@ jobs:
         uses: actions/configure-pages@v6
       - name: Upload Pages artifact
         # path is relative to the repo root (not the job's working-directory).
-        # dist/ already contains the CNAME file copied from public/CNAME, which
-        # keeps the passwords.ledger.com custom domain.
         uses: actions/upload-pages-artifact@v5
         with:
           path: clients/wui/dist/
