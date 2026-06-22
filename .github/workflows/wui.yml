@@ -27,7 +27,7 @@ jobs:
         working-directory: clients/wui/
     steps:
       - name: Clone
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
       - name: Set up Node
         uses: actions/setup-node@v6
         with:
@@ -57,8 +57,10 @@ jobs:
     name: Deploy to GitHub Pages
     runs-on: ubuntu-latest
     needs: build
-    # Build on PRs for validation, but only deploy on pushes / manual runs.
-    if: github.event_name != 'pull_request'
+    # Build on PRs and on master for validation, but only deploy from develop:
+    # the github-pages environment protection rules only allow that branch, so a
+    # push to master (e.g. a merge) would otherwise fail the deployment.
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/develop'
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
