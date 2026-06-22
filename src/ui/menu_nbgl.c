@@ -20,7 +20,9 @@
 #include "glyphs.h"
 #include "nbgl_use_case.h"
 #include "main_std_app.h"
+#include "status_words.h"
 
+#include "io.h"
 #include "ui.h"
 #include "dispatcher.h"
 #include "globals.h"
@@ -28,6 +30,14 @@
 
 #define MAX_ERROR_MSG_SIZE 100
 static char errorMessage[MAX_ERROR_MSG_SIZE] = {0};
+
+// Icon shown on the backup/restore approval screen. The large round icons only
+// exist on touch screens, so fall back to a small alert glyph on the Nano range.
+#ifdef SCREEN_SIZE_WALLET
+#define APPROVAL_ICON IMPORTANT_CIRCLE_ICON
+#else
+#define APPROVAL_ICON C_Alert_circle_14px
+#endif
 
 // clang-format off
 
@@ -540,12 +550,21 @@ void ui_idle(void) {
 }
 
 /**
- * @brief Approval callback
+ * @brief Approval choice callback
+ *
+ * @param[in] confirmed true if the user approved, false if the user refused
  *
  */
-static void approval_granted(void) {
-    app_state.user_approval = true;
-    dispatch();
+static void approval_choice(bool confirmed) {
+    app_state.user_approval = confirmed;
+    if (confirmed) {
+        dispatch();
+    } else {
+        // The user refused: reset the pending approval and report the
+        // cancellation to the host, otherwise it would wait forever for a
+        // response (leaving the WebUI stuck with greyed-out buttons).
+        io_send_sw(SWO_CONDITIONS_NOT_SATISFIED);
+    }
     display_home_page();
 }
 
@@ -562,5 +581,10 @@ void ui_request_user_approval(message_pair_t *msg) {
              "%s %s",
              (char *) PIC(msg->first),
              (char *) PIC(msg->second));
-    nbgl_useCaseConfirm(&errorMessage[0], NULL, "Approve", "Refuse", approval_granted);
+    nbgl_useCaseChoice(&APPROVAL_ICON,
+                       &errorMessage[0],
+                       NULL,
+                       "Approve",
+                       "Refuse",
+                       approval_choice);
 }

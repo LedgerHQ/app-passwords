@@ -1,3 +1,7 @@
+# CustomTouchScreen builds its members (home, settings, button, ...) through the
+# ragger MetaScreen metaclass, so pylint cannot see them statically and reports
+# false no-member errors on every self.screen.* access.
+# pylint: disable=no-member
 from enum import auto
 from functools import partial
 from time import sleep
@@ -34,8 +38,12 @@ class CustomNavInsID(BaseNavInsID):
     CHOOSE_KBL_QWERTY = auto()
     # startup disclaimer
     DISCLAIMER_CONFIRM = auto()
-    # Approve metadatas
+    # Generic "select/validate" tap (settings switches, BARS_LIST entries, ...)
     BUTTON_APPROVE = auto()
+    # Approve an APDU confirmation prompt (nbgl_useCaseChoice)
+    APDU_APPROVE = auto()
+    # Refuse an APDU confirmation prompt (nbgl_useCaseChoice)
+    APDU_REJECT = auto()
 
 
 class CustomTouchNavigator(Navigator):
@@ -63,6 +71,10 @@ class CustomTouchNavigator(Navigator):
             CustomNavInsID.CHOOSE_KBL_QWERTY: partial(self._choose, 1),
             CustomNavInsID.DISCLAIMER_CONFIRM: self.screen.disclaimer.confirm,
             CustomNavInsID.BUTTON_APPROVE: self.screen.button.tap,
+            CustomNavInsID.APDU_APPROVE: self.screen.button.tap,
+            # The "Refuse" footer of the nbgl_useCaseChoice approval screen
+            # (same layout as the disclaimer choice).
+            CustomNavInsID.APDU_REJECT: self.screen.disclaimer.reject,
         }
         super().__init__(backend, device, callbacks, golden_run)
 

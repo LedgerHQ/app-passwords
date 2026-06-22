@@ -34,6 +34,9 @@
 #include "metadata.h"
 #include "password_typing.h"
 #include "ui.h"
+#if defined(POPULATE)
+#include "password.h"
+#endif  // POPULATE
 
 const internalStorage_t N_storage_real;
 app_state_t app_state;
@@ -42,7 +45,7 @@ volatile unsigned int G_led_status;
 void app_main() {
     int input_len = 0;
 
-    init_storage();
+    bool storage_freshly_initialized = init_storage();
     memset(&app_state, 0, sizeof(app_state));
 
     ui_idle();
@@ -51,12 +54,18 @@ void app_main() {
     app_state.output_len = 0;
 
 #if defined(POPULATE)
-#include "password.h"
-    // removing 1 as `sizeof` will include the trailing null byte in the result (10)
-    // but this app stores password without this trailing null byte.
-    create_new_password("password1", sizeof("password1") - 1);
-    create_new_password("password2", sizeof("password2") - 1);
-    create_new_password("password3", sizeof("password3") - 1);
+    // Only seed the demo passwords on a fresh storage (first run), otherwise
+    // they would be appended again on every app start and pile up as
+    // duplicates.
+    if (storage_freshly_initialized) {
+        // removing 1 as `sizeof` will include the trailing null byte in the result (10)
+        // but this app stores password without this trailing null byte.
+        create_new_password("password1", sizeof("password1") - 1);
+        create_new_password("password2", sizeof("password2") - 1);
+        create_new_password("password3", sizeof("password3") - 1);
+    }
+#else
+    UNUSED(storage_freshly_initialized);
 #endif  // POPULATE
 
     for (;;) {

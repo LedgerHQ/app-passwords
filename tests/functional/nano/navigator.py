@@ -87,8 +87,13 @@ class CustomNanoNavigator(Navigator):
             # paginates before the "Confirm" action page, so step forward until
             # that page is on screen and only then commit.
             CustomNavInsID.CONFIRM_YES: self._confirm_yes,
-            # APDU approval prompt
+            # Generic select/validate (settings switches, BARS_LIST entries).
             CustomNavInsID.BUTTON_APPROVE: self._both,
+            # APDU approval prompt (nbgl_useCaseChoice): message page first,
+            # the "Approve" action sits on the next page (right then both).
+            CustomNavInsID.APDU_APPROVE: self._approve,
+            # Same prompt, "Refuse" action: step forward until it shows, commit.
+            CustomNavInsID.APDU_REJECT: self._reject,
             # Keyboard (nbgl_useCaseKeyboard with MODE_NONE on Nano).
             CustomNavInsID.KEYBOARD_WRITE: self._write,
             CustomNavInsID.KEYBOARD_TO_CONFIRM: self._keyboard_confirm,
@@ -106,13 +111,26 @@ class CustomNanoNavigator(Navigator):
     def _both(self):
         self._backend.both_click()
 
+    def _approve(self):
+        # nbgl_useCaseChoice shows the message first; the "Approve" action is
+        # reached with one right_click, then validated with both_click. Matches
+        # PasswordsManagerCommand.approve() for Nano.
+        self._right()
+        self._both()
+
+    def _reject(self):
+        # The "Refuse" action sits after "Approve" in the choice flow. Step
+        # forward until it is on screen, then validate.
+        self._navigate_until_text("Refuse")
+        self._both()
+
     def _navigate_until_text(self, text: str, max_steps: int = 12) -> None:
         """Press right_click until `text` appears on screen, then return."""
         for _ in range(max_steps):
             try:
                 self._backend.wait_for_text_on_screen(text, timeout=0.5)
                 return
-            except Exception:
+            except TimeoutError:
                 self._backend.right_click()
         raise RuntimeError(f"Could not find text '{text}' on screen after {max_steps} steps")
 

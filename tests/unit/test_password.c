@@ -128,6 +128,48 @@ static void test_nickname_exists_truncation(void **state __attribute__((unused))
     assert_true(nickname_exists(twenty_chars_same_prefix, MAX_METANAME));
 }
 
+static void test_override_metadatas_high_offset(void **state __attribute__((unused))) {
+    // Regression: override_metadatas() took the offset as a uint8_t, so offsets
+    // >= 256 were truncated mod 256. A restore is streamed in 255-byte chunks,
+    // so the second chunk onward landed at the wrong place and overwrote earlier
+    // data. Writing at offset 300 must land at 300, not at 300 % 256 == 44.
+    const uint8_t payload[] = {0xAA, 0xBB, 0xCC};
+    override_metadatas(300, (void *) payload, sizeof(payload));
+
+    assert_memory_equal(&N_storage_real.metadatas[300], payload, sizeof(payload));
+    // The location it would have hit when truncated must be untouched.
+    assert_int_equal(N_storage_real.metadatas[44], 0);
+    assert_int_equal(N_storage_real.metadatas[45], 0);
+    assert_int_equal(N_storage_real.metadatas[46], 0);
+}
+
+static void test_override_metadatas_buffer_end(void **state __attribute__((unused))) {
+    // Writing the final bytes (offset + size == MAX_METADATAS) must be placed
+    // correctly and stay within the buffer.
+    const uint8_t payload[] = {0x11, 0x22, 0x33, 0x44};
+    const size_t offset = MAX_METADATAS - sizeof(payload);
+    override_metadatas(offset, (void *) payload, sizeof(payload));
+
+    assert_memory_equal(&N_storage_real.metadatas[offset], payload, sizeof(payload));
+}
+
+static void test_write_metadata_enforces_capacity(void **state __attribute__((unused))) {
+    // The store must refuse new entries once full and never report success past
+    // the limit, so the 4096-byte buffer can never overflow.
+    uint8_t name[MAX_METANAME];
+    memset(name, 'A', sizeof(name));
+
+    error_type_t err = OK;
+    int written = 0;
+    while ((err = write_metadata(name, sizeof(name))) == OK) {
+        // Guard against an unbounded loop if the limit were not enforced.
+        assert_true(++written < MAX_METADATAS);
+    }
+
+    assert_int_equal(err, ERR_NO_MORE_SPACE_AVAILABLE);
+    assert_true(written > 0);
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup_teardown(test_nickname_exists_empty_db, setup, NULL),
@@ -136,6 +178,9 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_nickname_exists_length_mismatch, setup, NULL),
         cmocka_unit_test_setup_teardown(test_nickname_exists_case_sensitive, setup, NULL),
         cmocka_unit_test_setup_teardown(test_nickname_exists_truncation, setup, NULL),
+        cmocka_unit_test_setup_teardown(test_override_metadatas_high_offset, setup, NULL),
+        cmocka_unit_test_setup_teardown(test_override_metadatas_buffer_end, setup, NULL),
+        cmocka_unit_test_setup_teardown(test_write_metadata_enforces_capacity, setup, NULL),
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }

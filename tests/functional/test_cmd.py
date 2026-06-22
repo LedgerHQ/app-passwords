@@ -1,8 +1,9 @@
 from passwordsManager_cmd import PasswordsManagerCommand
 
 
-def test_app_info(cmd: PasswordsManagerCommand):
-    assert cmd.get_app_info() == ("Passwords", "1.3.2")
+def test_app_info(cmd: PasswordsManagerCommand, app_version: tuple[int, int, int]):
+    vers_str = ".".join(map(str, app_version))
+    assert cmd.get_app_info() == ("Passwords", vers_str)
 
 
 def test_app_config(cmd: PasswordsManagerCommand):

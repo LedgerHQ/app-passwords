@@ -1,66 +1,79 @@
-# Passwords Backup
+# Passwords Backup — Web UI
 
 [Live demo here](https://passwords.ledger.com)
 
-## What is this Web App
+A browser-based tool to **backup and restore** the list of `password nicknames`
+stored inside the **Passwords app** on your Ledger device. Everything runs
+locally in your browser; the backup file never leaves your machine.
 
-This Web App allows you to backup/restore the list of `password nicknames`
-stored inside the `Passwords app` on your Ledger Device.
-It is useful to have such a backup when you update the Passwords app on your device,
-or the device firmware, because the list gets erased.
+Built with **Vite + React 18** and Ledger's **lumen** design system
+(`@ledgerhq/lumen-ui-react`, Tailwind CSS).
 
-Another case where it's practical to have a nickname backup is when you loose your device:
-Restoring the [24-words recovery phrase](https://www.ledger.com/academy/crypto/what-is-a-recovery-phrase)
-is necessary but not sufficient to restore your passwords, you need your nickname list as well.
+## What it does
 
-The backup consists in a human readable `backup.json` file containing a dump of the 4096 bytes of application storage.
+A backup is useful because the nickname list is erased when you update the
+Passwords app or the device firmware. It is also needed to fully recover your
+passwords after losing a device: restoring the
+[24-words recovery phrase](https://www.ledger.com/academy/crypto/what-is-a-recovery-phrase)
+is necessary but not sufficient — you also need your nickname list.
 
-Note that all operations of this Web App are done locally on your computer, there are no external communications occurring.
+The backup is a human-readable `passwords_backup.json` file containing a dump of
+the application storage. It holds only nicknames (no secrets), so it is not
+confidential.
 
-## What is the Ledger Passwords application
+For more information on the device application itself, see the
+[app README](https://github.com/LedgerHQ/app-passwords/blob/master/README.md).
 
-For more information on the device application itself, look [README](https://github.com/LedgerHQ/app-passwords/blob/master/README.md)
+## Requirements
 
-## How to use this Web App
+- A **Chromium-based browser** (Chrome, Chromium, Brave, Edge). WebUSB is not
+  available in Firefox or Safari. On Windows, enable the new USB backend at
+  `chrome://flags` if the connection fails.
+- The **Passwords app open** on a connected Ledger device.
 
-- Install the `Passwords app` on your device from the [Ledger Live](https://support.ledger.com/hc/en-us/articles/360006523674-Install-uninstall-and-update-apps).
-- Connect your device to your computer and open the `Passwords app`.
-- You can now click on the big `Connect` button. If it succeeds the Backup/Restore buttons should appear
-  in place of the previous button. If you have troubles with this step, have a look here: [Fix-connection-issues](https://support.ledger.com/hc/en-us/articles/115005165269-Fix-connection-issues).
-  Click on Backup/Restore buttons depending on what you want to do:
-  - `Backup` will prompt a screen requesting your approval on your device (`"Transfer metadatas ?"`),
-    then save a backup file. This is your backup.
-    It's not confidential, so for instance you can send it to yourself by e-mail to never loose it.
-  - `Restore` will prompt a file input dialog where you should indicate a previous backup file.
-    A prompt (`"Overwrite metadatas ?"`) will then request your approval on your device.
+## Usage
 
-## Which web browsers are supported
+- Open the **Passwords app** on your device.
+- Click **Connect** — on success the Backup / Restore actions appear.
+  (Connection trouble? See
+  [Fix connection issues](https://support.ledger.com/article/115005165269-zd).)
+- **Backup** prompts "Backup password list?" on the device, then saves the file.
+- **Restore** asks for a previous backup file, then prompts "Restore password
+  list?" on the device.
 
-The communication with the device is done through `WebUSB`, which is currently supported only on
-`Google Chrome` / `Chromium` / `Brave` for `Linux` and `MacOS`.
-On `Windows`, [Zadig](https://github.com/WICG/webusb/issues/143) is required.
+## Develop
 
-## Less common use cases
+This project uses **pnpm** (provisioned by corepack from the `packageManager`
+field — run `corepack enable` once if needed) and **Node 22**:
 
-- If you ever encounter a WTF-kind of error with your passwords app
-  (some or all of your entries are suddenly gone? A password has changed ?),
-  it is wise to first come here and make a backup.
-  You can then have a look inside the backup file to see if something is wrong.
-  You might also want to create an issue here: [issues](https://github.com/LedgerHQ/app-passwords/issues).
-- If you want to add a lot of new passwords, the manual input on the device keyboard will show its limits.
-  You can instead create a backup and edit it manually to add all your new entries.
-  You just have to restore your app with this file and the job is done :)
-
-## Building the project
-
-```bash
-$ yarn install
-$ yarn start
+```sh
+pnpm install
+pnpm dev        # Vite dev server (opens the browser)
+pnpm mock       # same, but opens at /?mock — preview the connected screen with no device
+pnpm build      # production bundle in dist/
+pnpm preview    # serve the production build locally
 ```
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in the browser.
+### Preview without a device (`?mock`)
 
-## Credits
+Append `?mock` to the URL (or run `pnpm mock`) to jump straight to the
+*connected* screen so the layout can be reviewed without a Ledger. It is
+**dev-only** (`import.meta.env.DEV` gates it); production builds ignore the
+flag. Backup/Restore still fail without a device, but every screen renders.
 
-This WebApp was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+### Tests
+
+The pure-logic units (charset mapping, metadata serialization round-trip) are
+covered by **Vitest** and run without a device:
+
+```sh
+pnpm test        # run once (CI)
+pnpm test:watch  # watch mode
+```
+
+## Deployment
+
+Built as a static site and published to GitHub Pages on the dedicated domain
+**passwords.ledger.com** (see `public/CNAME`). The `wui.yml` workflow builds
+`dist/` and deploys it with `peaceiris/actions-gh-pages` on pushes to
+`develop`/`master`. The Vite `base` is `/` (assets at the site root).

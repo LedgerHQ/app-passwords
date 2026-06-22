@@ -37,12 +37,28 @@ class PasswordsManagerCommand:
         self.debug = debug
         self.approved: bool = False
 
-    def approve(self):
-        if self.device.touchable:
+    def approve(self, compare=None):
+        # compare = (snapshots_path, test_case_name) to snapshot-compare the
+        # on-device approval screen before approving. Works for both device
+        # families via the BUTTON_APPROVE navigation instruction.
+        if compare is not None:
+            snap_path, test_name = compare
+            self.navigation.navigate_and_compare(
+                snap_path,
+                test_name,
+                [CustomNavInsID.APDU_APPROVE],
+                screen_change_before_first_instruction=True,
+                screen_change_after_last_instruction=False)
+        elif self.device.touchable:
             self.navigation.navigate([CustomNavInsID.BUTTON_APPROVE])
         else:
             self.transport.right_click()
             self.transport.both_click()
+
+    def refuse(self):
+        # Press "Refuse" on the on-device approval screen. The device replies
+        # with SWO_CONDITIONS_NOT_SATISFIED (0x6985) so the host stops waiting.
+        self.navigation.navigate([CustomNavInsID.APDU_REJECT])
 
     def get_app_info(self) -> str:
         ins: InsType = InsType.INS_GET_APP_INFO
@@ -106,7 +122,7 @@ class PasswordsManagerCommand:
 
         return response.decode("ascii")
 
-    def dump_metadatas(self, size) -> bytes:
+    def dump_metadatas(self, size, compare=None) -> bytes:
         ins: InsType = InsType.INS_DUMP_METADATAS
 
         metadatas = b""
@@ -114,7 +130,7 @@ class PasswordsManagerCommand:
         while len(metadatas) < size:
             if not self.approved:
                 with self.transport.exchange_async(cla=CLA, ins=ins):
-                    self.approve()
+                    self.approve(compare)
                 response = self.transport.last_async_response
                 self.approved = True
             else:
@@ -131,14 +147,28 @@ class PasswordsManagerCommand:
 
         return metadatas[:size]
 
-    def load_metadatas_chunk(self, chunk, is_last):
+    def dump_metadatas_refused(self) -> int:
+        # Trigger a backup, refuse it on the device and return the status word.
+        ins: InsType = InsType.INS_DUMP_METADATAS
+        with self.transport.exchange_async(cla=CLA, ins=ins):
+            self.refuse()
+        return self.transport.last_async_response.status
+
+    def load_metadatas_refused(self, chunk) -> int:
+        # Trigger a restore, refuse it on the device and return the status word.
+        ins: InsType = InsType.INS_LOAD_METADATAS
+        with self.transport.exchange_async(cla=CLA, ins=ins, p1=0xFF, data=chunk):
+            self.refuse()
+        return self.transport.last_async_response.status
+
+    def load_metadatas_chunk(self, chunk, is_last, compare=None):
         ins: InsType = InsType.INS_LOAD_METADATAS
         if not self.approved:
             with self.transport.exchange_async(cla=CLA,
                                                ins=ins,
                                                p1=0xFF if is_last else 0x00,
                                                data=chunk):
-                self.approve()
+                self.approve(compare)
             response = self.transport.last_async_response
             self.approved = True
         else:
@@ -151,9 +181,11 @@ class PasswordsManagerCommand:
         if not sw & 0x9000:
             raise DeviceException(error_code=sw, ins=ins)
 
-    def load_metadatas(self, metadatas):
+    def load_metadatas(self, metadatas, compare=None):
         chunks = [metadatas[i:i+255] for i in range(0, len(metadatas), 255)]
 
         self.approved = False
         for i, chunk in enumerate(chunks):
-            self.load_metadatas_chunk(chunk, i+1 == len(chunks))
+            # Only the first chunk shows the approval screen.
+            self.load_metadatas_chunk(chunk, i+1 == len(chunks),
+                                      compare if i == 0 else None)

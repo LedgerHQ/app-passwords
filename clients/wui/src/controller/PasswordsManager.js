@@ -1,5 +1,9 @@
 import TransportWebUSB from "@ledgerhq/hw-transport-webusb";
 
+// Status word returned by the device when the user refuses the on-device
+// Backup/Restore confirmation. Not a real failure, so the UI treats it apart.
+export const SW_ACTION_CANCELLED = 0x6985;
+
 const insAPDU = Object.freeze({
   GET_APP_INFO_COMMAND: 0x01,
   GET_APP_CONFIG_COMMAND: 0x03,
@@ -33,22 +37,33 @@ class PasswordsManager {
     this.connected = false;
     this.busy = false;
     this.transport = null;
+    this.appName = null;
+    this.version = null;
+    this.storage_size = null;
+    // Optional callback invoked when the device is unplugged mid-session.
+    this.onDisconnect = null;
   }
 
   async connect() {
     if (!this.connected) {
       if (!this.transport) this.transport = await TransportWebUSB.create();
+      // Surface physical unplugs to the UI.
+      this.transport.on("disconnect", () => {
+        this.connected = false;
+        this.transport = null;
+        if (this.onDisconnect) this.onDisconnect();
+      });
       try {
         const [appName, version] = await this.getAppInfo();
         if (appName.toString() !== "Passwords")
           throw new Error("The Passwords app is not opened on the device");
+        this.appName = appName;
         this.version = version;
         let appConfig = await this.getAppConfig();
         this.storage_size = appConfig["storage_size"];
         this.connected = true;
       } catch (error) {
-        await this.transport.close();
-        this.disconnect();
+        await this.disconnect();
         throw error;
       }
     }
@@ -60,7 +75,14 @@ class PasswordsManager {
     );
   }
 
-  disconnect() {
+  async disconnect() {
+    if (this.transport) {
+      try {
+        await this.transport.close();
+      } catch {
+        // Ignore close errors (device may already be gone).
+      }
+    }
     this.connected = false;
     this.transport = null;
   }
@@ -69,7 +91,7 @@ class PasswordsManager {
     if (result.length < 2) throw new Error("Response length is too small");
 
     var errors = {
-      0x6985: "Action cancelled",
+      [SW_ACTION_CANCELLED]: "Action cancelled",
       0x6a86: "SW_WRONG_P1P2",
       0x6a87: "SW_WRONG_DATA_LENGTH",
       0x6d00: "SW_INS_NOT_SUPPORTED",
@@ -79,7 +101,11 @@ class PasswordsManager {
 
     let error = result.readUInt16BE(result.length - 2);
     if (error in errors) {
-      throw new Error(errors[error]);
+      const err = new Error(errors[error]);
+      // Expose the raw status word so callers can tell a user refusal apart
+      // from an actual failure.
+      err.statusWord = error;
+      throw err;
     }
   }
 
@@ -187,7 +213,7 @@ class PasswordsManager {
         insAPDU.GET_APP_INFO_COMMAND,
         0x00,
         0x00,
-        Buffer(0),
+        Buffer.alloc(0),
         this.allowedStatuses
       );
       if (!this.isSuccess(result)) this.mapProtocolError(result);
@@ -222,7 +248,7 @@ class PasswordsManager {
         insAPDU.GET_APP_CONFIG_COMMAND,
         0x00,
         0x00,
-        Buffer(0),
+        Buffer.alloc(0),
         this.allowedStatuses
       );
       if (!this.isSuccess(result)) this.mapProtocolError(result);
@@ -249,7 +275,7 @@ class PasswordsManager {
           insAPDU.DUMP_METADATAS_COMMAND,
           0x00,
           0x00,
-          Buffer(0),
+          Buffer.alloc(0),
           this.allowedStatuses
         );
         if (!this.isSuccess(result)) this.mapProtocolError(result);
