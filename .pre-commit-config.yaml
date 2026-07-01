@@ -11,6 +11,7 @@ repos:
       - id: end-of-file-fixer
       - id: mixed-line-ending
       - id: check-added-large-files
+        exclude: 'pnpm-lock\.yaml$'
       - id: check-merge-conflict
       - id: check-case-conflict
 
@@ -19,8 +20,6 @@ repos:
     hooks:
       - id: codespell
         args: ['--ignore-words-list', 'ontop, NaX, bU, vEw, trough']
-        # Lockfiles contain dependency names (e.g. the "devlop" package) that
-        # trip the spell-checker; don't spell-check them.
         exclude: (?:^|/)pnpm-lock\.yaml$
 
   - repo: https://github.com/pre-commit/mirrors-clang-format
@@ -45,12 +44,13 @@ repos:
         # (src/ctaes is Pieter Wuille's ctaes, MIT — not ours to reformat).
         exclude: 'CHANGELOG\.md|^src/ctaes/'
 
-  - repo: https://github.com/PyCQA/pylint
-    rev: v4.0.5
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.15.20
     hooks:
-      - id: pylint
-        name: Check python Client
-        language: system
-        types: [python]
-        args: ['--jobs=0', '--rcfile=tests/functional/setup.cfg']
-        files: '^tests\/.*$'
+      # Run the linter.
+      - id: ruff-check
+        types_or: [python, pyi]
+        args: [--fix]
+      # Run the formatter.
+      - id: ruff-format
+        types_or: [python, pyi]

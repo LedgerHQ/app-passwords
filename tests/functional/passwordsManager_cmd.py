@@ -9,8 +9,8 @@ from ragger.navigator import Navigator
 from touch.navigator import CustomNavInsID
 
 
-CLA_SDK: int = 0xb0
-CLA: int = 0xe0
+CLA_SDK: int = 0xB0
+CLA: int = 0xE0
 
 
 class InsType(enum.IntEnum):
@@ -26,11 +26,13 @@ class TestInsType(enum.IntEnum):
 
 
 class PasswordsManagerCommand:
-    def __init__(self,
-                 transport: BackendInterface,
-                 navigation: Navigator,
-                 device: Device,
-                 debug: bool = False) -> None:
+    def __init__(
+        self,
+        transport: BackendInterface,
+        navigation: Navigator,
+        device: Device,
+        debug: bool = False,
+    ) -> None:
         self.transport = transport
         self.navigation = navigation
         self.device = device
@@ -48,7 +50,8 @@ class PasswordsManagerCommand:
                 test_name,
                 [CustomNavInsID.APDU_APPROVE],
                 screen_change_before_first_instruction=True,
-                screen_change_after_last_instruction=False)
+                screen_change_after_last_instruction=False,
+            )
         elif self.device.touchable:
             self.navigation.navigate([CustomNavInsID.BUTTON_APPROVE])
         else:
@@ -72,19 +75,18 @@ class PasswordsManagerCommand:
         offset = 1
         app_name_length = response[offset]
         offset += 1
-        app_name = response[offset:offset+app_name_length].decode("ascii")
+        app_name = response[offset : offset + app_name_length].decode("ascii")
         offset += app_name_length
         app_version_length = response[offset]
         offset += 1
-        app_version = response[offset:offset +
-                               app_version_length].decode("ascii")
+        app_version = response[offset : offset + app_version_length].decode("ascii")
 
         return app_name, app_version
 
     def get_app_config(self) -> str:
         ins: InsType = InsType.INS_GET_APP_CONFIG
 
-        response =self.transport.exchange(cla=CLA, ins=ins)
+        response = self.transport.exchange(cla=CLA, ins=ins)
         sw, response = response.status, response.data
 
         if not sw & 0x9000:
@@ -111,10 +113,7 @@ class PasswordsManagerCommand:
 
         payload = charsets.to_bytes(1, "big") + bytes(seed, "utf-8")
 
-        response = self.transport.exchange(cla=CLA,
-                                           ins=ins,
-                                           p1=testIns,
-                                           data=payload)
+        response = self.transport.exchange(cla=CLA, ins=ins, p1=testIns, data=payload)
         sw, response = response.status, response.data
 
         if not sw & 0x9000:
@@ -143,7 +142,8 @@ class PasswordsManagerCommand:
 
             if response[0] == 0xFF and len(metadatas) < size:
                 raise ValueError(
-                    f"{size} bytes requested but only {len(metadatas)} bytes available")
+                    f"{size} bytes requested but only {len(metadatas)} bytes available"
+                )
 
         return metadatas[:size]
 
@@ -164,28 +164,27 @@ class PasswordsManagerCommand:
     def load_metadatas_chunk(self, chunk, is_last, compare=None):
         ins: InsType = InsType.INS_LOAD_METADATAS
         if not self.approved:
-            with self.transport.exchange_async(cla=CLA,
-                                               ins=ins,
-                                               p1=0xFF if is_last else 0x00,
-                                               data=chunk):
+            with self.transport.exchange_async(
+                cla=CLA, ins=ins, p1=0xFF if is_last else 0x00, data=chunk
+            ):
                 self.approve(compare)
             response = self.transport.last_async_response
             self.approved = True
         else:
-            response = self.transport.exchange(cla=CLA,
-                                               ins=ins,
-                                               p1=0xFF if is_last else 0x00,
-                                               data=chunk)
+            response = self.transport.exchange(
+                cla=CLA, ins=ins, p1=0xFF if is_last else 0x00, data=chunk
+            )
         sw, response = response.status, response.data
 
         if not sw & 0x9000:
             raise DeviceException(error_code=sw, ins=ins)
 
     def load_metadatas(self, metadatas, compare=None):
-        chunks = [metadatas[i:i+255] for i in range(0, len(metadatas), 255)]
+        chunks = [metadatas[i : i + 255] for i in range(0, len(metadatas), 255)]
 
         self.approved = False
         for i, chunk in enumerate(chunks):
             # Only the first chunk shows the approval screen.
-            self.load_metadatas_chunk(chunk, i+1 == len(chunks),
-                                      compare if i == 0 else None)
+            self.load_metadatas_chunk(
+                chunk, i + 1 == len(chunks), compare if i == 0 else None
+            )

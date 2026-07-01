@@ -1,40 +1,53 @@
 import pytest
 
-from exception import ClaNotSupportedError, InsNotSupportedError, WrongP1P2Error, \
-    WrongDataLengthError, MetadatasParsingError, ActionCancelledError, DeviceException
+from exception import (
+    ClaNotSupportedError,
+    InsNotSupportedError,
+    WrongP1P2Error,
+    WrongDataLengthError,
+    MetadatasParsingError,
+    ActionCancelledError,
+    DeviceException,
+)
 
 from passwordsManager_cmd import PasswordsManagerCommand
 
 
 @pytest.mark.xfail(raises=ClaNotSupportedError)
 def test_bad_cla(cmd: PasswordsManagerCommand):
-    response = cmd.transport.exchange(cla=0xa0,  # 0xa0 instead of 0xe0
-                                   ins=0x03,
-                                   p1=0x00,
-                                   p2=0x00,
-                                   data=b"")
+    response = cmd.transport.exchange(
+        cla=0xA0,  # 0xa0 instead of 0xe0
+        ins=0x03,
+        p1=0x00,
+        p2=0x00,
+        data=b"",
+    )
 
     raise DeviceException(error_code=response.status)
 
 
 @pytest.mark.xfail(raises=InsNotSupportedError)
 def test_bad_ins(cmd: PasswordsManagerCommand):
-    response = cmd.transport.exchange(cla=0xe0,
-                                   ins=0xAA,  # INS 0xAA is not supported
-                                   p1=0x00,
-                                   p2=0x00,
-                                   data=b"")
+    response = cmd.transport.exchange(
+        cla=0xE0,
+        ins=0xAA,  # INS 0xAA is not supported
+        p1=0x00,
+        p2=0x00,
+        data=b"",
+    )
 
     raise DeviceException(error_code=response.status)
 
 
 @pytest.mark.xfail(raises=WrongP1P2Error)
 def test_wrong_p1p2(cmd: PasswordsManagerCommand):
-    response = cmd.transport.exchange(cla=0xe0,
-                                   ins=0x03,
-                                   p1=0x01,  # 0x01 instead of 0x00
-                                   p2=0x00,
-                                   data=b"")
+    response = cmd.transport.exchange(
+        cla=0xE0,
+        ins=0x03,
+        p1=0x01,  # 0x01 instead of 0x00
+        p2=0x00,
+        data=b"",
+    )
 
     raise DeviceException(error_code=response.status)
 
