@@ -11,36 +11,45 @@ tests_vectors = {
         [0x7F, "gmail", "?u8htP1|DO v7vJzYNb4"],
         [0xFF, "gmail", "*m8ZlP1|}O vzvJrQNT4"],
         [0xFF, "aseedoflengthequal20", "29!uO;UPx UT8Hkmi- 5"],
-        [0xFF, "aSeedOfLengthEqual20", " $4,P.usI*C\\k1fv2;M;"]],
-
+        [0xFF, "aSeedOfLengthEqual20", " $4,P.usI*C\\k1fv2;M;"],
+    ],
     "test_dump_metadatas": [
         [0, b""],
         [100, EXISTING_METADATA + b"\x00" * (100 - len(EXISTING_METADATA))],
-        [4096, EXISTING_METADATA + b"\x00" * (4096 - len(EXISTING_METADATA))]
+        [4096, EXISTING_METADATA + b"\x00" * (4096 - len(EXISTING_METADATA))],
     ],
-
     "test_load_metadatas": [
         # 1-element array to avoid huge test names filled with the data.
         # Instead, it is filled with the data index
         [b"\x00" * 4096],
         [bytes.fromhex("02000761060007616c6c6168")],
         [bytes.fromhex("02000761060007616c6c6168") + b"\x00" * (4096 - 12)],
-        [bytes.fromhex("02000761" + "14 00 07 616c6c6168616c6c6168616c6c6168616c6c70") +
-        b"\x00" * (4096 - 26)],
+        [
+            bytes.fromhex(
+                "02000761" + "14 00 07 616c6c6168616c6c6168616c6c6168616c6c70"
+            )
+            + b"\x00" * (4096 - 26)
+        ],
     ],
-
     "test_load_metadatas_with_too_much_data": [
         # 1-element array to avoid huge test names filled with the data.
         # Instead, it is filled with the data index
         [b"\x00" * 10000],
         [bytes.fromhex("02000761060007616c6c6168") + b"\x00" * 4096],
     ],
-
     "test_load_metadatas_with_name_too_long": [
         # 1-element array to avoid huge test names filled with the data.
         # Instead, it is filled with the data index
-        [bytes.fromhex("02000761" + "15 00 07 616c6c6168616c6c6168616c6c6168616c6c7078")],
-        [bytes.fromhex("02000761" + "15 00 07 616c6c6168616c6c6168616c6c6168616c6c7078") +
-         b"\x00" * (4096 - 27)],
+        [
+            bytes.fromhex(
+                "02000761" + "15 00 07 616c6c6168616c6c6168616c6c6168616c6c7078"
+            )
+        ],
+        [
+            bytes.fromhex(
+                "02000761" + "15 00 07 616c6c6168616c6c6168616c6c6168616c6c7078"
+            )
+            + b"\x00" * (4096 - 27)
+        ],
     ],
 }

@@ -14,14 +14,13 @@ from tests_vectors import tests_vectors
 from nano.navigator import CustomNanoNavigator
 from touch.navigator import CustomTouchNavigator
 
-pytest_plugins = ("ragger.conftest.base_conftest", )
+pytest_plugins = ("ragger.conftest.base_conftest",)
 
 
 # Glue to call every test that depends on the device once for each required device
 def pytest_generate_tests(metafunc):
     if "test_vector" in metafunc.fixturenames:
-        metafunc.parametrize(
-            "test_vector", tests_vectors[metafunc.definition.name])
+        metafunc.parametrize("test_vector", tests_vectors[metafunc.definition.name])
 
 
 @pytest.fixture
@@ -42,6 +41,7 @@ def navigator(custom_backend, device, golden_run):
         yield CustomNanoNavigator(custom_backend, device, golden_run)
     else:
         yield CustomTouchNavigator(custom_backend, device, golden_run)
+
 
 @pytest.fixture(name="app_version")
 def app_version_fixture() -> tuple[int, int, int]:

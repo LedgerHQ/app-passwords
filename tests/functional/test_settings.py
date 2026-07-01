@@ -5,7 +5,10 @@ from ragger.navigator import Navigator
 from touch.navigator import CustomNavInsID
 from ledgered.devices import Device
 
-def test_settings_screens(navigator: Navigator, device: Device, default_screenshot_path: Path):
+
+def test_settings_screens(
+    navigator: Navigator, device: Device, default_screenshot_path: Path
+):
     # Touch: settings span 2 pages (switches, then keyboard layout choices).
     # Nano (horizontal flow): 6 switches (uppercase, lowercase, numbers, bars,
     #  ext_symbols, no_enter) + 1 "Host keyboard" BARS_LIST entry that opens
@@ -26,7 +29,9 @@ def test_settings_screens(navigator: Navigator, device: Device, default_screensh
         instructions += [CustomNavInsID.SETTINGS_NEXT] * 2
     instructions += [CustomNavInsID.SETTINGS_TO_HOME]
 
-    navigator.navigate_and_compare(default_screenshot_path,
-                                   "settings",
-                                   instructions,
-                                   screen_change_before_first_instruction=False)
+    navigator.navigate_and_compare(
+        default_screenshot_path,
+        "settings",
+        instructions,
+        screen_change_before_first_instruction=False,
+    )
