@@ -1,5 +1,4 @@
 from ragger.navigator import Navigator
-
 from touch.navigator import CustomNavInsID
 
 

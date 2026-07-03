@@ -6,7 +6,7 @@ from enum import auto
 from functools import partial
 from time import sleep
 
-from ragger.navigator import NavInsID, BaseNavInsID
+from ragger.navigator import BaseNavInsID, NavInsID
 from ragger.navigator.navigator import Navigator
 
 from .screen import CustomTouchScreen
@@ -61,9 +61,7 @@ class CustomTouchNavigator(Navigator):
             CustomNavInsID.MENU_TO_TYPE: partial(self.screen.menu_choice.choose, 2),
             CustomNavInsID.MENU_TO_DISPLAY: partial(self.screen.menu_choice.choose, 3),
             CustomNavInsID.MENU_TO_DELETE: partial(self.screen.menu_choice.choose, 4),
-            CustomNavInsID.MENU_TO_DELETE_ALL: partial(
-                self.screen.menu_choice.choose, 5
-            ),
+            CustomNavInsID.MENU_TO_DELETE_ALL: partial(self.screen.menu_choice.choose, 5),
             CustomNavInsID.LIST_TO_MENU: self.screen.settings.multi_page_exit,
             CustomNavInsID.CONFIRM_YES: self.screen.confirmation.confirm,
             CustomNavInsID.KEYBOARD_WRITE: self.screen.keyboard.write,

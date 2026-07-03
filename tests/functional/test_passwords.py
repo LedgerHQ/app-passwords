@@ -2,10 +2,9 @@ from pathlib import Path
 from time import sleep
 
 import pytest
+from passwordsManager_cmd import PasswordsManagerCommand
 from ragger.backend import BackendInterface
 from ragger.navigator import Navigator, NavIns, NavInsID
-
-from passwordsManager_cmd import PasswordsManagerCommand
 from touch.navigator import CustomNavInsID
 
 # SETS byte and entry layout reused from EXISTING_METADATA in tests_vectors.py:
@@ -143,13 +142,9 @@ def test_show_password_on_second_page(
     expected_name = names[nb_per_page]
     expected_value = cmd.generate_password(_SETS, expected_name)
 
-    navigator.navigate(
-        [CustomNavInsID.SETTINGS_NEXT], screen_change_before_first_instruction=False
-    )
+    navigator.navigate([CustomNavInsID.SETTINGS_NEXT], screen_change_before_first_instruction=False)
     sleep(0.5)
-    assert expected_name in _screen_texts(custom_backend), (
-        "page 2 must start with the entry following the last entry of page 1"
-    )
+    assert expected_name in _screen_texts(custom_backend), "page 2 must start with the entry following the last entry of page 1"
 
     navigator.navigate_and_compare(
         default_screenshot_path,
@@ -163,6 +158,4 @@ def test_show_password_on_second_page(
     # must correspond to the page-2 entry, proving the absolute index is right.
     shown = _screen_texts(custom_backend)
     assert expected_name in shown
-    assert expected_value in shown, (
-        f"expected value of '{expected_name}' not shown; wrong entry selected"
-    )
+    assert expected_value in shown, f"expected value of '{expected_name}' not shown; wrong entry selected"

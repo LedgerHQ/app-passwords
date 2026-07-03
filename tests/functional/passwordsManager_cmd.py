@@ -2,12 +2,9 @@ import enum
 
 from exception import DeviceException
 from ledgered.devices import Device
-
 from ragger.backend import BackendInterface
 from ragger.navigator import Navigator
-
 from touch.navigator import CustomNavInsID
-
 
 CLA_SDK: int = 0xB0
 CLA: int = 0xE0
@@ -141,9 +138,7 @@ class PasswordsManagerCommand:
             metadatas += response[1:]
 
             if response[0] == 0xFF and len(metadatas) < size:
-                raise ValueError(
-                    f"{size} bytes requested but only {len(metadatas)} bytes available"
-                )
+                raise ValueError(f"{size} bytes requested but only {len(metadatas)} bytes available")
 
         return metadatas[:size]
 
@@ -164,16 +159,12 @@ class PasswordsManagerCommand:
     def load_metadatas_chunk(self, chunk, is_last, compare=None):
         ins: InsType = InsType.INS_LOAD_METADATAS
         if not self.approved:
-            with self.transport.exchange_async(
-                cla=CLA, ins=ins, p1=0xFF if is_last else 0x00, data=chunk
-            ):
+            with self.transport.exchange_async(cla=CLA, ins=ins, p1=0xFF if is_last else 0x00, data=chunk):
                 self.approve(compare)
             response = self.transport.last_async_response
             self.approved = True
         else:
-            response = self.transport.exchange(
-                cla=CLA, ins=ins, p1=0xFF if is_last else 0x00, data=chunk
-            )
+            response = self.transport.exchange(cla=CLA, ins=ins, p1=0xFF if is_last else 0x00, data=chunk)
         sw, response = response.status, response.data
 
         if not sw & 0x9000:
@@ -185,6 +176,4 @@ class PasswordsManagerCommand:
         self.approved = False
         for i, chunk in enumerate(chunks):
             # Only the first chunk shows the approval screen.
-            self.load_metadatas_chunk(
-                chunk, i + 1 == len(chunks), compare if i == 0 else None
-            )
+            self.load_metadatas_chunk(chunk, i + 1 == len(chunks), compare if i == 0 else None)

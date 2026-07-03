@@ -2,16 +2,16 @@
 # functions intentionally match module-level fixture names. Silence the noisy
 # pylint warning for the whole file rather than per-function.
 # pylint: disable=redefined-outer-name
-from pathlib import Path
 import re
-import pytest
-from ragger.backend import RaisePolicy, BackendInterface
-from ragger.navigator import Navigator
+from pathlib import Path
 
+import pytest
 from ledgered.devices import Device
-from passwordsManager_cmd import PasswordsManagerCommand
-from tests_vectors import tests_vectors
 from nano.navigator import CustomNanoNavigator
+from passwordsManager_cmd import PasswordsManagerCommand
+from ragger.backend import BackendInterface, RaisePolicy
+from ragger.navigator import Navigator
+from tests_vectors import tests_vectors
 from touch.navigator import CustomTouchNavigator
 
 pytest_plugins = ("ragger.conftest.base_conftest",)
