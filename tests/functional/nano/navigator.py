@@ -11,7 +11,6 @@ from ragger.navigator.navigator import Navigator
 # so the import is absolute, not relative.
 from touch.navigator import CustomNavInsID
 
-
 # Keyboard layout on Nano, MODE_NONE (see nbgl_obj_keyboard_nanos.c):
 #   - First a mode-choice screen is shown with three icons (lower, upper, digits)
 #     mapped to selectedCharIndex 0, 1, 2. both_click commits to that mode.
@@ -45,9 +44,7 @@ class CustomNanoNavigator(Navigator):
         shortest left/right path to the target character.
     """
 
-    def __init__(
-        self, backend: BackendInterface, device: Device, golden_run: bool = False
-    ):
+    def __init__(self, backend: BackendInterface, device: Device, golden_run: bool = False):
         self._backend = backend
         # Tracks the on-screen keyboard state between successive instructions.
         # `None` means the device is on the mode-choice screen (MODE_NONE) with
@@ -134,9 +131,7 @@ class CustomNanoNavigator(Navigator):
                 return
             except TimeoutError:
                 self._backend.right_click()
-        raise RuntimeError(
-            f"Could not find text '{text}' on screen after {max_steps} steps"
-        )
+        raise RuntimeError(f"Could not find text '{text}' on screen after {max_steps} steps")
 
     # ---- first-launch disclaimer ------------------------------------------
 
@@ -259,9 +254,7 @@ class CustomNanoNavigator(Navigator):
         try:
             target_idx = keys.index(char)
         except ValueError as exc:
-            raise ValueError(
-                f"Character {char!r} cannot be typed in MODE_NONE keyboard"
-            ) from exc
+            raise ValueError(f"Character {char!r} cannot be typed in MODE_NONE keyboard") from exc
         self._kbd_navigate_to(target_idx, ring_size=len(keys))
         self._both()
 

@@ -1,15 +1,13 @@
 import pytest
-
 from exception import (
-    ClaNotSupportedError,
-    InsNotSupportedError,
-    WrongP1P2Error,
-    WrongDataLengthError,
-    MetadatasParsingError,
     ActionCancelledError,
+    ClaNotSupportedError,
     DeviceException,
+    InsNotSupportedError,
+    MetadatasParsingError,
+    WrongDataLengthError,
+    WrongP1P2Error,
 )
-
 from passwordsManager_cmd import PasswordsManagerCommand
 
 

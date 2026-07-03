@@ -1,13 +1,13 @@
 from ledgered.devices import Device, DeviceType
 from ragger.backend import BackendInterface
 from ragger.firmware.touch import MetaScreen
+from ragger.firmware.touch.layouts import ChoiceList, FullKeyboardLetters, LeftHeader
 from ragger.firmware.touch.use_cases import (
     UseCaseChoice,
     UseCaseHomeExt,
     UseCaseReview,
     UseCaseSettings,
 )
-from ragger.firmware.touch.layouts import ChoiceList, FullKeyboardLetters, LeftHeader
 
 
 class KeyboardConfirmationButton:
@@ -23,7 +23,7 @@ class KeyboardConfirmationButton:
         elif self.device.type == DeviceType.APEX_P:
             position = (140, 160)
         else:
-            assert False, f"Device not supported: {self.device}"
+            raise AssertionError(f"Device not supported: {self.device}")
         self.backend.finger_touch(*position)
 
 
@@ -40,7 +40,7 @@ class ApproveButton:
         elif self.device.type == DeviceType.APEX_P:
             position = (140, 310)
         else:
-            assert False, f"Device not supported: {self.device}"
+            raise AssertionError(f"Device not supported: {self.device}")
         self.backend.finger_touch(*position)
 
 
