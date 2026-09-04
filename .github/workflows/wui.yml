@@ -22,6 +22,15 @@ jobs:
   build:
     name: Build the site
     runs-on: ubuntu-latest
+    # Job-level permissions replace the workflow-level ones, hence contents:read
+    # is restated here. `pages` is needed on top of it because this repo is
+    # private: the Pages config is not public data, so configure-pages cannot
+    # read it with a bare contents:read token (upstream app-passwords is public
+    # and gets away without it). Read-only suffices: we never pass
+    # `enablement: true`, so the action only performs a GET.
+    permissions:
+      contents: read
+      pages: read
     defaults:
       run:
         working-directory: clients/wui/
