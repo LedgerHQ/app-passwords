@@ -291,6 +291,72 @@ static void test_compaction_wipes_vacated_tail(void **state __attribute__((unuse
     assert_int_equal(N_storage_real.metadata_count, 2);
 }
 
+// --- bounded parser (V-008) -------------------------------------------------
+
+static void test_compact_metadata_rejects_missing_terminator(void **state __attribute__((unused))) {
+    // A database whose records tile the whole array with no zero terminator used to walk the
+    // parser past the end: the loop read METADATA_DATALEN(offset) before testing the bound.
+    memset(N_storage_real.metadatas, 0, sizeof(N_storage_real.metadatas));
+    for (size_t offset = 0; offset < sizeof(N_storage_real.metadatas); offset += 4) {
+        N_storage_real.metadatas[offset] = 2;         // datalen: charset + 1 byte
+        N_storage_real.metadatas[offset + 1] = 0x00;  // META_NONE
+    }
+
+    assert_int_equal(compact_metadata(), ERR_CORRUPTED_METADATA);
+}
+
+static void test_compact_metadata_rejects_record_overrunning_the_end(void **state
+                                                                     __attribute__((unused))) {
+    // A small, apparently valid record placed near the end of the array, declaring a payload
+    // that runs past MAX_METADATAS. The parser has to walk there, so tile the space before it.
+    memset(N_storage_real.metadatas, 0, sizeof(N_storage_real.metadatas));
+    const size_t last = sizeof(N_storage_real.metadatas) - 4;
+    for (size_t offset = 0; offset < last; offset += 4) {
+        N_storage_real.metadatas[offset] = 2;  // datalen: charset + 1 byte -> 4 bytes total
+        N_storage_real.metadatas[offset + 1] = META_NONE;
+    }
+    // Only 4 bytes are left here, but this record claims MAX_METANAME + 2 == 22.
+    N_storage_real.metadatas[last] = MAX_METANAME;
+    N_storage_real.metadatas[last + 1] = META_NONE;
+
+    assert_int_equal(compact_metadata(), ERR_CORRUPTED_METADATA);
+}
+
+static void test_compact_metadata_rejects_bad_kind(void **state __attribute__((unused))) {
+    add_password("alpha");
+    N_storage_real.metadatas[1] = 0x42;  // neither META_NONE nor META_ERASED
+
+    assert_int_equal(compact_metadata(), ERR_CORRUPTED_METADATA);
+}
+
+static void test_compact_metadata_rejects_oversized_entry(void **state __attribute__((unused))) {
+    // Preserved behaviour: an entry longer than a full nickname is reported as too big, which
+    // the restore path maps to SW_METADATAS_PARSING_ERROR.
+    memset(N_storage_real.metadatas, 0, sizeof(N_storage_real.metadatas));
+    N_storage_real.metadatas[0] = MAX_METANAME + 1;
+    N_storage_real.metadatas[1] = 0x00;
+
+    assert_int_equal(compact_metadata(), ERR_METADATA_ENTRY_TOO_BIG);
+}
+
+static void test_get_metadata_terminates_on_corrupt_storage(void **state __attribute__((unused))) {
+    // get_metadata() used to loop forever on a database with no terminator.
+    memset(N_storage_real.metadatas, 0xFF, sizeof(N_storage_real.metadatas));
+
+    assert_int_equal(get_metadata(0), UINT32_MAX);
+    assert_int_equal(find_free_metadata(), MAX_METADATAS);
+}
+
+static void test_erase_metadata_rejects_out_of_range_offset(void **state __attribute__((unused))) {
+    add_password("alpha");
+
+    assert_int_equal(erase_metadata(MAX_METADATAS), ERR_CORRUPTED_METADATA);
+    assert_int_equal(erase_metadata(MAX_METADATAS - 1), ERR_CORRUPTED_METADATA);
+    // The live entry is untouched.
+    assert_entry_is(raw_entry_offset(0), "alpha");
+    assert_int_equal(N_storage_real.metadata_count, 1);
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup_teardown(test_nickname_exists_empty_db, setup, NULL),
@@ -307,6 +373,20 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_compact_metadata_no_erased_entry, setup, NULL),
         cmocka_unit_test_setup_teardown(test_deleted_nickname_is_wiped, setup, NULL),
         cmocka_unit_test_setup_teardown(test_compaction_wipes_vacated_tail, setup, NULL),
+        cmocka_unit_test_setup_teardown(test_compact_metadata_rejects_missing_terminator,
+                                        setup,
+                                        NULL),
+        cmocka_unit_test_setup_teardown(test_compact_metadata_rejects_record_overrunning_the_end,
+                                        setup,
+                                        NULL),
+        cmocka_unit_test_setup_teardown(test_compact_metadata_rejects_bad_kind, setup, NULL),
+        cmocka_unit_test_setup_teardown(test_compact_metadata_rejects_oversized_entry, setup, NULL),
+        cmocka_unit_test_setup_teardown(test_get_metadata_terminates_on_corrupt_storage,
+                                        setup,
+                                        NULL),
+        cmocka_unit_test_setup_teardown(test_erase_metadata_rejects_out_of_range_offset,
+                                        setup,
+                                        NULL),
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }
