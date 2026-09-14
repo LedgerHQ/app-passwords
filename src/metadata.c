@@ -77,28 +77,35 @@ uint32_t get_metadata(uint32_t nth) {
 error_type_t compact_metadata() {
     uint32_t offset = 0;
     uint32_t shift_offset = 0;
+    /* Offset 0 is a legitimate destination (it is where the live entries move when the very
+     * first entry is the erased one), so `shift_offset` cannot double as the "nothing erased
+     * yet" marker: that conflation used to leave an erased first entry in place and counted
+     * it as live below. Track the state explicitly instead. */
+    bool shifting = false;
     uint8_t copy_buffer[2 + 1 + MAX_METANAME];
     while ((METADATA_DATALEN(offset) != 0) && (offset < MAX_METADATAS)) {
         if (METADATA_TOTAL_LEN(offset) >= sizeof(copy_buffer)) {
             return ERR_METADATA_ENTRY_TOO_BIG;
         }
         switch (METADATA_KIND(offset)) {
-            case META_NONE:
-                if (shift_offset != 0) {
-                    memcpy(copy_buffer,
-                           (const void *) METADATA_PTR(offset),
-                           METADATA_TOTAL_LEN(offset));
-                    nvm_write((void *) &N_storage.metadatas[shift_offset],
-                              copy_buffer,
-                              METADATA_TOTAL_LEN(offset));
-                    offset += METADATA_TOTAL_LEN(shift_offset);
-                    shift_offset += METADATA_TOTAL_LEN(shift_offset);
-                } else {
-                    offset += METADATA_TOTAL_LEN(offset);
+            case META_NONE: {
+                // Read the length before the copy: once the entry has been written at
+                // `shift_offset`, reading it back from either offset is equivalent but
+                // needlessly order-dependent.
+                const uint32_t entry_len = METADATA_TOTAL_LEN(offset);
+                if (shifting) {
+                    memcpy(copy_buffer, (const void *) METADATA_PTR(offset), entry_len);
+                    nvm_write((void *) &N_storage.metadatas[shift_offset], copy_buffer, entry_len);
+                    shift_offset += entry_len;
                 }
+                offset += entry_len;
                 break;
+            }
             case META_ERASED:
-                shift_offset = shift_offset == 0 ? offset : shift_offset;
+                if (!shifting) {
+                    shift_offset = offset;
+                    shifting = true;
+                }
                 offset += METADATA_TOTAL_LEN(offset);
                 break;
 
@@ -110,7 +117,7 @@ error_type_t compact_metadata() {
         return ERR_NO_MORE_SPACE_AVAILABLE;
     }
     // declare that the remaining space is free
-    if (shift_offset != 0) {
+    if (shifting) {
         copy_buffer[0] = 0;
         copy_buffer[1] = META_NONE;
         nvm_write((void *) &N_storage.metadatas[shift_offset], copy_buffer, 2);

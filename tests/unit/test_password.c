@@ -170,6 +170,74 @@ static void test_write_metadata_enforces_capacity(void **state __attribute__((un
     assert_true(written > 0);
 }
 
+// Offset of the nth entry, walking the raw store rather than using get_metadata() (which
+// skips erased entries) so the tests can assert on the physical layout.
+static uint32_t raw_entry_offset(size_t nth) {
+    uint32_t offset = 0;
+    while (nth-- > 0) {
+        assert_int_not_equal(N_storage_real.metadatas[offset], 0);
+        offset += N_storage_real.metadatas[offset] + 2;
+    }
+    return offset;
+}
+
+static void assert_entry_is(uint32_t offset, const char *nickname) {
+    const size_t name_len = strlen(nickname);
+    assert_int_equal(N_storage_real.metadatas[offset], 1 + name_len);
+    assert_int_equal(N_storage_real.metadatas[offset + 1], META_NONE);
+    assert_memory_equal(&N_storage_real.metadatas[offset + 3], nickname, name_len);
+}
+
+static void test_compact_metadata_erased_first_entry(void **state __attribute__((unused))) {
+    // Regression: compact_metadata() used shift_offset == 0 to mean "nothing erased yet",
+    // but 0 is also where the live entries must move when the *first* entry is the erased
+    // one. That conflation skipped compaction entirely and then counted the erased entry as
+    // live, leaving metadata_count one too high after deleting the first password.
+    add_password("alpha");
+    add_password("beta");
+    add_password("gamma");
+
+    assert_int_equal(erase_metadata(0), OK);
+    assert_int_equal(N_storage_real.metadata_count, 2);
+
+    assert_int_equal(compact_metadata(), OK);
+
+    assert_int_equal(N_storage_real.metadata_count, 2);
+    assert_entry_is(raw_entry_offset(0), "beta");
+    assert_entry_is(raw_entry_offset(1), "gamma");
+    // No erased record may survive compaction.
+    for (uint32_t offset = 0; N_storage_real.metadatas[offset] != 0;
+         offset += N_storage_real.metadatas[offset] + 2) {
+        assert_int_not_equal(N_storage_real.metadatas[offset + 1], META_ERASED);
+    }
+}
+
+static void test_compact_metadata_erased_middle_entry(void **state __attribute__((unused))) {
+    // The case that already worked, kept so the shift_offset rework cannot regress it.
+    add_password("alpha");
+    add_password("beta");
+    add_password("gamma");
+
+    assert_int_equal(erase_metadata(raw_entry_offset(1)), OK);
+    assert_int_equal(compact_metadata(), OK);
+
+    assert_int_equal(N_storage_real.metadata_count, 2);
+    assert_entry_is(raw_entry_offset(0), "alpha");
+    assert_entry_is(raw_entry_offset(1), "gamma");
+}
+
+static void test_compact_metadata_no_erased_entry(void **state __attribute__((unused))) {
+    // Compaction of a clean store must be a no-op, not a shift.
+    add_password("alpha");
+    add_password("beta");
+
+    assert_int_equal(compact_metadata(), OK);
+
+    assert_int_equal(N_storage_real.metadata_count, 2);
+    assert_entry_is(raw_entry_offset(0), "alpha");
+    assert_entry_is(raw_entry_offset(1), "beta");
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup_teardown(test_nickname_exists_empty_db, setup, NULL),
@@ -181,6 +249,9 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_override_metadatas_high_offset, setup, NULL),
         cmocka_unit_test_setup_teardown(test_override_metadatas_buffer_end, setup, NULL),
         cmocka_unit_test_setup_teardown(test_write_metadata_enforces_capacity, setup, NULL),
+        cmocka_unit_test_setup_teardown(test_compact_metadata_erased_first_entry, setup, NULL),
+        cmocka_unit_test_setup_teardown(test_compact_metadata_erased_middle_entry, setup, NULL),
+        cmocka_unit_test_setup_teardown(test_compact_metadata_no_erased_entry, setup, NULL),
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }
