@@ -238,6 +238,59 @@ static void test_compact_metadata_no_erased_entry(void **state __attribute__((un
     assert_entry_is(raw_entry_offset(1), "beta");
 }
 
+// True if `needle` appears anywhere in the raw metadata region.
+static bool storage_contains(const char *needle) {
+    const size_t len = strlen(needle);
+    for (size_t i = 0; i + len <= sizeof(N_storage_real.metadatas); i++) {
+        if (memcmp(&N_storage_real.metadatas[i], needle, len) == 0) {
+            return true;
+        }
+    }
+    return false;
+}
+
+static void test_deleted_nickname_is_wiped(void **state __attribute__((unused))) {
+    // A deleted entry used to keep its nickname in flash: erase_metadata() only flipped the
+    // kind byte, and compaction only moved a 2-byte terminator, so the name stayed readable in
+    // the slack space and was handed out by the backup APDU.
+    add_password("alpha");
+    add_password("secretsite");
+    add_password("gamma");
+    assert_true(storage_contains("secretsite"));
+
+    assert_int_equal(erase_metadata(raw_entry_offset(1)), OK);
+    assert_false(storage_contains("secretsite"));
+
+    assert_int_equal(compact_metadata(), OK);
+    assert_false(storage_contains("secretsite"));
+    // The surviving entries are intact.
+    assert_entry_is(raw_entry_offset(0), "alpha");
+    assert_entry_is(raw_entry_offset(1), "gamma");
+}
+
+static void test_compaction_wipes_vacated_tail(void **state __attribute__((unused))) {
+    // Compaction shifts the later entries down and then writes a 2-byte terminator at the new
+    // end. Everything between that terminator and the old end of the database is stale data --
+    // the tail of the entries that moved -- and must be zeroed, not left in the slack space.
+    add_password("alpha");
+    add_password("b");
+    add_password("uniquetailnickname");
+    const uint32_t old_end = raw_entry_offset(3);
+
+    assert_int_equal(erase_metadata(raw_entry_offset(1)), OK);
+    assert_int_equal(compact_metadata(), OK);
+
+    const uint32_t new_end = find_free_metadata();
+    assert_true(new_end < old_end);
+    for (uint32_t i = new_end; i < old_end; i++) {
+        assert_int_equal(N_storage_real.metadatas[i], 0);
+    }
+
+    assert_entry_is(raw_entry_offset(0), "alpha");
+    assert_entry_is(raw_entry_offset(1), "uniquetailnickname");
+    assert_int_equal(N_storage_real.metadata_count, 2);
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup_teardown(test_nickname_exists_empty_db, setup, NULL),
@@ -252,6 +305,8 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_compact_metadata_erased_first_entry, setup, NULL),
         cmocka_unit_test_setup_teardown(test_compact_metadata_erased_middle_entry, setup, NULL),
         cmocka_unit_test_setup_teardown(test_compact_metadata_no_erased_entry, setup, NULL),
+        cmocka_unit_test_setup_teardown(test_deleted_nickname_is_wiped, setup, NULL),
+        cmocka_unit_test_setup_teardown(test_compaction_wipes_vacated_tail, setup, NULL),
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }

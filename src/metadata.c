@@ -43,7 +43,13 @@ error_type_t erase_metadata(uint32_t offset) {
     }
     size_t metadata_count = N_storage.metadata_count - 1;
     unsigned char m = META_ERASED;
+    const uint32_t datalen = METADATA_DATALEN(offset);
     nvm_write((void *) &N_storage.metadatas[offset + 1], &m, sizeof(N_storage.metadatas[0]));
+    // Marking the entry erased leaves its nickname readable in flash until the next compaction
+    // moves other entries over it, so wipe the data block now.
+    if ((offset + 2 + datalen) <= MAX_METADATAS) {
+        nvm_write((void *) &N_storage.metadatas[offset + 2], NULL, datalen);
+    }
     nvm_write((void *) &N_storage.metadata_count,
               &metadata_count,
               sizeof(N_storage.metadata_count));
@@ -121,6 +127,13 @@ error_type_t compact_metadata() {
         copy_buffer[0] = 0;
         copy_buffer[1] = META_NONE;
         nvm_write((void *) &N_storage.metadatas[shift_offset], copy_buffer, 2);
+        // Wipe what the compaction vacated between the new terminator and the old end of the
+        // database, so the nicknames that used to live there are not left in the slack space.
+        if (offset > (shift_offset + 2)) {
+            nvm_write((void *) &N_storage.metadatas[shift_offset + 2],
+                      NULL,
+                      offset - (shift_offset + 2));
+        }
     }
     // count metadatas
     offset = 0;

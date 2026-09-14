@@ -2,6 +2,7 @@
 #include "globals.h"
 #include "handlers.h"
 #include "io.h"
+#include "metadata.h"
 #include "ui.h"
 
 int dump_metadatas() {
@@ -30,9 +31,26 @@ int dump_metadatas() {
         G_io_apdu_buffer[TRANSFER_FLAG_OFFSET] = MORE_DATA_INCOMING;
     }
 
+    /* Only the bytes up to the logical end of the database are meaningful. Past it, the flash
+     * still holds nicknames from deleted entries and from earlier, larger databases, so send
+     * zeroes instead of the raw slack space. The two terminator bytes are zero as well, so the
+     * exported stream is unchanged for a database that has no slack. */
+    size_t live_size = find_free_metadata();
+    if (live_size > sizeof(N_storage.metadatas)) {
+        live_size = sizeof(N_storage.metadatas);
+    }
+    size_t live_bytes = 0;
+    if (app_state.bytes_transferred < live_size) {
+        live_bytes = live_size - app_state.bytes_transferred;
+        if (live_bytes > payload_size) {
+            live_bytes = payload_size;
+        }
+    }
+
     memcpy(&G_io_apdu_buffer[TRANSFER_PAYLOAD_OFFSET],
            (const unsigned char *) N_storage.metadatas + app_state.bytes_transferred,
-           payload_size);
+           live_bytes);
+    memset(&G_io_apdu_buffer[TRANSFER_PAYLOAD_OFFSET + live_bytes], 0, payload_size - live_bytes);
 
     app_state.bytes_transferred += payload_size;
 
