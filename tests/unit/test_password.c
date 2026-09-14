@@ -291,6 +291,42 @@ static void test_compaction_wipes_vacated_tail(void **state __attribute__((unuse
     assert_int_equal(N_storage_real.metadata_count, 2);
 }
 
+// --- entry count capacity (V-006) -------------------------------------------
+
+static void test_write_metadata_enforces_count_cap(void **state __attribute__((unused))) {
+    // MAX_METADATAS fits far more short entries than the fixed-size UI list arrays can hold,
+    // so creation has to stop at MAX_METADATA_COUNT and not just when the bytes run out.
+    uint8_t name[2] = {0x07, 'a'};  // charset byte + 1-char nickname
+
+    error_type_t err = OK;
+    size_t written = 0;
+    while ((err = write_metadata(name, sizeof(name))) == OK) {
+        written++;
+        assert_true(written <= MAX_METADATA_COUNT);
+    }
+
+    assert_int_equal(err, ERR_NO_MORE_SPACE_AVAILABLE);
+    assert_int_equal(written, MAX_METADATA_COUNT);
+    assert_int_equal(N_storage_real.metadata_count, MAX_METADATA_COUNT);
+}
+
+static void test_compact_metadata_rejects_over_count_database(void **state
+                                                              __attribute__((unused))) {
+    // A restored image can hold more short entries than the UI can address; the count must be
+    // rejected rather than committed to NVM.
+    memset(N_storage_real.metadatas, 0, sizeof(N_storage_real.metadatas));
+    const size_t entries = MAX_METADATA_COUNT + 1;
+    for (size_t i = 0; i < entries; i++) {
+        N_storage_real.metadatas[i * 4] = 2;  // 4 bytes per record
+        N_storage_real.metadatas[i * 4 + 1] = META_NONE;
+    }
+    N_storage_real.metadata_count = 0;
+
+    assert_int_equal(compact_metadata(), ERR_NO_MORE_SPACE_AVAILABLE);
+    // Nothing was committed.
+    assert_int_equal(N_storage_real.metadata_count, 0);
+}
+
 // --- bounded parser (V-008) -------------------------------------------------
 
 static void test_compact_metadata_rejects_missing_terminator(void **state __attribute__((unused))) {
@@ -373,6 +409,10 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_compact_metadata_no_erased_entry, setup, NULL),
         cmocka_unit_test_setup_teardown(test_deleted_nickname_is_wiped, setup, NULL),
         cmocka_unit_test_setup_teardown(test_compaction_wipes_vacated_tail, setup, NULL),
+        cmocka_unit_test_setup_teardown(test_write_metadata_enforces_count_cap, setup, NULL),
+        cmocka_unit_test_setup_teardown(test_compact_metadata_rejects_over_count_database,
+                                        setup,
+                                        NULL),
         cmocka_unit_test_setup_teardown(test_compact_metadata_rejects_missing_terminator,
                                         setup,
                                         NULL),

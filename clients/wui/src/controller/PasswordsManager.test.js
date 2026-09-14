@@ -88,4 +88,31 @@ describe("metadata serialization round-trip", () => {
     };
     expect(() => tiny._toBytes(JSON.stringify(input))).toThrow(/Not enough memory/i);
   });
+
+  test("rejects a backup holding more entries than the device can list", () => {
+    // The device list arrays hold MAX_METADATA_COUNT (178) entries, which is fewer than the
+    // number of short entries that fit in the 4096-byte store.
+    const input = {
+      parsed: Array.from({ length: 179 }, (_, i) => ({
+        nickname: `n${i}`,
+        charsets: [],
+      })),
+    };
+    expect(() => m._toBytes(JSON.stringify(input))).toThrow(/too many entries/i);
+  });
+
+  test("accepts a backup with exactly the maximum number of entries", () => {
+    const input = {
+      parsed: Array.from({ length: 178 }, (_, i) => ({
+        nickname: `n${i}`,
+        charsets: [],
+      })),
+    };
+    expect(() => m._toBytes(JSON.stringify(input))).not.toThrow();
+  });
+
+  test("rejects an entry with an empty nickname", () => {
+    const input = { parsed: [{ nickname: "", charsets: [] }] };
+    expect(() => m._toBytes(JSON.stringify(input))).toThrow(/empty nickname/i);
+  });
 });

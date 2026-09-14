@@ -51,6 +51,11 @@ error_type_t write_metadata(uint8_t *data, uint8_t dataSize) {
     if (err) {
         return err;
     }
+    /* MAX_METADATAS has room for more short entries than the fixed-size UI list arrays can
+     * hold, so the entry count has its own limit on top of the free-space check below. */
+    if (N_storage.metadata_count >= MAX_METADATA_COUNT) {
+        return ERR_NO_MORE_SPACE_AVAILABLE;
+    }
     uint32_t offset = find_free_metadata();
     if ((offset + dataSize + 2 + 2) > MAX_METADATAS) {
         return ERR_NO_MORE_SPACE_AVAILABLE;
@@ -200,6 +205,11 @@ error_type_t compact_metadata() {
         }
         offset += entry_len;
         count++;
+        /* Refuse a database holding more entries than the UI list can address, rather than
+         * committing a count the password list cannot honour. */
+        if (count > MAX_METADATA_COUNT) {
+            return ERR_NO_MORE_SPACE_AVAILABLE;
+        }
     }
     nvm_write((void *) &N_storage.metadata_count,
               (void *) &count,

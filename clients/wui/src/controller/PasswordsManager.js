@@ -4,6 +4,9 @@ import TransportWebUSB from "@ledgerhq/hw-transport-webusb";
 // Backup/Restore confirmation. Not a real failure, so the UI treats it apart.
 export const SW_ACTION_CANCELLED = 0x6985;
 
+// Mirrors MAX_METADATA_COUNT in src/types.h: MAX_METADATAS / (1 + 1 + 1 + MAX_METANAME).
+const MAX_METADATA_COUNT = 178;
+
 const insAPDU = Object.freeze({
   GET_APP_INFO_COMMAND: 0x01,
   GET_APP_CONFIG_COMMAND: 0x03,
@@ -143,9 +146,17 @@ class PasswordsManager {
     let metadatas = Buffer.alloc(this.storage_size);
     let parsed_metadatas = JSON.parse(json_metadatas)["parsed"];
     let offset = 0;
+    // The device list arrays are sized for MAX_METADATA_COUNT entries; reject a backup that
+    // would exceed that here too, rather than relying on the device to refuse it.
+    if (parsed_metadatas.length > MAX_METADATA_COUNT)
+      throw new Error(
+        `Too many entries in this backup (${MAX_METADATA_COUNT} max): ${parsed_metadatas.length}`
+      );
     parsed_metadatas.forEach((element) => {
       let nickname = element["nickname"];
       let charsets = this._charsetListToBitmask(element["charsets"]);
+      if (!nickname)
+        throw new Error("This backup contains an entry with an empty nickname");
       if (nickname.length > 19)
         throw new Error(
           `Nickname too long (19 max): ${nickname} has length ${nickname.length}`

@@ -64,6 +64,10 @@ const char *password_list_get_password(const size_t index) {
 }
 
 void password_list_set_current(const size_t index) {
+    if (index >= MAX_METADATA_COUNT) {
+        PRINTF("[password_list_set_current] Index %lu out of bounds\n", index);
+        return;
+    }
     passwordList.index = index;
 }
 

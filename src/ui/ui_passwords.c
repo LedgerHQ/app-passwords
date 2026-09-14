@@ -57,6 +57,8 @@ _Static_assert(sizeof(password_name) == MAX_METANAME + 1,
 
 static nbgl_genericContents_t genericContent = {0};
 static nbgl_content_t contentsList = {0};
+// Number of entries actually published to NBGL by the last display_password_list().
+static size_t nbDisplayedPasswords = 0;
 #ifdef SCREEN_SIZE_WALLET
 static size_t nbPasswordsPerPage = 0;
 #endif
@@ -188,19 +190,26 @@ void confirm_all_passwords_deletion(void) {
  */
 static void password_callback(const int token, const uint8_t index, int page) {
     UNUSED(token);
-    if (selector_callback) {
-#ifdef SCREEN_SIZE_WALLET
-        // On wallet devices the choices list is paginated: NBGL forwards the
-        // index relative to the current page, so the absolute index must be
-        // rebuilt from the page number and the number of choices per page.
-        selector_callback((page * nbPasswordsPerPage) + index);
-#else
-        // On Nano each choice has its own page and NBGL already forwards the
-        // absolute choice index, so it must be used as-is.
-        UNUSED(page);
-        selector_callback(index);
-#endif
+    if (!selector_callback) {
+        return;
     }
+#ifdef SCREEN_SIZE_WALLET
+    // On wallet devices the choices list is paginated: NBGL forwards the
+    // index relative to the current page, so the absolute index must be
+    // rebuilt from the page number and the number of choices per page.
+    const size_t absolute_index = (size_t) (page * nbPasswordsPerPage) + index;
+#else
+    // On Nano each choice has its own page and NBGL already forwards the
+    // absolute choice index, so it must be used as-is.
+    UNUSED(page);
+    const size_t absolute_index = index;
+#endif
+    // Single chokepoint for the show, type and delete callbacks: an index outside what was
+    // actually published must never reach a metadata offset lookup.
+    if (absolute_index >= nbDisplayedPasswords) {
+        return;
+    }
+    selector_callback(absolute_index);
 }
 
 /**
@@ -220,16 +229,21 @@ void display_password_list(void) {
             break;
         }
         const size_t pwdLength = METADATA_NICKNAME_LEN(pwdOffset) + 1;
-        password_list_add_password(nbPasswords,
-                                   pwdOffset,
-                                   (void *) METADATA_NICKNAME(pwdOffset),
-                                   pwdLength);
+        // Stop at the capacity of the list arrays instead of carrying on: nbChoices below must
+        // never exceed the number of entries actually stored in passwordList.
+        if (!password_list_add_password(nbPasswords,
+                                        pwdOffset,
+                                        (void *) METADATA_NICKNAME(pwdOffset),
+                                        pwdLength)) {
+            break;
+        }
         nbPasswords++;
     }
     if (nbPasswords == 0) {
         nbgl_useCaseStatus("No passwords available", false, display_choice_page);
         return;
     }
+    nbDisplayedPasswords = nbPasswords;
     genericContent.nbContents = 1;
     genericContent.contentsList = &contentsList;
     contentsList.type = CHOICES_LIST;
@@ -273,8 +287,13 @@ static void display_choice_page_from_password(void) {
 }
 
 void show_password_cb(const size_t index) {
+    const char *nickname = password_list_get_password(index);
+    if (nickname == NULL) {
+        display_choice_page();
+        return;
+    }
     clear_displayed_password();
-    strlcpy(password_name, password_list_get_password(index), sizeof(password_name));
+    strlcpy(password_name, nickname, sizeof(password_name));
     ptrToPwd[0] = password_name;
     show_password_at_offset(password_list_get_offset(index), (uint8_t *) password_to_display);
     ptrToPwd[1] = &password_to_display[0];
