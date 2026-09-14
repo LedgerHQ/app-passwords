@@ -91,6 +91,9 @@ export default function App() {
       setConnected(false);
       setBusy(false);
       setVersion(null);
+      // A disconnect ends the approval the backup was read under, so the payload
+      // must not stay saveable by whoever uses the tab next.
+      setPendingBackup(null);
       setNotice({
         appearance: "warning",
         title: "Device disconnected",
@@ -113,6 +116,7 @@ export default function App() {
       await passwords.disconnect();
       setConnected(false);
       setVersion(null);
+      setPendingBackup(null);
       setNotice({ appearance: "error", title: "Connection failed", description: String(error) });
     } finally {
       setBusy(false);
@@ -123,6 +127,7 @@ export default function App() {
     await passwords.disconnect();
     setConnected(false);
     setVersion(null);
+    setPendingBackup(null);
     setNotice({ appearance: "info", title: "Disconnected" });
   }
 
@@ -214,15 +219,21 @@ export default function App() {
               />
             )}
 
-            {/* Backup ready: the save dialog needs its own click. */}
-            {pendingBackup && (
+            {/* Backup ready: the save dialog needs its own click. Gated on the connection so
+                the payload is never offered for saving after the approval session ended. */}
+            {pendingBackup && connected && (
               <Banner
                 appearance="info"
                 title="Backup ready to save"
-                description="Choose where to store your backup file."
+                description="Choose where to store your backup file, or discard it."
                 primaryAction={
                   <Button appearance="accent" size="sm" icon={CloudDownload} onClick={onSaveBackup}>
                     Save…
+                  </Button>
+                }
+                secondaryAction={
+                  <Button appearance="gray" size="sm" onClick={() => setPendingBackup(null)}>
+                    Discard
                   </Button>
                 }
               />
