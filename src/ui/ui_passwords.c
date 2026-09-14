@@ -254,7 +254,26 @@ void display_password_list(void) {
  * @param[in] index of the password
  *
  */
+/**
+ * @brief Wipe the plaintext password left in the display buffer
+ *
+ */
+static void clear_displayed_password(void) {
+    explicit_bzero(password_to_display, sizeof(password_to_display));
+    ptrToPwd[1] = NULL;
+}
+
+/**
+ * @brief Leave the password display page, wiping the plaintext first
+ *
+ */
+static void display_choice_page_from_password(void) {
+    clear_displayed_password();
+    display_choice_page();
+}
+
 void show_password_cb(const size_t index) {
+    clear_displayed_password();
     strlcpy(password_name, password_list_get_password(index), sizeof(password_name));
     ptrToPwd[0] = password_name;
     show_password_at_offset(password_list_get_offset(index), (uint8_t *) password_to_display);
@@ -270,7 +289,10 @@ void show_password_cb(const size_t index) {
     contentsList.content.infosList.infoTypes = &ptrToPwd[0];
     contentsList.content.infosList.infoContents = &ptrToPwd[1];
 
-    nbgl_useCaseGenericConfiguration("Your Password", 0, &genericContent, display_choice_page);
+    nbgl_useCaseGenericConfiguration("Your Password",
+                                     0,
+                                     &genericContent,
+                                     display_choice_page_from_password);
 }
 
 /**
