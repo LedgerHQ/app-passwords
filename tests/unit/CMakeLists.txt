@@ -61,6 +61,11 @@ add_executable(test_password test_password.c)
 add_library(password SHARED ../../src/password.c ../../src/metadata.c)
 target_link_libraries(test_password PUBLIC cmocka gcov password bsd)
 
+add_executable(test_options test_options.c)
+add_library(options SHARED ../../src/options.c)
+target_link_libraries(test_options PUBLIC cmocka gcov options bsd)
+
 add_test(password_list test_password_list)
 add_test(hid_mapping test_hid_mapping)
 add_test(password test_password)
+add_test(options test_options)
