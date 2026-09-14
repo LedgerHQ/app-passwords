@@ -27,6 +27,17 @@ error_type_t write_metadata(uint8_t *data, uint8_t dataSize);
 void override_metadatas(size_t offset, void *ptr, size_t size);
 
 void reset_metadatas(void);
+
+/*
+ * Restore transaction marker. begin/end bracket the writes a LOAD_METADATAS transfer makes
+ * into the live database; abort drops a half-written database and clears the marker.
+ * `metadata_restore_in_progress()` is true when a previous transfer never reached its end,
+ * including across a reboot.
+ */
+void begin_metadata_restore(void);
+void end_metadata_restore(void);
+void abort_metadata_restore(void);
+bool metadata_restore_in_progress(void);
 error_type_t erase_metadata(uint32_t offset);
 uint32_t find_free_metadata(void);
 uint32_t get_metadata(uint32_t nth);

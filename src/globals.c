@@ -16,6 +16,9 @@ bool init_storage() {
               (void *) &tmp,
               sizeof(N_storage.keyboard_layout));
     nvm_write((void *) &N_storage.metadata_count, (void *) &tmp, sizeof(N_storage.metadata_count));
+    nvm_write((void *) &N_storage.restore_in_progress,
+              (void *) &tmp,
+              sizeof(N_storage.restore_in_progress));
     // Clear the whole region, not just the terminator: whatever the flash held before is
     // otherwise still there behind the logical end of the database.
     nvm_write((void *) N_storage.metadatas, NULL, sizeof(N_storage.metadatas));

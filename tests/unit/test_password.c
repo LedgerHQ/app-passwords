@@ -291,6 +291,37 @@ static void test_compaction_wipes_vacated_tail(void **state __attribute__((unuse
     assert_int_equal(N_storage_real.metadata_count, 2);
 }
 
+// --- restore transaction (V-041) --------------------------------------------
+
+static void test_restore_marker_lifecycle(void **state __attribute__((unused))) {
+    assert_false(metadata_restore_in_progress());
+    begin_metadata_restore();
+    assert_true(metadata_restore_in_progress());
+    end_metadata_restore();
+    assert_false(metadata_restore_in_progress());
+}
+
+static void test_abort_metadata_restore_clears_database(void **state __attribute__((unused))) {
+    // Half-written database: the old entries are still there, the first bytes come from the
+    // new image, and nothing can tell them apart.
+    add_password("alpha");
+    add_password("beta");
+    begin_metadata_restore();
+    N_storage_real.metadatas[0] = 0xAA;
+    N_storage_real.metadatas[1] = 0xBB;
+
+    abort_metadata_restore();
+
+    assert_false(metadata_restore_in_progress());
+    assert_int_equal(N_storage_real.metadata_count, 0);
+    for (size_t i = 0; i < sizeof(N_storage_real.metadatas); i++) {
+        assert_int_equal(N_storage_real.metadatas[i], 0);
+    }
+    // The empty database parses cleanly.
+    assert_int_equal(compact_metadata(), OK);
+    assert_int_equal(get_metadata(0), UINT32_MAX);
+}
+
 // --- entry count capacity (V-006) -------------------------------------------
 
 static void test_write_metadata_enforces_count_cap(void **state __attribute__((unused))) {
@@ -409,6 +440,8 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_compact_metadata_no_erased_entry, setup, NULL),
         cmocka_unit_test_setup_teardown(test_deleted_nickname_is_wiped, setup, NULL),
         cmocka_unit_test_setup_teardown(test_compaction_wipes_vacated_tail, setup, NULL),
+        cmocka_unit_test_setup_teardown(test_restore_marker_lifecycle, setup, NULL),
+        cmocka_unit_test_setup_teardown(test_abort_metadata_restore_clears_database, setup, NULL),
         cmocka_unit_test_setup_teardown(test_write_metadata_enforces_count_cap, setup, NULL),
         cmocka_unit_test_setup_teardown(test_compact_metadata_rejects_over_count_database,
                                         setup,

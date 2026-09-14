@@ -77,6 +77,26 @@ void override_metadatas(size_t offset, void *ptr, size_t size) {
     nvm_write((void *) &N_storage.metadatas[offset], ptr, size);
 }
 
+void begin_metadata_restore(void) {
+    const uint8_t marker = 1;
+    nvm_write((void *) &N_storage.restore_in_progress, (void *) &marker, sizeof(marker));
+}
+
+void end_metadata_restore(void) {
+    nvm_write((void *) &N_storage.restore_in_progress, NULL, sizeof(N_storage.restore_in_progress));
+}
+
+bool metadata_restore_in_progress(void) {
+    return N_storage.restore_in_progress != 0;
+}
+
+void abort_metadata_restore(void) {
+    // The transfer left a mix of the old and the new image behind. There is no way to tell
+    // them apart, so drop the whole database rather than leave it to be parsed later.
+    reset_metadatas();
+    end_metadata_restore();
+}
+
 void reset_metadatas(void) {
     nvm_write((void *) N_storage.metadatas, NULL, sizeof(N_storage.metadatas));
     nvm_write((void *) &N_storage.metadata_count, 0, sizeof(N_storage.metadata_count));
