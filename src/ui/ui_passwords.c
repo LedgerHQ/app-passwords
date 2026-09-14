@@ -50,7 +50,10 @@ static const char *ptrToPwd[2] = {0};
 static bool all_passwords;
 
 // Keyboard contexts
+// MAX_METANAME typed characters plus the NUL terminator NBGL writes after them.
 static char password_name[MAX_METANAME + 1] = {0};
+_Static_assert(sizeof(password_name) == MAX_METANAME + 1,
+               "display_create_pwd() derives entryMaxLen from this buffer's size");
 
 static nbgl_genericContents_t genericContent = {0};
 static nbgl_content_t contentsList = {0};
@@ -321,7 +324,11 @@ void display_create_pwd(void) {
         .title = "Create password",
 #endif
         .entryBuffer = password_name,
-        .entryMaxLen = sizeof(password_name),
+        // NBGL appends the typed character and *then* the terminator, so on the last
+        // accepted key it writes entryBuffer[entryMaxLen]. Passing the full buffer size
+        // would put that terminator one byte past `password_name`, on top of the next
+        // static UI object. Reserve the slot the terminator needs.
+        .entryMaxLen = sizeof(password_name) - 1,
         .lettersOnly = false,
 #ifdef SCREEN_SIZE_WALLET
         .mode = MODE_LETTERS,
