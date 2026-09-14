@@ -22,6 +22,7 @@
 #define ALT_KEY       0x04
 #define RIGHT_ALT_KEY 0x40
 
+#include <stdbool.h>
 #include <stdint.h>
 
 enum hid_mapping_e {
@@ -32,4 +33,6 @@ enum hid_mapping_e {
 };
 typedef enum hid_mapping_e hid_mapping_t;
 
-void map_char(hid_mapping_t mapping, uint8_t key, uint8_t *out);
+/* Fills `out` with the 3-byte HID report for `key`. Returns false, leaving `out` untouched, if
+ * the key is outside the mapped printable-ASCII range. */
+bool map_char(hid_mapping_t mapping, uint8_t key, uint8_t *out);

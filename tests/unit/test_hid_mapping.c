@@ -109,8 +109,26 @@ static void test_map_char_azerty_alt(void **state __attribute__((unused))) {
     check_map(map, RIGHT_ALT_KEY, 0x1f);
 }
 
+static void test_map_char_reports_unmappable(void **state __attribute__((unused))) {
+    // map_char() used to raise an exception for keys outside the mapped range, which unwound
+    // past the caller's plaintext buffer. It now reports the failure instead.
+    uint8_t map[3] = {0xAA, 0xAA, 0xAA};
+
+    assert_false(map_char(HID_MAPPING_QWERTY, 0x00, map));
+    assert_false(map_char(HID_MAPPING_QWERTY, 0x1F, map));
+    // `out` is left untouched on failure.
+    assert_int_equal(map[0], 0xAA);
+    assert_int_equal(map[1], 0xAA);
+    assert_int_equal(map[2], 0xAA);
+
+    // The lowest and highest mapped characters still succeed.
+    assert_true(map_char(HID_MAPPING_QWERTY, 0x20, map));
+    assert_true(map_char(HID_MAPPING_QWERTY, 0x7E, map));
+}
+
 int main() {
     const struct CMUnitTest tests[] = {
+        cmocka_unit_test_setup_teardown(test_map_char_reports_unmappable, NULL, NULL),
         cmocka_unit_test_setup_teardown(test_map_char_qwerty_regular, NULL, NULL),
         cmocka_unit_test_setup_teardown(test_map_char_qwerty_shift, NULL, NULL),
         cmocka_unit_test_setup_teardown(test_map_char_azerty_regular, NULL, NULL),

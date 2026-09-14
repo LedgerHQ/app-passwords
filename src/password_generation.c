@@ -28,55 +28,68 @@ static const char *SETS[] = {"ABCDEFGHIJKLMNOPQRSTUVWXYZ",  // 26
                              "[]{}()<>",                  // 8
                              NULL};
 
-static uint8_t rng_u8_modulo(mbedtls_ctr_drbg_context *drbg, uint8_t modulo) {
+/* Draws an unbiased value below `modulo`. Returns false if no value could be drawn, so callers
+ * can unwind and wipe their buffers instead of unwinding through an exception. */
+static bool rng_u8_modulo(mbedtls_ctr_drbg_context *drbg, uint8_t modulo, uint8_t *out) {
     if (modulo == 0) {
-        THROW(EXCEPTION);
+        return false;
     }
     uint32_t rng_max = 256 % modulo;
     uint32_t rng_limit = 256 - rng_max;
     uint8_t candidate = 0;
     do {
         if (mbedtls_ctr_drbg_random(drbg, &candidate, 1) != 0) {
-            THROW(EXCEPTION);
+            return false;
         }
     } while (candidate > rng_limit);
     // PRINTF("r:%02X ", candidate);
-    return (candidate % modulo);
+    *out = candidate % modulo;
+    return true;
 }
 
-static void shuffle_array(mbedtls_ctr_drbg_context *drbg, uint8_t *buffer, uint32_t size) {
+static bool shuffle_array(mbedtls_ctr_drbg_context *drbg, uint8_t *buffer, uint32_t size) {
     uint32_t i;
     // Nothing to shuffle for an empty array, and guard against the unsigned
     // underflow of `size - 1` (which would index buffer way out of bounds).
     if (size == 0) {
-        return;
+        return true;
     }
     for (i = size - 1; i > 0; i--) {
-        uint32_t index = rng_u8_modulo(drbg, i + 1);
+        uint8_t index;
+        if (!rng_u8_modulo(drbg, i + 1, &index)) {
+            return false;
+        }
         uint8_t tmp = buffer[i];
         buffer[i] = buffer[index];
         buffer[index] = tmp;
     }
+    return true;
 }
 
 /* Sample from set with replacement */
-static void sample(mbedtls_ctr_drbg_context *drbg,
+static bool sample(mbedtls_ctr_drbg_context *drbg,
                    const uint8_t *set,
                    uint32_t setSize,
                    uint8_t *out,
                    uint32_t size) {
     uint32_t i;
     for (i = 0; i < size; i++) {
-        uint32_t index = rng_u8_modulo(drbg, setSize);
+        uint8_t index;
+        if (!rng_u8_modulo(drbg, setSize, &index)) {
+            return false;
+        }
         out[i] = set[index];
     }
+    return true;
 }
 
-uint32_t generate_password(mbedtls_ctr_drbg_context *drbg,
-                           setmask_t setMask,
-                           const uint8_t *minFromSet,
-                           uint8_t *out,
-                           uint32_t size) {
+/* `out` must have room for `size` characters plus a NUL terminator. On failure nothing is
+ * guaranteed about its contents and no terminator is written, so the caller must wipe it. */
+bool generate_password(mbedtls_ctr_drbg_context *drbg,
+                       setmask_t setMask,
+                       const uint8_t *minFromSet,
+                       uint8_t *out,
+                       uint32_t size) {
     uint8_t setChars[100];
     uint32_t setCharsOffset = 0;
     uint32_t outOffset = 0;
@@ -86,29 +99,38 @@ uint32_t generate_password(mbedtls_ctr_drbg_context *drbg,
         if (setMask & 1) {
             const uint8_t *set = (const uint8_t *) PIC(SETS[i]);
             uint32_t setSize = strlen((const char *) set);
+            if (setSize > sizeof(setChars) - setCharsOffset) {
+                return false;
+            }
             memcpy(setChars + setCharsOffset, set, setSize);
             setCharsOffset += setSize;
 
             // for at least requested minimum chars from that set
             if (minFromSet[i] > 0) {
                 if (outOffset + minFromSet[i] > size) {
-                    THROW(EXCEPTION);
+                    return false;
                 }
-                sample(drbg, set, setSize, out + outOffset, minFromSet[i]);
+                if (!sample(drbg, set, setSize, out + outOffset, minFromSet[i])) {
+                    return false;
+                }
                 outOffset += minFromSet[i];
             }
         }
     }
 
     if (setMask || setCharsOffset == 0 || setCharsOffset >= sizeof(setChars)) {
-        THROW(EXCEPTION);
+        return false;
     }
 
     // PRINTF("chars from: %.*H\n", setCharsOffset, setChars);
 
-    sample(drbg, setChars, setCharsOffset, out + outOffset, size - outOffset);
+    if (!sample(drbg, setChars, setCharsOffset, out + outOffset, size - outOffset)) {
+        return false;
+    }
     // PRINTF("selected: %.*H\n", size, out);
-    shuffle_array(drbg, out, size);
+    if (!shuffle_array(drbg, out, size)) {
+        return false;
+    }
     out[size] = '\0';
-    return size;
+    return true;
 }
