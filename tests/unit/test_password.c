@@ -437,6 +437,30 @@ static void test_get_metadata_terminates_on_corrupt_storage(void **state __attri
     assert_int_equal(find_free_metadata(), MAX_METADATAS);
 }
 
+static void test_clear_metadatas_from(void **state __attribute__((unused))) {
+    // A restore that stops short must not leave the previous database reachable past the bytes
+    // it delivered, otherwise an image ending on a record boundary with no terminator runs into
+    // the old records and the parser accepts the mix.
+    memset(N_storage_real.metadatas, 0xAB, sizeof(N_storage_real.metadatas));
+
+    clear_metadatas_from(12);
+
+    for (size_t i = 0; i < 12; i++) {
+        assert_int_equal(N_storage_real.metadatas[i], 0xAB);
+    }
+    for (size_t i = 12; i < sizeof(N_storage_real.metadatas); i++) {
+        assert_int_equal(N_storage_real.metadatas[i], 0);
+    }
+
+    // At or past the end there is nothing to clear, and nothing may be written out of bounds.
+    memset(N_storage_real.metadatas, 0xAB, sizeof(N_storage_real.metadatas));
+    clear_metadatas_from(MAX_METADATAS);
+    clear_metadatas_from(MAX_METADATAS + 1);
+    for (size_t i = 0; i < sizeof(N_storage_real.metadatas); i++) {
+        assert_int_equal(N_storage_real.metadatas[i], 0xAB);
+    }
+}
+
 static void test_find_free_metadata_sentinel_is_unambiguous(void **state __attribute__((unused))) {
     // dump_metadatas() tells a corrupt store from a real length by comparing against
     // MAX_METADATAS, so a well-formed store must never answer that value. It cannot: a
@@ -498,6 +522,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_get_metadata_terminates_on_corrupt_storage,
                                         setup,
                                         NULL),
+        cmocka_unit_test_setup_teardown(test_clear_metadatas_from, setup, NULL),
         cmocka_unit_test_setup_teardown(test_find_free_metadata_sentinel_is_unambiguous,
                                         setup,
                                         NULL),

@@ -51,6 +51,11 @@ int load_metadatas(uint8_t p1, uint8_t p2, const buf_t *input) {
     app_state.bytes_transferred += input->size;
 
     if (app_state.bytes_transferred >= sizeof(N_storage.metadatas) || p1 == LAST_CHUNK) {
+        /* The host may stop short of the full region. Drop whatever the previous database left
+         * past the delivered bytes before parsing: an image ending on a record boundary with
+         * no terminator would otherwise run into the old records, and the parser would accept
+         * the resulting old/new mix as a complete database. */
+        clear_metadatas_from(app_state.bytes_transferred);
         // reset state
         app_state.user_approval = false;
         ui_idle();

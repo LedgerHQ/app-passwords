@@ -35,6 +35,20 @@ def test_load_metadatas(cmd: PasswordsManagerCommand, test_vector):
     cmd.reset_approval_state()
 
 
+def test_load_metadatas_short_final_chunk_replaces_the_whole_database(
+    cmd: PasswordsManagerCommand,
+):
+    # A LAST_CHUNK shorter than the store used to be parsed against whatever the previous
+    # database left behind. This image is 12 bytes and ends on a record boundary with no
+    # terminator; the populated store has a valid record byte at offset 12, so the parser walked
+    # into "password2"/"password3" and kept them, silently producing a mixed database.
+    short = bytes.fromhex("02000761060007616c6c6168")  # entries "a" and "allah"
+    cmd.load_metadatas(short)
+
+    assert cmd.dump_metadatas(STORAGE_SIZE) == short + b"\x00" * (STORAGE_SIZE - len(short))
+    cmd.reset_approval_state()
+
+
 def test_load_metadatas_interrupted_transfer_clears_database(cmd: PasswordsManagerCommand):
     # A restore that never sends its last chunk used to leave the live database as a mix of
     # the old and the new image, with metadata_count still describing the old one.

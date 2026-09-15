@@ -103,6 +103,12 @@ void abort_metadata_restore(void) {
     end_metadata_restore();
 }
 
+void clear_metadatas_from(size_t offset) {
+    if (offset < MAX_METADATAS) {
+        nvm_write((void *) &N_storage.metadatas[offset], NULL, MAX_METADATAS - offset);
+    }
+}
+
 void reset_metadatas(void) {
     nvm_write((void *) N_storage.metadatas, NULL, sizeof(N_storage.metadatas));
     nvm_write((void *) &N_storage.metadata_count, 0, sizeof(N_storage.metadata_count));

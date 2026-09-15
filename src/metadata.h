@@ -26,6 +26,12 @@ error_type_t write_metadata(uint8_t *data, uint8_t dataSize);
  */
 error_type_t override_metadatas(size_t offset, void *ptr, size_t size);
 
+/*
+ * Zero the metadata region from `offset` to the end. Used to drop whatever the previous
+ * database left past the bytes a restore actually delivered.
+ */
+void clear_metadatas_from(size_t offset);
+
 void reset_metadatas(void);
 
 /*
