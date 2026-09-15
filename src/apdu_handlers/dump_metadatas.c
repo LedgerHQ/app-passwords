@@ -17,6 +17,21 @@ int dump_metadatas() {
         return 0;
     }
 
+    /* Wiping a deleted entry's data block only became part of erase_metadata() in this version,
+     * so a database carried over from an older one still holds the nicknames of its deleted
+     * entries inside its META_ERASED records. Those records sit *before* the terminator, so the
+     * live-size bound below counts them as meaningful and would export them. Squeeze them out
+     * first: compaction drops the erased records and wipes the space they vacated.
+     * Only before the first chunk -- compacting mid-transfer would move bytes the host has
+     * already received, and the rest of the stream would no longer line up with them. */
+    if (app_state.bytes_transferred == 0) {
+        if (compact_metadata() != OK) {
+            app_state.user_approval = false;
+            ui_idle();
+            return io_send_sw(SW_METADATAS_PARSING_ERROR);
+        }
+    }
+
     /* Only the bytes up to the logical end of the database are meaningful. Past it, the flash
      * still holds nicknames from deleted entries and from earlier, larger databases, so send
      * zeroes instead of the raw slack space. The two terminator bytes are zero as well, so the

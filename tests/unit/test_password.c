@@ -323,6 +323,36 @@ static void test_deleted_nickname_is_wiped(void **state __attribute__((unused)))
     assert_entry_is(raw_entry_offset(1), "gamma");
 }
 
+// Mark the record at `offset` erased the way an older app version did: flip the kind byte and
+// leave the nickname in place. No current code path can produce this -- erase_metadata() wipes
+// the data block -- but a database carried across an upgrade still contains such records.
+static void erase_metadata_legacy_style(uint32_t offset) {
+    const unsigned char m = META_ERASED;
+    nvm_write((void *) &N_storage_real.metadatas[offset + 1], (void *) &m, 1);
+    assert_true(N_storage_real.metadata_count > 0);
+    N_storage_real.metadata_count--;
+}
+
+static void test_compaction_removes_a_legacy_erased_nickname(void **state __attribute__((unused))) {
+    // dump_metadatas() bounds the exported region at the terminator, but a legacy erased record
+    // sits *before* it, so its nickname counted as live and was handed to the backup. The dump
+    // compacts first; compaction must leave no trace of the name.
+    add_password("alpha");
+    add_password("secretsite");
+    add_password("gamma");
+
+    erase_metadata_legacy_style(raw_entry_offset(1));
+    // The point of the scenario: the nickname is still there after the deletion.
+    assert_true(storage_contains("secretsite"));
+
+    assert_int_equal(compact_metadata(), OK);
+
+    assert_false(storage_contains("secretsite"));
+    assert_int_equal(N_storage_real.metadata_count, 2);
+    assert_entry_is(raw_entry_offset(0), "alpha");
+    assert_entry_is(raw_entry_offset(1), "gamma");
+}
+
 static void test_compaction_wipes_vacated_tail(void **state __attribute__((unused))) {
     // Compaction shifts the later entries down and then writes a 2-byte terminator at the new
     // end. Everything between that terminator and the old end of the database is stale data --
@@ -544,6 +574,9 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_compact_metadata_no_erased_entry, setup, NULL),
         cmocka_unit_test_setup_teardown(test_deleted_nickname_is_wiped, setup, NULL),
         cmocka_unit_test_setup_teardown(test_compaction_wipes_vacated_tail, setup, NULL),
+        cmocka_unit_test_setup_teardown(test_compaction_removes_a_legacy_erased_nickname,
+                                        setup,
+                                        NULL),
         cmocka_unit_test_setup_teardown(test_restore_marker_lifecycle, setup, NULL),
         cmocka_unit_test_setup_teardown(test_abort_metadata_restore_clears_database, setup, NULL),
         cmocka_unit_test_setup_teardown(test_write_metadata_enforces_count_cap, setup, NULL),
