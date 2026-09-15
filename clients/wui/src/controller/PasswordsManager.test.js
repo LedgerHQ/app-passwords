@@ -116,3 +116,62 @@ describe("metadata serialization round-trip", () => {
     expect(() => m._toBytes(JSON.stringify(input))).toThrow(/empty nickname/i);
   });
 });
+
+describe("metadata parsing treats the device response as untrusted", () => {
+  const m = makeManager();
+
+  // One live entry: length byte (charset + nickname), kind, charset, nickname.
+  const entry = (nickname) =>
+    Buffer.concat([
+      Buffer.from([nickname.length + 1, 0x00, 0x07]),
+      Buffer.from(nickname, "ascii"),
+    ]);
+
+  test("stops at the terminator and ignores the trailing slack", () => {
+    const buf = Buffer.concat([entry("mail"), Buffer.alloc(100)]);
+    const out = m._toJSON(buf);
+    expect(out.parsed).toEqual([
+      { nickname: "mail", charsets: ["UPPERCASE", "LOWERCASE", "NUMBERS"] },
+    ]);
+  });
+
+  test("throws instead of hanging when no terminator is present", () => {
+    // Records tiling the whole buffer: the old loop read past the end, `len` became undefined,
+    // `offset` became NaN, the terminator was never reached and the tab froze.
+    const buf = Buffer.concat(Array.from({ length: 20 }, () => entry("ab")));
+    expect(() => m._toJSON(buf)).toThrow(/missing terminator/i);
+  });
+
+  test("throws when a record runs past the end of the buffer", () => {
+    // Announces 20 payload bytes with only a few left.
+    const buf = Buffer.from([0x14, 0x00, 0x07, 0x61, 0x62]);
+    expect(() => m._toJSON(buf)).toThrow(/Malformed metadata at offset 0/);
+  });
+
+  test("throws on an entry longer than the device maximum", () => {
+    const buf = Buffer.concat([
+      Buffer.from([21, 0x00, 0x07]),
+      Buffer.alloc(21, 0x61),
+      Buffer.alloc(10),
+    ]);
+    expect(() => m._toJSON(buf)).toThrow(/entry length 21/);
+  });
+
+  test("throws when the dump holds more entries than the device can list", () => {
+    const buf = Buffer.concat([
+      ...Array.from({ length: 179 }, () => entry("a")),
+      Buffer.alloc(2),
+    ]);
+    expect(() => m._toJSON(buf)).toThrow(/more than 178 entries/i);
+  });
+
+  test("an empty buffer is a missing terminator, not an empty database", () => {
+    expect(() => m._toJSON(Buffer.alloc(0))).toThrow(/missing terminator/i);
+  });
+
+  test("a zero-filled buffer parses as an empty database", () => {
+    const out = m._toJSON(Buffer.alloc(4096));
+    expect(out.parsed).toEqual([]);
+    expect(out.nicknames_erased_but_still_stored).toEqual([]);
+  });
+});

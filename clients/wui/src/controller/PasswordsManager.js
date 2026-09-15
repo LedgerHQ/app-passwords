@@ -7,6 +7,10 @@ export const SW_ACTION_CANCELLED = 0x6985;
 // Mirrors MAX_METADATA_COUNT in src/types.h: MAX_METADATAS / (1 + 1 + 1 + MAX_METANAME).
 const MAX_METADATA_COUNT = 178;
 
+// Mirrors MAX_METANAME in src/types.h. An entry's length byte covers the charset byte plus the
+// nickname, so it never exceeds this.
+const MAX_METADATA_DATALEN = 20;
+
 const insAPDU = Object.freeze({
   GET_APP_INFO_COMMAND: 0x01,
   GET_APP_CONFIG_COMMAND: 0x03,
@@ -178,24 +182,48 @@ class PasswordsManager {
   }
 
   _toJSON(metadatas) {
-    let metadatas_list = [];
-    let erased_list = [];
+    const metadatas_list = [];
+    const erased_list = [];
+    // Kept for backup-file compatibility. Malformed data now aborts the parse instead of
+    // being recorded and walked past, so this stays empty.
+    const corruptions = [];
     let offset = 0;
-    let corruptions = [];
-    while (true) {
-      let len = metadatas[offset];
-      if (len === 0) break;
-      let erased = metadatas[offset + 1] === 0xff ? true : false;
-      let charsets = metadatas[offset + 2];
-      if (len > 19 + 1)
-        corruptions += [offset, `nickname too long ${len}, max is 19`];
-      let metadata = {
+    let terminated = false;
+
+    // The device response is untrusted: a corrupted dump, or a device that merely claims to be
+    // the Passwords app, must not be able to walk this loop past the end of the buffer. Reading
+    // past the end yields `undefined`, which turned `offset` into NaN and spun forever, hanging
+    // the tab.
+    while (offset < metadatas.length) {
+      const len = metadatas[offset];
+      if (len === 0) {
+        terminated = true;
+        break;
+      }
+      if (len > MAX_METADATA_DATALEN || offset + 2 + len > metadatas.length) {
+        throw new Error(
+          `Malformed metadata at offset ${offset}: entry length ${len}`
+        );
+      }
+      if (metadatas_list.length + erased_list.length >= MAX_METADATA_COUNT) {
+        throw new Error(
+          `Malformed metadata: more than ${MAX_METADATA_COUNT} entries`
+        );
+      }
+      const erased = metadatas[offset + 1] === 0xff;
+      const charsets = metadatas[offset + 2];
+      const metadata = {
         nickname: metadatas.slice(offset + 3, offset + 2 + len).toString(),
         charsets: this._bitmaskToCharsetList(charsets),
       };
-      erased ? erased_list.push(metadata) : metadatas_list.push(metadata);
+      (erased ? erased_list : metadatas_list).push(metadata);
       offset += len + 2;
     }
+
+    if (!terminated) {
+      throw new Error("Malformed metadata: missing terminator");
+    }
+
     return {
       parsed: metadatas_list,
       nicknames_erased_but_still_stored: erased_list,
