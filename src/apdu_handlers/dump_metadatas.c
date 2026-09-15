@@ -17,6 +17,23 @@ int dump_metadatas() {
         return 0;
     }
 
+    /* Only the bytes up to the logical end of the database are meaningful. Past it, the flash
+     * still holds nicknames from deleted entries and from earlier, larger databases, so send
+     * zeroes instead of the raw slack space. The two terminator bytes are zero as well, so the
+     * exported stream is unchanged for a database that has no slack. */
+    const size_t live_size = find_free_metadata();
+    /* find_free_metadata() answers MAX_METADATAS only as its "this store does not parse"
+     * sentinel: a well-formed database keeps its terminator inside the array, so every real
+     * answer is smaller. Treating the sentinel as a length would mark the whole region live and
+     * export precisely the stale bytes withheld above, so refuse the backup instead. Checked
+     * before the transfer bookkeeping below, so nothing is written to the APDU buffer. */
+    if (live_size >= sizeof(N_storage.metadatas)) {
+        app_state.user_approval = false;
+        app_state.bytes_transferred = 0;
+        ui_idle();
+        return io_send_sw(SW_METADATAS_PARSING_ERROR);
+    }
+
     size_t remaining_bytes_count = sizeof(N_storage.metadatas) - app_state.bytes_transferred;
     size_t payload_size;
     int status = 0;
@@ -31,14 +48,6 @@ int dump_metadatas() {
         G_io_apdu_buffer[TRANSFER_FLAG_OFFSET] = MORE_DATA_INCOMING;
     }
 
-    /* Only the bytes up to the logical end of the database are meaningful. Past it, the flash
-     * still holds nicknames from deleted entries and from earlier, larger databases, so send
-     * zeroes instead of the raw slack space. The two terminator bytes are zero as well, so the
-     * exported stream is unchanged for a database that has no slack. */
-    size_t live_size = find_free_metadata();
-    if (live_size > sizeof(N_storage.metadatas)) {
-        live_size = sizeof(N_storage.metadatas);
-    }
     size_t live_bytes = 0;
     if (app_state.bytes_transferred < live_size) {
         live_bytes = live_size - app_state.bytes_transferred;

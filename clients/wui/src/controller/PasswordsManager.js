@@ -44,6 +44,9 @@ class PasswordsManager {
       0x6a87,
       0x6d00,
       0x6e00,
+      // Returned when the device refuses to parse its own metadata store, on backup as well as
+      // on restore. Without it the transport throws before mapProtocolError() can name it.
+      0x6f10,
     ];
     this.connected = false;
     this.busy = false;

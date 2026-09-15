@@ -437,6 +437,23 @@ static void test_get_metadata_terminates_on_corrupt_storage(void **state __attri
     assert_int_equal(find_free_metadata(), MAX_METADATAS);
 }
 
+static void test_find_free_metadata_sentinel_is_unambiguous(void **state __attribute__((unused))) {
+    // dump_metadatas() tells a corrupt store from a real length by comparing against
+    // MAX_METADATAS, so a well-formed store must never answer that value. It cannot: a
+    // terminator has to sit inside the array to be read at all.
+    assert_int_equal(find_free_metadata(), 0);  // empty store
+    add_password("alpha");
+    assert_true(find_free_metadata() < MAX_METADATAS);
+
+    // Fill the store through the supported path and check the bound still holds when full.
+    uint8_t name[MAX_METANAME];
+    memset(name, 'A', sizeof(name));
+    while (write_metadata(name, sizeof(name)) == OK) {
+        ;
+    }
+    assert_true(find_free_metadata() < MAX_METADATAS);
+}
+
 static void test_erase_metadata_rejects_out_of_range_offset(void **state __attribute__((unused))) {
     add_password("alpha");
 
@@ -479,6 +496,9 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_compact_metadata_rejects_bad_kind, setup, NULL),
         cmocka_unit_test_setup_teardown(test_compact_metadata_rejects_oversized_entry, setup, NULL),
         cmocka_unit_test_setup_teardown(test_get_metadata_terminates_on_corrupt_storage,
+                                        setup,
+                                        NULL),
+        cmocka_unit_test_setup_teardown(test_find_free_metadata_sentinel_is_unambiguous,
                                         setup,
                                         NULL),
         cmocka_unit_test_setup_teardown(test_erase_metadata_rejects_out_of_range_offset,
