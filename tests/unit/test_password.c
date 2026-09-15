@@ -128,6 +128,38 @@ static void test_nickname_exists_truncation(void **state __attribute__((unused))
     assert_true(nickname_exists(twenty_chars_same_prefix, MAX_METANAME));
 }
 
+static void test_create_new_password_rejects_an_untruncatable_nickname(void **state
+                                                                       __attribute__((unused))) {
+    // MAX_METANAME caps the data block, which is [charset byte][nickname], so only
+    // MAX_NICKNAME_LEN nickname bytes fit. write_metadata() clamps the block silently, so a
+    // longer nickname used to be accepted and then stored short -- the entry no longer matched
+    // what the caller asked for, and since the nickname is the derivation seed, the password
+    // generated from it was not the one the user thought they had created.
+    char too_long[MAX_NICKNAME_LEN + 2];
+    memset(too_long, 'A', sizeof(too_long) - 1);
+    too_long[sizeof(too_long) - 1] = '\0';
+    assert_int_equal(strlen(too_long), MAX_NICKNAME_LEN + 1);
+
+    assert_int_equal(create_new_password(too_long, strlen(too_long)), ERR_METADATA_ENTRY_TOO_BIG);
+    // Nothing was persisted: no entry, and the store is still empty.
+    assert_int_equal(N_storage_real.metadata_count, 0);
+    assert_int_equal(N_storage_real.metadatas[0], 0);
+}
+
+static void test_create_new_password_accepts_the_longest_storable_nickname(
+    void **state __attribute__((unused))) {
+    char longest[MAX_NICKNAME_LEN + 1];
+    memset(longest, 'A', sizeof(longest) - 1);
+    longest[sizeof(longest) - 1] = '\0';
+
+    assert_int_equal(create_new_password(longest, strlen(longest)), OK);
+    assert_int_equal(N_storage_real.metadata_count, 1);
+    // Stored whole, not clamped: the data block is the charset byte plus every nickname byte.
+    assert_int_equal(N_storage_real.metadatas[0], 1 + MAX_NICKNAME_LEN);
+    // Nickname bytes start after the datalen, kind and charset bytes.
+    assert_memory_equal(&N_storage_real.metadatas[3], longest, MAX_NICKNAME_LEN);
+}
+
 static void test_override_metadatas_high_offset(void **state __attribute__((unused))) {
     // Regression: override_metadatas() took the offset as a uint8_t, so offsets
     // >= 256 were truncated mod 256. A restore is streamed in 255-byte chunks,
@@ -496,6 +528,13 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_nickname_exists_length_mismatch, setup, NULL),
         cmocka_unit_test_setup_teardown(test_nickname_exists_case_sensitive, setup, NULL),
         cmocka_unit_test_setup_teardown(test_nickname_exists_truncation, setup, NULL),
+        cmocka_unit_test_setup_teardown(test_create_new_password_rejects_an_untruncatable_nickname,
+                                        setup,
+                                        NULL),
+        cmocka_unit_test_setup_teardown(
+            test_create_new_password_accepts_the_longest_storable_nickname,
+            setup,
+            NULL),
         cmocka_unit_test_setup_teardown(test_override_metadatas_high_offset, setup, NULL),
         cmocka_unit_test_setup_teardown(test_override_metadatas_buffer_end, setup, NULL),
         cmocka_unit_test_setup_teardown(test_override_metadatas_rejects_out_of_bounds, setup, NULL),

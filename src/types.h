@@ -5,7 +5,11 @@
 #include <stdbool.h>
 
 #define MAX_METADATAS 4096
-#define MAX_METANAME  20
+// Cap on a record's *data block*, which is [charset byte][nickname] -- it is not the nickname
+// length. See METADATA_DATALEN in metadata.h.
+#define MAX_METANAME 20
+// The longest nickname that can actually be persisted: the data block minus its charset byte.
+#define MAX_NICKNAME_LEN (MAX_METANAME - 1)
 // Considering max metadata size (1+1+1+20) = 23, we can store at most 178 metadatas
 #define MAX_METADATA_COUNT (MAX_METADATAS / (1 + 1 + 1 + MAX_METANAME))
 
