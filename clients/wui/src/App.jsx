@@ -25,6 +25,9 @@ import packageJson from "../package.json";
 
 const passwords = new PasswordsManager();
 
+// Generous bound for a backup of a 4096-byte device store serialized as JSON.
+const MAX_BACKUP_FILE_SIZE = 64 * 1024;
+
 // Ledger transport logs carry raw APDU payloads, which during backup/restore are the password
 // nicknames. Keep them out of production builds, and drop the payload fields even in dev: the
 // browser console ends up in screenshots, support bundles and remote debugging sessions.
@@ -183,6 +186,17 @@ export default function App() {
     const file = event.target.files[0];
     event.target.value = "";
     if (!file) return;
+    // A backup of the 4096-byte device store plus JSON overhead is far below this, so anything
+    // larger is not one. Checked before reading: FileReader would otherwise pull the whole file
+    // into memory and JSON.parse it before any bounded check could reject it.
+    if (file.size > MAX_BACKUP_FILE_SIZE) {
+      setNotice({
+        appearance: "error",
+        title: "Restore failed",
+        description: `Backup file is too large (${MAX_BACKUP_FILE_SIZE} bytes max).`,
+      });
+      return;
+    }
     const reader = new FileReader();
     reader.onload = async () => {
       setBusy(true);
