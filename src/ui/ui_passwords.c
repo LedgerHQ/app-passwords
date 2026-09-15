@@ -295,7 +295,14 @@ void show_password_cb(const size_t index) {
     clear_displayed_password();
     strlcpy(password_name, nickname, sizeof(password_name));
     ptrToPwd[0] = password_name;
-    show_password_at_offset(password_list_get_offset(index), (uint8_t *) password_to_display);
+    // On failure the buffer holds nothing, so say so rather than present an empty password.
+    if (!show_password_at_offset(password_list_get_offset(index),
+                                 (uint8_t *) password_to_display)) {
+        clear_displayed_password();
+        password_list_reset();
+        nbgl_useCaseStatus("COULD NOT GENERATE\nTHE PASSWORD", false, display_choice_page);
+        return;
+    }
     ptrToPwd[1] = &password_to_display[0];
 
     password_list_reset();
@@ -321,7 +328,11 @@ void show_password_cb(const size_t index) {
  *
  */
 void type_password_cb(const size_t index) {
-    type_password_at_offset(password_list_get_offset(index));
+    // Nothing was typed if generation failed, so do not claim it was.
+    if (!type_password_at_offset(password_list_get_offset(index))) {
+        nbgl_useCaseStatus("COULD NOT GENERATE\nTHE PASSWORD", false, display_choice_page);
+        return;
+    }
     display_success_page("PASSWORD HAS\nBEEN WRITTEN");
 }
 
