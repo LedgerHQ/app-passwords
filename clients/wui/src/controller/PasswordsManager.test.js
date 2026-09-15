@@ -117,6 +117,106 @@ describe("metadata serialization round-trip", () => {
   });
 });
 
+describe("device-reported storage size is untrusted", () => {
+  // getAppConfig() parses this 6-byte payload: storage size (4), keyboard type, press-enter.
+  const appConfig = (size) => {
+    const buf = Buffer.alloc(8);
+    buf.writeUInt32BE(size, 0);
+    buf.writeUInt16BE(0x9000, 6);
+    return buf;
+  };
+
+  const managerAnswering = (payload) => {
+    const m = new PasswordsManager();
+    m.transport = { send: async () => payload };
+    return m;
+  };
+
+  test("rejects an oversized storage size instead of allocating it", async () => {
+    // 0xffffffff used to reach Buffer.alloc() and the dump loop bound directly.
+    await expect(managerAnswering(appConfig(0xffffffff)).getAppConfig()).rejects.toThrow(
+      /Unexpected metadata storage size/
+    );
+  });
+
+  test("rejects a zero storage size", async () => {
+    await expect(managerAnswering(appConfig(0)).getAppConfig()).rejects.toThrow(
+      /Unexpected metadata storage size/
+    );
+  });
+
+  test("accepts the size the firmware actually reports", async () => {
+    const config = await managerAnswering(appConfig(4096)).getAppConfig();
+    expect(config.storage_size).toBe(4096);
+  });
+
+  test("allocation refuses a size that reached the instance unvalidated", () => {
+    const m = new PasswordsManager();
+    m.storage_size = 0xffffffff;
+    const input = { parsed: [{ nickname: "mail", charsets: [] }] };
+    expect(() => m._toBytes(JSON.stringify(input))).toThrow(
+      /Unexpected metadata storage size/
+    );
+  });
+});
+
+describe("dump_metadatas drives the transfer to completion", () => {
+  // The device answers MAX_PAYLOAD_SIZE bytes per chunk, which is derived from the SDK's APDU
+  // buffer and is larger than 255 -- 270 on Flex. A client-side cap on the chunk size broke
+  // every real backup, so a full dump is exercised at that size.
+  const DEVICE_CHUNK = 270;
+
+  const managerDumping = (chunkSizes) => {
+    const m = new PasswordsManager();
+    m.storage_size = 4096;
+    let sent = 0;
+    let call = 0;
+    m.transport = {
+      send: async () => {
+        const size = chunkSizes[Math.min(call++, chunkSizes.length - 1)];
+        const remaining = 4096 - sent;
+        const payload = Buffer.alloc(Math.min(size, remaining));
+        sent += payload.length;
+        return Buffer.concat([
+          Buffer.from([sent >= 4096 ? 0xff : 0x00]),
+          payload,
+          Buffer.from([0x90, 0x00]),
+        ]);
+      },
+    };
+    return m;
+  };
+
+  test("accepts the chunk size the firmware actually sends", async () => {
+    const out = await managerDumping([DEVICE_CHUNK]).dump_metadatas();
+    // An all-zero store parses as an empty database.
+    expect(out.parsed).toEqual([]);
+    expect(out.raw_metadatas).toHaveLength(4096 * 2);
+  });
+
+  test("rejects a device that stops making progress", async () => {
+    await expect(managerDumping([0]).dump_metadatas()).rejects.toThrow(
+      /Invalid metadata dump chunk of 0 bytes/
+    );
+  });
+
+  test("rejects a chunk that would overshoot the announced total", async () => {
+    const m = new PasswordsManager();
+    m.storage_size = 4096;
+    m.transport = {
+      send: async () =>
+        Buffer.concat([
+          Buffer.from([0x00]),
+          Buffer.alloc(5000),
+          Buffer.from([0x90, 0x00]),
+        ]),
+    };
+    await expect(m.dump_metadatas()).rejects.toThrow(
+      /Invalid metadata dump chunk of 5000 bytes/
+    );
+  });
+});
+
 describe("metadata parsing treats the device response as untrusted", () => {
   const m = makeManager();
 

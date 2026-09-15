@@ -11,6 +11,10 @@ const MAX_METADATA_COUNT = 178;
 // nickname, so it never exceeds this.
 const MAX_METADATA_DATALEN = 20;
 
+// Mirrors MAX_METADATAS in src/types.h: the largest metadata store the protocol can describe.
+// The device reports its own size, but that value is untrusted, so it is bounded by this.
+const MAX_METADATA_STORAGE_SIZE = 4096;
+
 const insAPDU = Object.freeze({
   GET_APP_INFO_COMMAND: 0x01,
   GET_APP_CONFIG_COMMAND: 0x03,
@@ -146,8 +150,23 @@ class PasswordsManager {
     return charsetList;
   }
 
+  /* The storage size comes from the device. getAppConfig() validates it before it is stored,
+   * but the allocation and loop bounds re-check it here so they can never be driven by a value
+   * that reached the instance some other way. */
+  _validatedStorageSize() {
+    const size = this.storage_size;
+    if (
+      !Number.isSafeInteger(size) ||
+      size <= 0 ||
+      size > MAX_METADATA_STORAGE_SIZE
+    )
+      throw new Error(`Unexpected metadata storage size: ${size}`);
+    return size;
+  }
+
   _toBytes(json_metadatas) {
-    let metadatas = Buffer.alloc(this.storage_size);
+    const storage_size = this._validatedStorageSize();
+    let metadatas = Buffer.alloc(storage_size);
     let parsed_metadatas = JSON.parse(json_metadatas)["parsed"];
     let offset = 0;
     // The device list arrays are sized for MAX_METADATA_COUNT entries; reject a backup that
@@ -165,7 +184,7 @@ class PasswordsManager {
         throw new Error(
           `Nickname too long (19 max): ${nickname} has length ${nickname.length}`
         );
-      if (offset + 3 + nickname.length >= this.storage_size)
+      if (offset + 3 + nickname.length >= storage_size)
         throw new Error(
           `Not enough memory on this device to restore this backup`
         );
@@ -295,9 +314,19 @@ class PasswordsManager {
       if (result.length !== 6)
         throw new Error(`Can't parse app config of length ${result.length}`);
 
-      let storage_size = result.readUInt32BE(0, 4);
-      let keyboard_type = result[4];
-      let press_enter_after_typing = result[5];
+      // The size is used as an allocation size and a loop bound, so it is validated before it
+      // leaves this method. A device that only claims to be the Passwords app could otherwise
+      // report 0xffffffff and have the page allocate 4 GiB.
+      const storage_size = result.readUInt32BE(0);
+      if (
+        !Number.isSafeInteger(storage_size) ||
+        storage_size <= 0 ||
+        storage_size > MAX_METADATA_STORAGE_SIZE
+      )
+        throw new Error(`Unexpected metadata storage size: ${storage_size}`);
+
+      const keyboard_type = result[4];
+      const press_enter_after_typing = result[5];
       return { storage_size, keyboard_type, press_enter_after_typing };
     } finally {
       this._unlock();
@@ -307,8 +336,9 @@ class PasswordsManager {
   async dump_metadatas() {
     this._lock();
     try {
+      const total = this._validatedStorageSize();
       let metadatas = Buffer.alloc(0);
-      while (metadatas.length < this.storage_size) {
+      while (metadatas.length < total) {
         let result = await this.transport.send(
           0xe0,
           insAPDU.DUMP_METADATAS_COMMAND,
@@ -318,13 +348,20 @@ class PasswordsManager {
           this.allowedStatuses
         );
         if (!this.isSuccess(result)) this.mapProtocolError(result);
-        metadatas = Buffer.concat([
-          metadatas,
-          Buffer.from(result.slice(1, -2)),
-        ]);
-        if (result[0] === 0xff && metadatas.length < this.storage_size) {
+        const chunk = Buffer.from(result.slice(1, -2));
+        // Every response has to make forward progress without overshooting the total: an empty
+        // chunk would keep this loop (and the tab) spinning forever, and the total is what
+        // bounds how much memory the dump can take. The chunk size itself is deliberately not
+        // capped here -- it is MAX_PAYLOAD_SIZE on the device, derived from the SDK's APDU
+        // buffer, so it varies by target and is not the client's business.
+        if (chunk.length === 0 || metadatas.length + chunk.length > total)
           throw new Error(
-            `${this.storage_size} bytes requested but only ${metadatas.length} bytes available`
+            `Invalid metadata dump chunk of ${chunk.length} bytes from the device`
+          );
+        metadatas = Buffer.concat([metadatas, chunk]);
+        if (result[0] === 0xff && metadatas.length < total) {
+          throw new Error(
+            `${total} bytes requested but only ${metadatas.length} bytes available`
           );
         }
       }
