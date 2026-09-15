@@ -24,7 +24,16 @@ import logo from "./assets/logo-padlock.png";
 import packageJson from "../package.json";
 
 const passwords = new PasswordsManager();
-listen((log) => console.log(log));
+
+// Ledger transport logs carry raw APDU payloads, which during backup/restore are the password
+// nicknames. Keep them out of production builds, and drop the payload fields even in dev: the
+// browser console ends up in screenshots, support bundles and remote debugging sessions.
+if (import.meta.env.DEV) {
+  listen(({ data, ...safeLog }) => {
+    void data;
+    console.debug(safeLog);
+  });
+}
 
 // Save the backup, preferring the native "Save As" dialog so the user can
 // choose the file name/location. showSaveFilePicker requires transient user
