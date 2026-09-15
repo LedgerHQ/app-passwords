@@ -33,7 +33,7 @@ const ITEMS = [
     q: "Less common use cases",
     a:
       "* If you ever encounter a WTF-kind of error with your passwords app (some or all of your entries are suddenly gone? A password has changed?), it is wise to first come here and make a backup. You can then have a look inside the backup file to see if something is wrong (you might also want to create an issue [here](https://github.com/LedgerHQ/app-passwords/issues) so we fix it for all users).\n" +
-      "* If you want to add a lot of new passwords, the manual input on the device keyboard will show its limits. You can instead create a backup, edit it manually to add all your new entries, then restore your app with this file.",
+      "* If you want to add a lot of new passwords, the manual input on the device keyboard will show its limits. You can instead create a backup, edit it manually to add all your new entries, then restore your app with this file. Nicknames must use printable ASCII only (no accents or other non-ASCII characters), and stay under 20 characters: this is what the device keyboard can produce, and the nickname is what your password is derived from. A restore containing anything else is refused rather than silently stored as something you could not retype.",
   },
 ];
 
