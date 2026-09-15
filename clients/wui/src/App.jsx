@@ -19,6 +19,7 @@ import {
 } from "@ledgerhq/lumen-ui-react/symbols";
 import { listen } from "@ledgerhq/logs";
 import PasswordsManager, { SW_ACTION_CANCELLED } from "./controller/PasswordsManager.js";
+import { redactLogEvent } from "./logRedaction.js";
 import Faq from "./components/Faq.jsx";
 import logo from "./assets/logo-padlock.png";
 import packageJson from "../package.json";
@@ -28,14 +29,11 @@ const passwords = new PasswordsManager();
 // Generous bound for a backup of a 4096-byte device store serialized as JSON.
 const MAX_BACKUP_FILE_SIZE = 64 * 1024;
 
-// Ledger transport logs carry raw APDU payloads, which during backup/restore are the password
-// nicknames. Keep them out of production builds, and drop the payload fields even in dev: the
-// browser console ends up in screenshots, support bundles and remote debugging sessions.
+// Ledger transport logs carry raw APDU frames, which during backup/restore are the password
+// nicknames. Keep them out of production builds entirely, and redact them even in dev -- see
+// redactLogEvent() for where the bytes actually live.
 if (import.meta.env.DEV) {
-  listen(({ data, ...safeLog }) => {
-    void data;
-    console.debug(safeLog);
-  });
+  listen((event) => console.debug(redactLogEvent(event)));
 }
 
 // Save the backup, preferring the native "Save As" dialog so the user can
