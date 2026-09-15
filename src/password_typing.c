@@ -130,11 +130,20 @@ bool type_password(uint8_t *data,
     entropy_ctx_t entropy_ctx = {0};
     mbedtls_ctr_drbg_context ctx;
 
-    cx_hash_sha256(data, dataSize, tmp, sizeof(tmp));
+    if (cx_hash_sha256(data, dataSize, tmp, sizeof(tmp)) != CX_SHA256_SIZE) {
+        explicit_bzero(tmp, sizeof(tmp));
+        return false;
+    }
     derive[0] = DERIVE_PASSWORD_PATH;
     for (i = 0; i < 8; i++) {
-        derive[i + 1] = 0x80000000 | (tmp[4 * i] << 24) | (tmp[4 * i + 1] << 16) |
-                        (tmp[4 * i + 2] << 8) | (tmp[4 * i + 3]);
+        /* The digest bytes are promoted to a signed int before shifting, so a byte with its
+         * high bit set shifted by 24 is not representable and the result is undefined. Cast to
+         * uint32_t first. The packed value is unchanged on the target toolchains, so derived
+         * passwords stay the same -- this removes the reliance on undefined behaviour, which
+         * an optimisation or compiler change could otherwise turn into different passwords. */
+        derive[i + 1] = 0x80000000u | ((uint32_t) tmp[4 * i] << 24) |
+                        ((uint32_t) tmp[4 * i + 1] << 16) | ((uint32_t) tmp[4 * i + 2] << 8) |
+                        ((uint32_t) tmp[4 * i + 3]);
     }
 
     if (os_derive_bip32_no_throw(CX_CURVE_SECP256K1, derive, 9, tmp, tmp + 32) != CX_OK) {
@@ -145,9 +154,15 @@ bool type_password(uint8_t *data,
 
     /* tmp holds the derived private key and chain code; the path in derive is no longer
      * needed either. Both go as soon as the seed has been hashed out of them. */
-    cx_hash_sha256(tmp, 64, entropy_ctx.seed, sizeof(entropy_ctx.seed));
+    const bool seed_hashed =
+        cx_hash_sha256(tmp, 64, entropy_ctx.seed, sizeof(entropy_ctx.seed)) == CX_SHA256_SIZE;
     explicit_bzero(tmp, sizeof(tmp));
     explicit_bzero(derive, sizeof(derive));
+    if (!seed_hashed) {
+        // Without this the all-zero seed buffer would be used, yielding a wrong password.
+        explicit_bzero(&entropy_ctx, sizeof(entropy_ctx));
+        return false;
+    }
 
     mbedtls_ctr_drbg_init(&ctx);
     const int seeded = mbedtls_ctr_drbg_seed(&ctx, entropy_provider, &entropy_ctx, NULL, 0);
