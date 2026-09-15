@@ -195,6 +195,11 @@ export default function App() {
       });
       return;
     }
+    // Accepting a restore ends the session the pending backup was read under, the same way
+    // starting a new backup does. Without this it stays saveable during and after the restore --
+    // the banner's Save action is not gated on `busy` -- so a backup of the list the device no
+    // longer holds could still be written out later.
+    setPendingBackup(null);
     const reader = new FileReader();
     reader.onload = async () => {
       setBusy(true);
