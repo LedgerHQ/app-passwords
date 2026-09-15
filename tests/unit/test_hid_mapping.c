@@ -116,6 +116,9 @@ static void test_map_char_reports_unmappable(void **state __attribute__((unused)
 
     assert_false(map_char(HID_MAPPING_QWERTY, 0x00, map));
     assert_false(map_char(HID_MAPPING_QWERTY, 0x1F, map));
+    // 0x7f (DEL) maps to index 95, one past the 95 printable entries the table holds. The
+    // bounds check used to accept it and read one entry past the key-code table.
+    assert_false(map_char(HID_MAPPING_QWERTY, 0x7F, map));
     // `out` is left untouched on failure.
     assert_int_equal(map[0], 0xAA);
     assert_int_equal(map[1], 0xAA);

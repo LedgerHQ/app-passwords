@@ -184,7 +184,9 @@ bool map_char(hid_mapping_t mapping, uint8_t key, uint8_t *out) {
         return false;
     }
     key -= KEYCODE_START;
-    if (key > MAPPING_LENGTH) {
+    // MAPPING_LENGTH is a count, so the last valid index is MAPPING_LENGTH - 1. Accepting the
+    // count itself let byte 0x7f (DEL) read one entry past the end of the key-code table.
+    if (key >= MAPPING_LENGTH) {
         return false;
     }
     keyDiv8 = (key / 8);
