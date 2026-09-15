@@ -42,7 +42,12 @@ int load_metadatas(uint8_t p1, uint8_t p2, const buf_t *input) {
         begin_metadata_restore();
     }
 
-    override_metadatas(app_state.bytes_transferred, (void *) input->bytes, input->size);
+    // Backstop: override_metadatas() validates the destination itself, so a transfer offset
+    // that ever escaped the length check above cannot become an out-of-bounds NVM write.
+    if (override_metadatas(app_state.bytes_transferred, (void *) input->bytes, input->size) != OK) {
+        abort_started_restore();
+        return io_send_sw(SWO_WRONG_DATA_LENGTH);
+    }
     app_state.bytes_transferred += input->size;
 
     if (app_state.bytes_transferred >= sizeof(N_storage.metadatas) || p1 == LAST_CHUNK) {

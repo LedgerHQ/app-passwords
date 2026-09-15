@@ -24,7 +24,7 @@ error_type_t write_metadata(uint8_t *data, uint8_t dataSize);
  * Write a given amount of data on metadatas, at the given offset
  * Used to load metadata from APDUs
  */
-void override_metadatas(size_t offset, void *ptr, size_t size);
+error_type_t override_metadatas(size_t offset, void *ptr, size_t size);
 
 void reset_metadatas(void);
 

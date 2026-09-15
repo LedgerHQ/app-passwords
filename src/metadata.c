@@ -73,8 +73,14 @@ error_type_t write_metadata(uint8_t *data, uint8_t dataSize) {
     return OK;
 }
 
-void override_metadatas(size_t offset, void *ptr, size_t size) {
+error_type_t override_metadatas(size_t offset, void *ptr, size_t size) {
+    /* Re-check the destination here rather than trust the transfer offset the caller tracks:
+     * the first test also keeps the second one from wrapping around on a size_t. */
+    if ((offset > sizeof(N_storage.metadatas)) || (size > sizeof(N_storage.metadatas) - offset)) {
+        return ERR_NO_MORE_SPACE_AVAILABLE;
+    }
     nvm_write((void *) &N_storage.metadatas[offset], ptr, size);
+    return OK;
 }
 
 void begin_metadata_restore(void) {

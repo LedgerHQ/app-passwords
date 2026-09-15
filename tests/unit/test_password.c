@@ -134,7 +134,7 @@ static void test_override_metadatas_high_offset(void **state __attribute__((unus
     // so the second chunk onward landed at the wrong place and overwrote earlier
     // data. Writing at offset 300 must land at 300, not at 300 % 256 == 44.
     const uint8_t payload[] = {0xAA, 0xBB, 0xCC};
-    override_metadatas(300, (void *) payload, sizeof(payload));
+    assert_int_equal(override_metadatas(300, (void *) payload, sizeof(payload)), OK);
 
     assert_memory_equal(&N_storage_real.metadatas[300], payload, sizeof(payload));
     // The location it would have hit when truncated must be untouched.
@@ -148,9 +148,32 @@ static void test_override_metadatas_buffer_end(void **state __attribute__((unuse
     // correctly and stay within the buffer.
     const uint8_t payload[] = {0x11, 0x22, 0x33, 0x44};
     const size_t offset = MAX_METADATAS - sizeof(payload);
-    override_metadatas(offset, (void *) payload, sizeof(payload));
+    assert_int_equal(override_metadatas(offset, (void *) payload, sizeof(payload)), OK);
 
     assert_memory_equal(&N_storage_real.metadatas[offset], payload, sizeof(payload));
+}
+
+static void test_override_metadatas_rejects_out_of_bounds(void **state __attribute__((unused))) {
+    // The write used to land wherever the caller's transfer offset pointed. It now validates
+    // the destination itself, so a bad offset cannot reach past the metadata array -- in
+    // particular it must not trust a length check that wrapped around on a size_t.
+    const uint8_t payload[] = {0x11, 0x22};
+
+    // Starts inside the array, but the last byte would fall past the end.
+    assert_int_equal(override_metadatas(MAX_METADATAS - 1, (void *) payload, sizeof(payload)),
+                     ERR_NO_MORE_SPACE_AVAILABLE);
+    // Starts exactly at the end.
+    assert_int_equal(override_metadatas(MAX_METADATAS, (void *) payload, sizeof(payload)),
+                     ERR_NO_MORE_SPACE_AVAILABLE);
+    // Starts past the end: this is the offset that makes the caller's
+    // `size > sizeof(metadatas) - offset` test wrap around and pass.
+    assert_int_equal(override_metadatas(MAX_METADATAS + 1, (void *) payload, sizeof(payload)),
+                     ERR_NO_MORE_SPACE_AVAILABLE);
+
+    // None of the refused writes touched the store.
+    for (size_t i = 0; i < sizeof(N_storage_real.metadatas); i++) {
+        assert_int_equal(N_storage_real.metadatas[i], 0);
+    }
 }
 
 static void test_write_metadata_enforces_capacity(void **state __attribute__((unused))) {
@@ -434,6 +457,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_nickname_exists_truncation, setup, NULL),
         cmocka_unit_test_setup_teardown(test_override_metadatas_high_offset, setup, NULL),
         cmocka_unit_test_setup_teardown(test_override_metadatas_buffer_end, setup, NULL),
+        cmocka_unit_test_setup_teardown(test_override_metadatas_rejects_out_of_bounds, setup, NULL),
         cmocka_unit_test_setup_teardown(test_write_metadata_enforces_capacity, setup, NULL),
         cmocka_unit_test_setup_teardown(test_compact_metadata_erased_first_entry, setup, NULL),
         cmocka_unit_test_setup_teardown(test_compact_metadata_erased_middle_entry, setup, NULL),
