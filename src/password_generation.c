@@ -28,8 +28,23 @@ static const char *SETS[] = {"ABCDEFGHIJKLMNOPQRSTUVWXYZ",  // 26
                              "[]{}()<>",                  // 8
                              NULL};
 
-/* Draws an unbiased value below `modulo`. Returns false if no value could be drawn, so callers
- * can unwind and wipe their buffers instead of unwinding through an exception. */
+/* Draws a value below `modulo` by rejection sampling. Returns false if no value could be drawn,
+ * so callers can unwind and wipe their buffers instead of unwinding through an exception.
+ *
+ * The draw is NOT uniform, deliberately. The rejection boundary is off by one: `candidate ==
+ * rng_limit` is accepted, so residue 0 keeps one preimage more than the others -- 3 against 2
+ * for the 95-character alphabet, a factor of 1.5. Moduli that divide 256 are unaffected, their
+ * rng_limit being unreachable for a uint8_t.
+ *
+ * Rejecting `>= rng_limit` would fix it, and must not be done here: the draw would consume a
+ * different DRBG byte, shifting every later character, and about one password in seven would
+ * come out different. They are derived deterministically and stored nowhere, so users would
+ * lose access to those accounts. The bias costs 0.035 bits out of 131 over a 20-character
+ * password, which is the cheaper end of that trade. Accepted as a known risk in V-003;
+ * revisiting it needs a per-entry version byte in the metadata format, so that old entries
+ * keep this boundary and new ones get the correct one.
+ *
+ * The vectors in tests/functional/tests_vectors.py pin the current output. */
 static bool rng_u8_modulo(mbedtls_ctr_drbg_context *drbg, uint8_t modulo, uint8_t *out) {
     if (modulo == 0) {
         return false;
