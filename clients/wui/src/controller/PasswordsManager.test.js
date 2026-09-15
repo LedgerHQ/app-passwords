@@ -48,6 +48,33 @@ describe("charset bitmask mapping", () => {
     expect(m._bitmaskToCharsetList(0xff)).toEqual(["ALL_SETS"]);
     expect(m._bitmaskToCharsetList(0x00)).toEqual(["ALL_SETS"]);
   });
+
+  test("ALL_SETS round-trips back to the full mask", () => {
+    // What _bitmaskToCharsetList() writes into a backup has to be readable again.
+    expect(m._charsetListToBitmask(["ALL_SETS"])).toBe(0xff);
+  });
+
+  test("rejects an unknown charset name instead of silently dropping it", () => {
+    // A typo used to OR in `undefined`, i.e. nothing, changing the derived password.
+    expect(() => m._charsetListToBitmask(["UPPERCASE", "NUMBER"])).toThrow(/unknown charset/);
+  });
+
+  test("rejects a list of nothing but unknown names", () => {
+    // These used to leave the mask at 0 and fall through to the ALL_SETS default.
+    expect(() => m._charsetListToBitmask(["ALPHA", "BETA"])).toThrow(/unknown charset/);
+  });
+
+  test("rejects an inherited property name", () => {
+    // `"constructor" in passwordsCharsets` is true, and its value ORs in as 0.
+    expect(() => m._charsetListToBitmask(["constructor"])).toThrow(/unknown charset/);
+    expect(() => m._charsetListToBitmask(["toString"])).toThrow(/unknown charset/);
+  });
+
+  test("rejects a charsets field that is not a list", () => {
+    expect(() => m._charsetListToBitmask("UPPERCASE")).toThrow(/not a list/);
+    expect(() => m._charsetListToBitmask(undefined)).toThrow(/not a list/);
+    expect(() => m._charsetListToBitmask({ UPPERCASE: true })).toThrow(/not a list/);
+  });
 });
 
 describe("metadata serialization round-trip", () => {

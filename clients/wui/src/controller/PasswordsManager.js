@@ -133,10 +133,30 @@ class PasswordsManager {
   }
 
   _charsetListToBitmask(charsets) {
+    if (!Array.isArray(charsets))
+      throw new Error("This backup has an entry whose charsets is not a list");
+
     let bitmask = 0x00;
     for (const charset of charsets) {
+      // "ALL_SETS" is not one of the named sets: it is the sentinel _bitmaskToCharsetList()
+      // emits for a full mask, so it has to be accepted for a backup to round-trip.
+      if (charset === "ALL_SETS") {
+        bitmask |= allPasswordsCharsets;
+        continue;
+      }
+      // An unknown name used to OR in `undefined`, which is a no-op, so a typo silently
+      // dropped a character set -- and a list of nothing but typos fell through to the
+      // ALL_SETS default below. The charset byte is an input to the derivation, so either way
+      // the device generates a different password than the backup describes.
+      // Object.hasOwn, not `in`: the latter also accepts inherited names like "constructor",
+      // whose value ORs in as 0.
+      if (!Object.hasOwn(passwordsCharsets, charset))
+        throw new Error(
+          `This backup has an unknown charset: ${JSON.stringify(charset)}`
+        );
       bitmask |= passwordsCharsets[charset];
     }
+    // An empty list means "no restriction", which is also how the device reads a zero byte.
     if (bitmask === 0x00) bitmask = allPasswordsCharsets;
     return bitmask;
   }
