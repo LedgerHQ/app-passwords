@@ -115,6 +115,43 @@ describe("metadata serialization round-trip", () => {
     const input = { parsed: [{ nickname: "", charsets: [] }] };
     expect(() => m._toBytes(JSON.stringify(input))).toThrow(/empty nickname/i);
   });
+
+  test("rejects a non-ASCII nickname instead of misreporting its length", () => {
+    // "é" is one UTF-16 code unit but two UTF-8 bytes. The length byte and the offset used to
+    // be taken from String.length, so the entry announced 2 bytes while 3 were written and the
+    // next record's header was overwritten.
+    const input = { parsed: [{ nickname: "café", charsets: [] }] };
+    expect(() => m._toBytes(JSON.stringify(input))).toThrow(
+      /printable ASCII/i
+    );
+  });
+
+  test("rejects a nickname with a control character", () => {
+    const input = { parsed: [{ nickname: "ma\nil", charsets: [] }] };
+    expect(() => m._toBytes(JSON.stringify(input))).toThrow(
+      /printable ASCII/i
+    );
+  });
+
+  test("a 19-byte ASCII nickname still fits, 20 does not", () => {
+    const ok = { parsed: [{ nickname: "x".repeat(19), charsets: [] }] };
+    expect(() => m._toBytes(JSON.stringify(ok))).not.toThrow();
+    const tooLong = { parsed: [{ nickname: "x".repeat(20), charsets: [] }] };
+    expect(() => m._toBytes(JSON.stringify(tooLong))).toThrow(/too long/i);
+  });
+
+  test("entries after a multi-byte-looking one keep their own headers", () => {
+    // Round-trip two entries: with the old byte accounting the second record's header was
+    // clobbered by the first nickname's UTF-8 expansion.
+    const input = {
+      parsed: [
+        { nickname: "first", charsets: [] },
+        { nickname: "second", charsets: [] },
+      ],
+    };
+    const out = m._toJSON(m._toBytes(JSON.stringify(input)));
+    expect(out.parsed.map((e) => e.nickname)).toEqual(["first", "second"]);
+  });
 });
 
 describe("device-reported storage size is untrusted", () => {

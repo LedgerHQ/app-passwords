@@ -176,23 +176,35 @@ class PasswordsManager {
         `Too many entries in this backup (${MAX_METADATA_COUNT} max): ${parsed_metadatas.length}`
       );
     parsed_metadatas.forEach((element) => {
-      let nickname = element["nickname"];
-      let charsets = this._charsetListToBitmask(element["charsets"]);
-      if (!nickname)
+      const nickname = element["nickname"];
+      const charsets = this._charsetListToBitmask(element["charsets"]);
+      if (typeof nickname !== "string" || nickname.length === 0)
         throw new Error("This backup contains an entry with an empty nickname");
-      if (nickname.length > 19)
+      // The device keyboard can only produce printable ASCII, and the nickname is what the
+      // password is derived from. Anything else would be stored as bytes the device cannot
+      // display and cannot be retyped, so refuse it rather than write it.
+      if (!/^[\x20-\x7e]+$/.test(nickname))
         throw new Error(
-          `Nickname too long (19 max): ${nickname} has length ${nickname.length}`
+          `Nickname must be printable ASCII only: ${JSON.stringify(nickname)}`
         );
-      if (offset + 3 + nickname.length >= storage_size)
+      // The length byte and the offset are byte counts. String.length counts UTF-16 code
+      // units, so a non-ASCII nickname used to record fewer bytes than Buffer.write() emitted:
+      // the entry claimed the wrong length and the UTF-8 expansion overwrote the next record's
+      // header. The ASCII check above makes the two equal, and using byteLength keeps them so.
+      const nicknameBytes = Buffer.byteLength(nickname, "utf8");
+      if (nicknameBytes > MAX_METADATA_DATALEN - 1)
+        throw new Error(
+          `Nickname too long (${MAX_METADATA_DATALEN - 1} bytes max): ${nickname} is ${nicknameBytes} bytes`
+        );
+      if (offset + 3 + nicknameBytes >= storage_size)
         throw new Error(
           `Not enough memory on this device to restore this backup`
         );
-      metadatas[offset++] = nickname.length + 1;
+      metadatas[offset++] = nicknameBytes + 1;
       metadatas[offset++] = 0x00;
       metadatas[offset++] = charsets;
-      metadatas.write(nickname, offset);
-      offset += nickname.length;
+      metadatas.write(nickname, offset, nicknameBytes, "utf8");
+      offset += nicknameBytes;
     });
     // mark free space at the end of the buffer
     metadatas[offset++] = 0x00;
