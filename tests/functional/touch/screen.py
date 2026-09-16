@@ -1,12 +1,16 @@
 from ledgered.devices import Device, DeviceType
 from ragger.backend import BackendInterface
 from ragger.firmware.touch import MetaScreen
-from ragger.firmware.touch.use_cases import UseCaseChoice, UseCaseHomeExt, UseCaseReview, \
-    UseCaseSettings
 from ragger.firmware.touch.layouts import ChoiceList, FullKeyboardLetters, LeftHeader
+from ragger.firmware.touch.use_cases import (
+    UseCaseChoice,
+    UseCaseHomeExt,
+    UseCaseReview,
+    UseCaseSettings,
+)
+
 
 class KeyboardConfirmationButton:
-
     def __init__(self, backend: BackendInterface, device: Device):
         self.backend = backend
         self.device = device
@@ -19,12 +23,11 @@ class KeyboardConfirmationButton:
         elif self.device.type == DeviceType.APEX_P:
             position = (140, 160)
         else:
-            assert False, f"Device not supported: {self.device}"
+            raise AssertionError(f"Device not supported: {self.device}")
         self.backend.finger_touch(*position)
 
 
 class ApproveButton:
-
     def __init__(self, backend: BackendInterface, device: Device):
         self.backend = backend
         self.device = device
@@ -37,12 +40,11 @@ class ApproveButton:
         elif self.device.type == DeviceType.APEX_P:
             position = (140, 310)
         else:
-            assert False, f"Device not supported: {self.device}"
+            raise AssertionError(f"Device not supported: {self.device}")
         self.backend.finger_touch(*position)
 
 
 class CustomTouchScreen(metaclass=MetaScreen):
-
     # "backup your data" disclaimer, displayed the first time the app is started
     use_case_disclaimer = UseCaseChoice
     # "choose your keyboard layout" choice, displayed the first time the app is started

@@ -4,3 +4,6 @@
 // production header defines SWO_* status word constants which are never
 // referenced by the code we build for unit tests, so an empty mock is
 // sufficient to satisfy the #include directive.
+
+// dump_metadatas() answers SWO_SUCCESS on the happy path.
+#define SWO_SUCCESS 0x9000

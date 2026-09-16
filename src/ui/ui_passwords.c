@@ -50,10 +50,16 @@ static const char *ptrToPwd[2] = {0};
 static bool all_passwords;
 
 // Keyboard contexts
+// Holds either a nickname being typed or one read back from storage, plus its NUL terminator.
 static char password_name[MAX_METANAME + 1] = {0};
+_Static_assert(MAX_NICKNAME_LEN < sizeof(password_name),
+               "NBGL writes the terminator at entryBuffer[entryMaxLen], so display_create_pwd()'s "
+               "entryMaxLen must stay inside password_name");
 
 static nbgl_genericContents_t genericContent = {0};
 static nbgl_content_t contentsList = {0};
+// Number of entries actually published to NBGL by the last display_password_list().
+static size_t nbDisplayedPasswords = 0;
 #ifdef SCREEN_SIZE_WALLET
 static size_t nbPasswordsPerPage = 0;
 #endif
@@ -185,19 +191,26 @@ void confirm_all_passwords_deletion(void) {
  */
 static void password_callback(const int token, const uint8_t index, int page) {
     UNUSED(token);
-    if (selector_callback) {
-#ifdef SCREEN_SIZE_WALLET
-        // On wallet devices the choices list is paginated: NBGL forwards the
-        // index relative to the current page, so the absolute index must be
-        // rebuilt from the page number and the number of choices per page.
-        selector_callback((page * nbPasswordsPerPage) + index);
-#else
-        // On Nano each choice has its own page and NBGL already forwards the
-        // absolute choice index, so it must be used as-is.
-        UNUSED(page);
-        selector_callback(index);
-#endif
+    if (!selector_callback) {
+        return;
     }
+#ifdef SCREEN_SIZE_WALLET
+    // On wallet devices the choices list is paginated: NBGL forwards the
+    // index relative to the current page, so the absolute index must be
+    // rebuilt from the page number and the number of choices per page.
+    const size_t absolute_index = (size_t) (page * nbPasswordsPerPage) + index;
+#else
+    // On Nano each choice has its own page and NBGL already forwards the
+    // absolute choice index, so it must be used as-is.
+    UNUSED(page);
+    const size_t absolute_index = index;
+#endif
+    // Single chokepoint for the show, type and delete callbacks: an index outside what was
+    // actually published must never reach a metadata offset lookup.
+    if (absolute_index >= nbDisplayedPasswords) {
+        return;
+    }
+    selector_callback(absolute_index);
 }
 
 /**
@@ -217,16 +230,21 @@ void display_password_list(void) {
             break;
         }
         const size_t pwdLength = METADATA_NICKNAME_LEN(pwdOffset) + 1;
-        password_list_add_password(nbPasswords,
-                                   pwdOffset,
-                                   (void *) METADATA_NICKNAME(pwdOffset),
-                                   pwdLength);
+        // Stop at the capacity of the list arrays instead of carrying on: nbChoices below must
+        // never exceed the number of entries actually stored in passwordList.
+        if (!password_list_add_password(nbPasswords,
+                                        pwdOffset,
+                                        (void *) METADATA_NICKNAME(pwdOffset),
+                                        pwdLength)) {
+            break;
+        }
         nbPasswords++;
     }
     if (nbPasswords == 0) {
         nbgl_useCaseStatus("No passwords available", false, display_choice_page);
         return;
     }
+    nbDisplayedPasswords = nbPasswords;
     genericContent.nbContents = 1;
     genericContent.contentsList = &contentsList;
     contentsList.type = CHOICES_LIST;
@@ -251,10 +269,41 @@ void display_password_list(void) {
  * @param[in] index of the password
  *
  */
+/**
+ * @brief Wipe the plaintext password left in the display buffer
+ *
+ */
+static void clear_displayed_password(void) {
+    explicit_bzero(password_to_display, sizeof(password_to_display));
+    ptrToPwd[1] = NULL;
+}
+
+/**
+ * @brief Leave the password display page, wiping the plaintext first
+ *
+ */
+static void display_choice_page_from_password(void) {
+    clear_displayed_password();
+    display_choice_page();
+}
+
 void show_password_cb(const size_t index) {
-    strlcpy(password_name, password_list_get_password(index), sizeof(password_name));
+    const char *nickname = password_list_get_password(index);
+    if (nickname == NULL) {
+        display_choice_page();
+        return;
+    }
+    clear_displayed_password();
+    strlcpy(password_name, nickname, sizeof(password_name));
     ptrToPwd[0] = password_name;
-    show_password_at_offset(password_list_get_offset(index), (uint8_t *) password_to_display);
+    // On failure the buffer holds nothing, so say so rather than present an empty password.
+    if (!show_password_at_offset(password_list_get_offset(index),
+                                 (uint8_t *) password_to_display)) {
+        clear_displayed_password();
+        password_list_reset();
+        nbgl_useCaseStatus("COULD NOT GENERATE\nTHE PASSWORD", false, display_choice_page);
+        return;
+    }
     ptrToPwd[1] = &password_to_display[0];
 
     password_list_reset();
@@ -267,7 +316,10 @@ void show_password_cb(const size_t index) {
     contentsList.content.infosList.infoTypes = &ptrToPwd[0];
     contentsList.content.infosList.infoContents = &ptrToPwd[1];
 
-    nbgl_useCaseGenericConfiguration("Your Password", 0, &genericContent, display_choice_page);
+    nbgl_useCaseGenericConfiguration("Your Password",
+                                     0,
+                                     &genericContent,
+                                     display_choice_page_from_password);
 }
 
 /**
@@ -277,7 +329,11 @@ void show_password_cb(const size_t index) {
  *
  */
 void type_password_cb(const size_t index) {
-    type_password_at_offset(password_list_get_offset(index));
+    // Nothing was typed if generation failed, so do not claim it was.
+    if (!type_password_at_offset(password_list_get_offset(index))) {
+        nbgl_useCaseStatus("COULD NOT GENERATE\nTHE PASSWORD", false, display_choice_page);
+        return;
+    }
     display_success_page("PASSWORD HAS\nBEEN WRITTEN");
 }
 
@@ -321,7 +377,11 @@ void display_create_pwd(void) {
         .title = "Create password",
 #endif
         .entryBuffer = password_name,
-        .entryMaxLen = sizeof(password_name),
+        // Only MAX_NICKNAME_LEN bytes of nickname fit in a metadata record, so accepting more
+        // would show the user characters the device cannot keep. NBGL appends the typed
+        // character and *then* the terminator, writing entryBuffer[entryMaxLen] on the last
+        // accepted key; the assertion above keeps that write inside `password_name`.
+        .entryMaxLen = MAX_NICKNAME_LEN,
         .lettersOnly = false,
 #ifdef SCREEN_SIZE_WALLET
         .mode = MODE_LETTERS,

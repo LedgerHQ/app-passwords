@@ -1,40 +1,51 @@
 import pytest
-
-from exception import ClaNotSupportedError, InsNotSupportedError, WrongP1P2Error, \
-    WrongDataLengthError, MetadatasParsingError, ActionCancelledError, DeviceException
-
+from exception import (
+    ActionCancelledError,
+    ClaNotSupportedError,
+    DeviceException,
+    InsNotSupportedError,
+    MetadatasParsingError,
+    WrongDataLengthError,
+    WrongP1P2Error,
+)
 from passwordsManager_cmd import PasswordsManagerCommand
 
 
 @pytest.mark.xfail(raises=ClaNotSupportedError)
 def test_bad_cla(cmd: PasswordsManagerCommand):
-    response = cmd.transport.exchange(cla=0xa0,  # 0xa0 instead of 0xe0
-                                   ins=0x03,
-                                   p1=0x00,
-                                   p2=0x00,
-                                   data=b"")
+    response = cmd.transport.exchange(
+        cla=0xA0,  # 0xa0 instead of 0xe0
+        ins=0x03,
+        p1=0x00,
+        p2=0x00,
+        data=b"",
+    )
 
     raise DeviceException(error_code=response.status)
 
 
 @pytest.mark.xfail(raises=InsNotSupportedError)
 def test_bad_ins(cmd: PasswordsManagerCommand):
-    response = cmd.transport.exchange(cla=0xe0,
-                                   ins=0xAA,  # INS 0xAA is not supported
-                                   p1=0x00,
-                                   p2=0x00,
-                                   data=b"")
+    response = cmd.transport.exchange(
+        cla=0xE0,
+        ins=0xAA,  # INS 0xAA is not supported
+        p1=0x00,
+        p2=0x00,
+        data=b"",
+    )
 
     raise DeviceException(error_code=response.status)
 
 
 @pytest.mark.xfail(raises=WrongP1P2Error)
 def test_wrong_p1p2(cmd: PasswordsManagerCommand):
-    response = cmd.transport.exchange(cla=0xe0,
-                                   ins=0x03,
-                                   p1=0x01,  # 0x01 instead of 0x00
-                                   p2=0x00,
-                                   data=b"")
+    response = cmd.transport.exchange(
+        cla=0xE0,
+        ins=0x03,
+        p1=0x01,  # 0x01 instead of 0x00
+        p2=0x00,
+        data=b"",
+    )
 
     raise DeviceException(error_code=response.status)
 
@@ -43,6 +54,21 @@ def test_wrong_p1p2(cmd: PasswordsManagerCommand):
 def test_wrong_data_length(cmd: PasswordsManagerCommand):
     # APDUs must be at least 5 bytes: CLA, INS, P1, P2, Lc.
     response = cmd.transport.exchange_raw(bytes.fromhex("E000"))
+
+    raise DeviceException(error_code=response.status)
+
+
+@pytest.mark.xfail(raises=WrongDataLengthError)
+def test_generate_password_with_empty_payload(cmd: PasswordsManagerCommand):
+    # The charset byte is mandatory. With Lc=0 the handler used to read a byte from outside the
+    # APDU data and underflow `input->size - 1` to SIZE_MAX, which became the hash input length.
+    response = cmd.transport.exchange(
+        cla=0xE0,
+        ins=0x99,  # RUN_TEST
+        p1=0x01,  # GENERATE_PASSWORD
+        p2=0x00,
+        data=b"",
+    )
 
     raise DeviceException(error_code=response.status)
 

@@ -6,7 +6,7 @@ from enum import auto
 from functools import partial
 from time import sleep
 
-from ragger.navigator import NavInsID, BaseNavInsID
+from ragger.navigator import BaseNavInsID, NavInsID
 from ragger.navigator.navigator import Navigator
 
 from .screen import CustomTouchScreen
@@ -47,7 +47,6 @@ class CustomNavInsID(BaseNavInsID):
 
 
 class CustomTouchNavigator(Navigator):
-
     def __init__(self, backend, device, golden_run):
         self.screen = CustomTouchScreen(backend, device)
         callbacks = {
