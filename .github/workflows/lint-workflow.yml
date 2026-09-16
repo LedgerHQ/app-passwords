@@ -19,7 +19,6 @@ jobs:
     uses: LedgerHQ/ledger-app-workflows/.github/workflows/reusable_lint.yml@v1
     with:
       source: './'
-      extensions: 'h,c'
 
   yamllint:
     name: Check yaml files

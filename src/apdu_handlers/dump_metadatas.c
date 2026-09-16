@@ -2,6 +2,7 @@
 #include "globals.h"
 #include "handlers.h"
 #include "io.h"
+#include "metadata.h"
 #include "ui.h"
 
 int dump_metadatas() {
@@ -14,6 +15,38 @@ int dump_metadatas() {
 #endif
         ui_request_user_approval(&msg);
         return 0;
+    }
+
+    /* Wiping a deleted entry's data block only became part of erase_metadata() in this version,
+     * so a database carried over from an older one still holds the nicknames of its deleted
+     * entries inside its META_ERASED records. Those records sit *before* the terminator, so the
+     * live-size bound below counts them as meaningful and would export them. Squeeze them out
+     * first: compaction drops the erased records and wipes the space they vacated.
+     * Only before the first chunk -- compacting mid-transfer would move bytes the host has
+     * already received, and the rest of the stream would no longer line up with them. */
+    if (app_state.bytes_transferred == 0) {
+        if (compact_metadata() != OK) {
+            app_state.user_approval = false;
+            ui_idle();
+            return io_send_sw(SW_METADATAS_PARSING_ERROR);
+        }
+    }
+
+    /* Only the bytes up to the logical end of the database are meaningful. Past it, the flash
+     * still holds nicknames from deleted entries and from earlier, larger databases, so send
+     * zeroes instead of the raw slack space. The two terminator bytes are zero as well, so the
+     * exported stream is unchanged for a database that has no slack. */
+    const size_t live_size = find_free_metadata();
+    /* find_free_metadata() answers MAX_METADATAS only as its "this store does not parse"
+     * sentinel: a well-formed database keeps its terminator inside the array, so every real
+     * answer is smaller. Treating the sentinel as a length would mark the whole region live and
+     * export precisely the stale bytes withheld above, so refuse the backup instead. Checked
+     * before the transfer bookkeeping below, so nothing is written to the APDU buffer. */
+    if (live_size >= sizeof(N_storage.metadatas)) {
+        app_state.user_approval = false;
+        app_state.bytes_transferred = 0;
+        ui_idle();
+        return io_send_sw(SW_METADATAS_PARSING_ERROR);
     }
 
     size_t remaining_bytes_count = sizeof(N_storage.metadatas) - app_state.bytes_transferred;
@@ -30,9 +63,18 @@ int dump_metadatas() {
         G_io_apdu_buffer[TRANSFER_FLAG_OFFSET] = MORE_DATA_INCOMING;
     }
 
+    size_t live_bytes = 0;
+    if (app_state.bytes_transferred < live_size) {
+        live_bytes = live_size - app_state.bytes_transferred;
+        if (live_bytes > payload_size) {
+            live_bytes = payload_size;
+        }
+    }
+
     memcpy(&G_io_apdu_buffer[TRANSFER_PAYLOAD_OFFSET],
            (const unsigned char *) N_storage.metadatas + app_state.bytes_transferred,
-           payload_size);
+           live_bytes);
+    memset(&G_io_apdu_buffer[TRANSFER_PAYLOAD_OFFSET + live_bytes], 0, payload_size - live_bytes);
 
     app_state.bytes_transferred += payload_size;
 

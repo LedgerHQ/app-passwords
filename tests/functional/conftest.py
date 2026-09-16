@@ -2,26 +2,25 @@
 # functions intentionally match module-level fixture names. Silence the noisy
 # pylint warning for the whole file rather than per-function.
 # pylint: disable=redefined-outer-name
-from pathlib import Path
 import re
-import pytest
-from ragger.backend import RaisePolicy, BackendInterface
-from ragger.navigator import Navigator
+from pathlib import Path
 
+import pytest
 from ledgered.devices import Device
-from passwordsManager_cmd import PasswordsManagerCommand
-from tests_vectors import tests_vectors
 from nano.navigator import CustomNanoNavigator
+from passwordsManager_cmd import PasswordsManagerCommand
+from ragger.backend import BackendInterface, RaisePolicy
+from ragger.navigator import Navigator
+from tests_vectors import tests_vectors
 from touch.navigator import CustomTouchNavigator
 
-pytest_plugins = ("ragger.conftest.base_conftest", )
+pytest_plugins = ("ragger.conftest.base_conftest",)
 
 
 # Glue to call every test that depends on the device once for each required device
 def pytest_generate_tests(metafunc):
     if "test_vector" in metafunc.fixturenames:
-        metafunc.parametrize(
-            "test_vector", tests_vectors[metafunc.definition.name])
+        metafunc.parametrize("test_vector", tests_vectors[metafunc.definition.name])
 
 
 @pytest.fixture
@@ -42,6 +41,7 @@ def navigator(custom_backend, device, golden_run):
         yield CustomNanoNavigator(custom_backend, device, golden_run)
     else:
         yield CustomTouchNavigator(custom_backend, device, golden_run)
+
 
 @pytest.fixture(name="app_version")
 def app_version_fixture() -> tuple[int, int, int]:

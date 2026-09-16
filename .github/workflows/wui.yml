@@ -15,13 +15,33 @@ permissions:
   contents: read
 
 concurrency:
-  group: pages
-  cancel-in-progress: false
+  # One lock per pull request, and a separate one for the deployments. A single `pages` group
+  # shared by both let a pull request hold it for as long as its own build ran -- and that
+  # build executes contributor-controlled install/build scripts -- which serialized, and so
+  # delayed, every legitimate deployment behind it.
+  group: >-
+    ${{ github.event_name == 'pull_request'
+        && format('pages-pr-{0}', github.event.pull_request.number)
+        || format('pages-deploy-{0}', github.ref) }}
+  # Superseding a pull request's own run is fine; a deployment in flight is not interrupted.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   build:
     name: Build the site
     runs-on: ubuntu-latest
+    # The install and build steps run scripts from the checked-out branch, so on a pull request
+    # they run contributor-controlled code. Bound how long that can occupy a runner.
+    timeout-minutes: 15
+    # Job-level permissions replace the workflow-level ones, hence contents:read
+    # is restated here. `pages` is needed on top of it because this repo is
+    # private: the Pages config is not public data, so configure-pages cannot
+    # read it with a bare contents:read token (upstream app-passwords is public
+    # and gets away without it). Read-only suffices: we never pass
+    # `enablement: true`, so the action only performs a GET.
+    permissions:
+      contents: read
+      pages: read
     defaults:
       run:
         working-directory: clients/wui/
@@ -55,6 +75,8 @@ jobs:
     name: Deploy to GitHub Pages
     runs-on: ubuntu-latest
     needs: build
+    # Target is this repository's private preview Pages site (no custom domain). The public
+    # passwords.ledger.com site is deployed from the public app-passwords repository.
     # Build on PRs and on master for validation, but only deploy from develop:
     # the github-pages environment protection rules only allow that branch, so a
     # push to master (e.g. a merge) would otherwise fail the deployment.

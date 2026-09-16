@@ -1,3 +1,9 @@
+/* Inter is what lumen's design tokens ask for (`fontFamily: "Inter"`). Bundled rather than
+   pulled from fonts.googleapis.com at runtime: this page talks to a hardware wallet and
+   documents itself as local-only, so it should not announce every visit to a third party, nor
+   take its stylesheet from one. Vite emits the woff2 next to the page, same origin. */
+@import "@fontsource-variable/inter";
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;

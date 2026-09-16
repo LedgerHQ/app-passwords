@@ -19,6 +19,9 @@ To type a password, just select it in your list of password.
 
 If you want to add a lot of passwords, this process can be pretty painful. Instead of doing it manually,
 you can use the [backup tool](https://blog.ledger.com/passwords-backup/) to load a custom list of password nicknames.
+Nicknames in such a list must use printable ASCII only and stay under 20 characters, matching what the device
+keyboard can produce: the nickname is the input the password is derived from, so a nickname you cannot retype
+on the device is a password you cannot get back.
 
 ### Application settings
 

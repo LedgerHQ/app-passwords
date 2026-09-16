@@ -112,7 +112,8 @@ void mbedtls_ctr_drbg_free(mbedtls_ctr_drbg_context *ctx) {
 #if defined(MBEDTLS_THREADING_C)
     mbedtls_mutex_free(&ctx->mutex);
 #endif
-    memset(ctx, 0, sizeof(mbedtls_ctr_drbg_context));
+    /* The context carries the AES key and counter. */
+    explicit_bzero(ctx, sizeof(mbedtls_ctr_drbg_context));
 }
 
 void mbedtls_ctr_drbg_set_prediction_resistance(mbedtls_ctr_drbg_context *ctx, int resistance) {
@@ -206,7 +207,14 @@ static int block_cipher_df(unsigned char *output, const unsigned char *data, siz
         p += MBEDTLS_CTR_DRBG_BLOCKSIZE;
     }
 
-    memset(&aes_ctx, 0, sizeof(AES256_CTX_T));
+    /* buf held the caller's seed input, tmp the derived AES key and IV, and key/chain the
+     * intermediate derivation state. The early data_len return above happens before any of them
+     * is populated, so wiping here covers every path that saw secret material. */
+    explicit_bzero(&aes_ctx, sizeof(AES256_CTX_T));
+    explicit_bzero(buf, sizeof(buf));
+    explicit_bzero(tmp, sizeof(tmp));
+    explicit_bzero(key, sizeof(key));
+    explicit_bzero(chain, sizeof(chain));
 
     return (0);
 }
@@ -243,6 +251,9 @@ static int ctr_drbg_update_internal(mbedtls_ctr_drbg_context *ctx,
     AES256_CTX_INIT(tmp, MBEDTLS_CTR_DRBG_KEYSIZE, &ctx->aes_ctx);
     memcpy(ctx->counter, tmp + MBEDTLS_CTR_DRBG_KEYSIZE, MBEDTLS_CTR_DRBG_BLOCKSIZE);
 
+    /* tmp is the new AES key and counter. */
+    explicit_bzero(tmp, sizeof(tmp));
+
     return (0);
 }
 
@@ -258,6 +269,7 @@ void mbedtls_ctr_drbg_update(mbedtls_ctr_drbg_context *ctx,
 
         block_cipher_df(add_input, additional, add_len);
         ctr_drbg_update_internal(ctx, add_input);
+        explicit_bzero(add_input, sizeof(add_input));
     }
 }
 
@@ -276,6 +288,7 @@ int mbedtls_ctr_drbg_reseed(mbedtls_ctr_drbg_context *ctx,
      * Gather entropy_len bytes of entropy to seed state
      */
     if (0 != ctx->f_entropy(ctx->p_entropy, seed, ctx->entropy_len)) {
+        explicit_bzero(seed, sizeof(seed));
         return (MBEDTLS_ERR_CTR_DRBG_ENTROPY_SOURCE_FAILED);
     }
 
@@ -302,6 +315,9 @@ int mbedtls_ctr_drbg_reseed(mbedtls_ctr_drbg_context *ctx,
     ctr_drbg_update_internal(ctx, seed);
 
     ctx->reseed_counter = 1;
+
+    /* seed held the gathered entropy and the additional input. */
+    explicit_bzero(seed, sizeof(seed));
 
     // PRINTF("drbg: %.*H\n", sizeof(mbedtls_ctr_drbg_context), ctx);
     return (0);
@@ -366,6 +382,11 @@ int mbedtls_ctr_drbg_random_with_add(void *p_rng,
     ctr_drbg_update_internal(ctx, add_input);
 
     ctx->reseed_counter++;
+
+    /* tmp held the last generated random block -- i.e. password bytes -- and add_input the
+     * derived additional input. */
+    explicit_bzero(tmp, sizeof(tmp));
+    explicit_bzero(add_input, sizeof(add_input));
 
     return (0);
 }
