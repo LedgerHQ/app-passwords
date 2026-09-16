@@ -19,6 +19,7 @@
 
 #define PASSWORD_GENERATION_H
 
+#include <stdbool.h>
 #include <stdint.h>
 #include "ctr_drbg.h"
 
@@ -37,10 +38,15 @@ typedef enum {
 
 #define NUM_SETS 8
 
-uint32_t generate_password(mbedtls_ctr_drbg_context *drbg,
-                           setmask_t setMask,
-                           const uint8_t *minFromSet,
-                           uint8_t *out,
-                           uint32_t size);
+/*
+ * Fills `out` with `size` characters plus a NUL terminator, so `out` must be at least
+ * `size + 1` bytes. Returns false without writing a terminator if generation failed, in which
+ * case the caller is responsible for wiping `out`.
+ */
+bool generate_password(mbedtls_ctr_drbg_context *drbg,
+                       setmask_t setMask,
+                       const uint8_t *minFromSet,
+                       uint8_t *out,
+                       uint32_t size);
 
 #endif

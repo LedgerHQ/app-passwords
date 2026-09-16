@@ -5,7 +5,11 @@
 #include <stdbool.h>
 
 #define MAX_METADATAS 4096
-#define MAX_METANAME  20
+// Cap on a record's *data block*, which is [charset byte][nickname] -- it is not the nickname
+// length. See METADATA_DATALEN in metadata.h.
+#define MAX_METANAME 20
+// The longest nickname that can actually be persisted: the data block minus its charset byte.
+#define MAX_NICKNAME_LEN (MAX_METANAME - 1)
 // Considering max metadata size (1+1+1+20) = 23, we can store at most 178 metadatas
 #define MAX_METADATA_COUNT (MAX_METADATAS / (1 + 1 + 1 + MAX_METANAME))
 
@@ -21,7 +25,22 @@ typedef struct internalStorage_t {
     size_t metadata_count;
     uint8_t metadatas[MAX_METADATAS];
     uint8_t charset_options;
+    /**
+     * Set while a LOAD_METADATAS transfer is writing into `metadatas`, cleared once the image
+     * has been validated. Found set at startup, it means a restore never completed and the
+     * database is a half-written mix of the old and the new image.
+     */
+    uint8_t restore_in_progress;
 } internalStorage_t;
+
+/* `restore_in_progress` has to stay inside the padding that already followed
+ * `charset_options`: the structure then keeps the size and the field offsets it had before,
+ * and an app update reads the user's data where it left it. That holds exactly when the
+ * structure ends one alignment unit past the offset of `charset_options`. */
+_Static_assert(sizeof(internalStorage_t) ==
+                   offsetof(internalStorage_t, charset_options) + _Alignof(internalStorage_t),
+               "the fields after metadatas no longer fit in the existing tail padding: this "
+               "moves persistent data and existing installs would read it at wrong offsets");
 
 typedef enum {
     GET_APP_CONFIG = 0x03,

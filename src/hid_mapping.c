@@ -174,16 +174,20 @@ static uint8_t get_alt_modifier(hid_mapping_t mapping, bool altUsed) {
     return (mapping == HID_MAPPING_AZERTY ? RIGHT_ALT_KEY : ALT_KEY);
 }
 
-void map_char(hid_mapping_t mapping, uint8_t key, uint8_t *out) {
+bool map_char(hid_mapping_t mapping, uint8_t key, uint8_t *out) {
     uint8_t keyDiv8, twoPower, keyCode;
     bool altUsed, shiftUsed;
 
+    /* Report an unmappable key instead of unwinding through an exception: the caller is in the
+     * middle of typing a password and has a plaintext buffer to wipe before it returns. */
     if (key < KEYCODE_START) {
-        THROW(EXCEPTION);
+        return false;
     }
     key -= KEYCODE_START;
-    if (key > MAPPING_LENGTH) {
-        THROW(EXCEPTION);
+    // MAPPING_LENGTH is a count, so the last valid index is MAPPING_LENGTH - 1. Accepting the
+    // count itself let byte 0x7f (DEL) read one entry past the end of the key-code table.
+    if (key >= MAPPING_LENGTH) {
+        return false;
     }
     keyDiv8 = (key / 8);
     twoPower = TWOPOWER[key % 8];
@@ -193,4 +197,5 @@ void map_char(hid_mapping_t mapping, uint8_t key, uint8_t *out) {
     out[0] = get_alt_modifier(mapping, altUsed) | (shiftUsed ? SHIFT_KEY : 0x00);
     out[1] = 0x00;
     out[2] = keyCode;
+    return true;
 }

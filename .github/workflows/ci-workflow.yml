@@ -27,13 +27,62 @@ jobs:
     name: Build application using the reusable workflow
     uses: LedgerHQ/ledger-app-workflows/.github/workflows/reusable_build.yml@v1
     with:
+      # `use_test` means TESTING=1, which compiles INS 0x99: it derives a password from the
+      # device seed and returns it over APDU with no confirmation. The functional tests need
+      # it -- it is the only way to assert the derivation from the host -- but the binary must
+      # never be mistaken for one you can install, hence the artifact name.
       flags: "use_test"
-      upload_app_binaries_artifact: apps
+      upload_app_binaries_artifact: test_app_binaries
+      artifact_retention_days: 1
 
   test:
     name: Run ragger tests using the reusable workflow
     uses: LedgerHQ/ledger-app-workflows/.github/workflows/reusable_ragger_tests.yml@v1
     needs: build
     with:
-      download_app_binaries_artifact: apps
+      download_app_binaries_artifact: test_app_binaries
       regenerate_snapshots: ${{ inputs.golden_run == 'Open a PR' }}
+      delete_input_artifacts_after_test: true
+
+  # guidelines_enforcer.yml already builds every device with no flags, so a production
+  # equivalent is covered. What is not covered is a regression putting `use_test` on a path
+  # that yields an installable artifact, so build one device the way a release would and
+  # refuse the test-only symbols.
+  build_no_flags:
+    name: Build one device without test flags
+    uses: LedgerHQ/ledger-app-workflows/.github/workflows/reusable_build.yml@v1
+    with:
+      run_for_devices: '["flex"]'
+      upload_app_binaries_artifact: release_build
+
+  check_no_test_apdu:
+    name: Check a release build carries no test APDU
+    runs-on: ubuntu-latest
+    needs: build_no_flags
+    timeout-minutes: 5
+    steps:
+      - name: Download the flag-less build
+        uses: actions/download-artifact@v7
+        with:
+          name: release_build
+          path: release_build
+      - name: Refuse the test-only password oracle
+        run: |
+          # The symbol names live in the ELF symbol table, so this needs no toolchain.
+          if grep -rlq 'test_generate_password' release_build/; then
+            echo "::error::A build with no flags contains the TESTING password oracle (INS 0x99)."
+            exit 1
+          fi
+          echo "No test-only symbol in the flag-less build."
+
+  delete_binary_artifacts:
+    name: Delete the build artifacts
+    needs:
+      - test
+      - check_no_test_apdu
+    if: always()
+    uses: LedgerHQ/ledger-app-workflows/.github/workflows/reusable_erase_artifact.yml@v1
+    with:
+      use_glob: true
+      artifact_name: |
+        release_build*

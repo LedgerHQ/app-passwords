@@ -19,12 +19,22 @@ import {
 } from "@ledgerhq/lumen-ui-react/symbols";
 import { listen } from "@ledgerhq/logs";
 import PasswordsManager, { SW_ACTION_CANCELLED } from "./controller/PasswordsManager.js";
+import { redactLogEvent } from "./logRedaction.js";
 import Faq from "./components/Faq.jsx";
 import logo from "./assets/logo-padlock.png";
 import packageJson from "../package.json";
 
 const passwords = new PasswordsManager();
-listen((log) => console.log(log));
+
+// Generous bound for a backup of a 4096-byte device store serialized as JSON.
+const MAX_BACKUP_FILE_SIZE = 64 * 1024;
+
+// Ledger transport logs carry raw APDU frames, which during backup/restore are the password
+// nicknames. Keep them out of production builds entirely, and redact them even in dev -- see
+// redactLogEvent() for where the bytes actually live.
+if (import.meta.env.DEV) {
+  listen((event) => console.debug(redactLogEvent(event)));
+}
 
 // Save the backup, preferring the native "Save As" dialog so the user can
 // choose the file name/location. showSaveFilePicker requires transient user
@@ -91,6 +101,9 @@ export default function App() {
       setConnected(false);
       setBusy(false);
       setVersion(null);
+      // A disconnect ends the approval the backup was read under, so the payload
+      // must not stay saveable by whoever uses the tab next.
+      setPendingBackup(null);
       setNotice({
         appearance: "warning",
         title: "Device disconnected",
@@ -113,6 +126,7 @@ export default function App() {
       await passwords.disconnect();
       setConnected(false);
       setVersion(null);
+      setPendingBackup(null);
       setNotice({ appearance: "error", title: "Connection failed", description: String(error) });
     } finally {
       setBusy(false);
@@ -123,6 +137,7 @@ export default function App() {
     await passwords.disconnect();
     setConnected(false);
     setVersion(null);
+    setPendingBackup(null);
     setNotice({ appearance: "info", title: "Disconnected" });
   }
 
@@ -169,6 +184,22 @@ export default function App() {
     const file = event.target.files[0];
     event.target.value = "";
     if (!file) return;
+    // A backup of the 4096-byte device store plus JSON overhead is far below this, so anything
+    // larger is not one. Checked before reading: FileReader would otherwise pull the whole file
+    // into memory and JSON.parse it before any bounded check could reject it.
+    if (file.size > MAX_BACKUP_FILE_SIZE) {
+      setNotice({
+        appearance: "error",
+        title: "Restore failed",
+        description: `Backup file is too large (${MAX_BACKUP_FILE_SIZE} bytes max).`,
+      });
+      return;
+    }
+    // Accepting a restore ends the session the pending backup was read under, the same way
+    // starting a new backup does. Without this it stays saveable during and after the restore --
+    // the banner's Save action is not gated on `busy` -- so a backup of the list the device no
+    // longer holds could still be written out later.
+    setPendingBackup(null);
     const reader = new FileReader();
     reader.onload = async () => {
       setBusy(true);
@@ -214,15 +245,21 @@ export default function App() {
               />
             )}
 
-            {/* Backup ready: the save dialog needs its own click. */}
-            {pendingBackup && (
+            {/* Backup ready: the save dialog needs its own click. Gated on the connection so
+                the payload is never offered for saving after the approval session ended. */}
+            {pendingBackup && connected && (
               <Banner
                 appearance="info"
                 title="Backup ready to save"
-                description="Choose where to store your backup file."
+                description="Choose where to store your backup file, or discard it."
                 primaryAction={
                   <Button appearance="accent" size="sm" icon={CloudDownload} onClick={onSaveBackup}>
                     Save…
+                  </Button>
+                }
+                secondaryAction={
+                  <Button appearance="gray" size="sm" onClick={() => setPendingBackup(null)}>
+                    Discard
                   </Button>
                 }
               />

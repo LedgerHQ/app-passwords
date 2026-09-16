@@ -1,5 +1,6 @@
 #pragma once
 
+#include <stdbool.h>
 #include <unistd.h>
 
 #include "hid_mapping.h"

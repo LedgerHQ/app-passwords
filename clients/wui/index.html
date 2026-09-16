@@ -8,9 +8,20 @@
     <meta name="description" content="Backup and restore your Ledger Passwords nicknames" />
     <link rel="apple-touch-icon" href="/logo192.png" />
     <link rel="manifest" href="/manifest.json" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <!-- Inter is bundled through src/index.css, not fetched from Google. Keep this page free of
+         third-party origins: everything it needs is served next to it.
+         'unsafe-inline' is required for styles and cannot be avoided here: base-ui renders
+         inline <style> elements (SelectPopup, ScrollArea, TabsIndicator, SliderThumb) and React
+         sets inline style attributes, and the nonce mechanism base-ui offers needs a per-response
+         value, which static hosting on GitHub Pages cannot produce. The origin restriction still
+         holds: no external stylesheet, script, font or connection can load.
+         frame-ancestors is absent on purpose, a meta CSP cannot carry it; it would need an HTTP
+         header, which GitHub Pages does not let us set. -->
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'"
+    />
+    <meta name="referrer" content="no-referrer" />
     <title>Passwords Backup</title>
   </head>
   <body>

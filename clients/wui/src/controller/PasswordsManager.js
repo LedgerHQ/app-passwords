@@ -4,6 +4,17 @@ import TransportWebUSB from "@ledgerhq/hw-transport-webusb";
 // Backup/Restore confirmation. Not a real failure, so the UI treats it apart.
 export const SW_ACTION_CANCELLED = 0x6985;
 
+// Mirrors MAX_METADATA_COUNT in src/types.h: MAX_METADATAS / (1 + 1 + 1 + MAX_METANAME).
+const MAX_METADATA_COUNT = 178;
+
+// Mirrors MAX_METANAME in src/types.h. An entry's length byte covers the charset byte plus the
+// nickname, so it never exceeds this.
+const MAX_METADATA_DATALEN = 20;
+
+// Mirrors MAX_METADATAS in src/types.h: the largest metadata store the protocol can describe.
+// The device reports its own size, but that value is untrusted, so it is bounded by this.
+const MAX_METADATA_STORAGE_SIZE = 4096;
+
 const insAPDU = Object.freeze({
   GET_APP_INFO_COMMAND: 0x01,
   GET_APP_CONFIG_COMMAND: 0x03,
@@ -33,6 +44,9 @@ class PasswordsManager {
       0x6a87,
       0x6d00,
       0x6e00,
+      // Returned when the device refuses to parse its own metadata store, on backup as well as
+      // on restore. Without it the transport throws before mapProtocolError() can name it.
+      0x6f10,
     ];
     this.connected = false;
     this.busy = false;
@@ -119,10 +133,30 @@ class PasswordsManager {
   }
 
   _charsetListToBitmask(charsets) {
+    if (!Array.isArray(charsets))
+      throw new Error("This backup has an entry whose charsets is not a list");
+
     let bitmask = 0x00;
     for (const charset of charsets) {
+      // "ALL_SETS" is not one of the named sets: it is the sentinel _bitmaskToCharsetList()
+      // emits for a full mask, so it has to be accepted for a backup to round-trip.
+      if (charset === "ALL_SETS") {
+        bitmask |= allPasswordsCharsets;
+        continue;
+      }
+      // An unknown name used to OR in `undefined`, which is a no-op, so a typo silently
+      // dropped a character set -- and a list of nothing but typos fell through to the
+      // ALL_SETS default below. The charset byte is an input to the derivation, so either way
+      // the device generates a different password than the backup describes.
+      // Object.hasOwn, not `in`: the latter also accepts inherited names like "constructor",
+      // whose value ORs in as 0.
+      if (!Object.hasOwn(passwordsCharsets, charset))
+        throw new Error(
+          `This backup has an unknown charset: ${JSON.stringify(charset)}`
+        );
       bitmask |= passwordsCharsets[charset];
     }
+    // An empty list means "no restriction", which is also how the device reads a zero byte.
     if (bitmask === 0x00) bitmask = allPasswordsCharsets;
     return bitmask;
   }
@@ -139,26 +173,61 @@ class PasswordsManager {
     return charsetList;
   }
 
+  /* The storage size comes from the device. getAppConfig() validates it before it is stored,
+   * but the allocation and loop bounds re-check it here so they can never be driven by a value
+   * that reached the instance some other way. */
+  _validatedStorageSize() {
+    const size = this.storage_size;
+    if (
+      !Number.isSafeInteger(size) ||
+      size <= 0 ||
+      size > MAX_METADATA_STORAGE_SIZE
+    )
+      throw new Error(`Unexpected metadata storage size: ${size}`);
+    return size;
+  }
+
   _toBytes(json_metadatas) {
-    let metadatas = Buffer.alloc(this.storage_size);
+    const storage_size = this._validatedStorageSize();
+    let metadatas = Buffer.alloc(storage_size);
     let parsed_metadatas = JSON.parse(json_metadatas)["parsed"];
     let offset = 0;
+    // The device list arrays are sized for MAX_METADATA_COUNT entries; reject a backup that
+    // would exceed that here too, rather than relying on the device to refuse it.
+    if (parsed_metadatas.length > MAX_METADATA_COUNT)
+      throw new Error(
+        `Too many entries in this backup (${MAX_METADATA_COUNT} max): ${parsed_metadatas.length}`
+      );
     parsed_metadatas.forEach((element) => {
-      let nickname = element["nickname"];
-      let charsets = this._charsetListToBitmask(element["charsets"]);
-      if (nickname.length > 19)
+      const nickname = element["nickname"];
+      const charsets = this._charsetListToBitmask(element["charsets"]);
+      if (typeof nickname !== "string" || nickname.length === 0)
+        throw new Error("This backup contains an entry with an empty nickname");
+      // The device keyboard can only produce printable ASCII, and the nickname is what the
+      // password is derived from. Anything else would be stored as bytes the device cannot
+      // display and cannot be retyped, so refuse it rather than write it.
+      if (!/^[\x20-\x7e]+$/.test(nickname))
         throw new Error(
-          `Nickname too long (19 max): ${nickname} has length ${nickname.length}`
+          `Nickname must be printable ASCII only: ${JSON.stringify(nickname)}`
         );
-      if (offset + 3 + nickname.length >= this.storage_size)
+      // The length byte and the offset are byte counts. String.length counts UTF-16 code
+      // units, so a non-ASCII nickname used to record fewer bytes than Buffer.write() emitted:
+      // the entry claimed the wrong length and the UTF-8 expansion overwrote the next record's
+      // header. The ASCII check above makes the two equal, and using byteLength keeps them so.
+      const nicknameBytes = Buffer.byteLength(nickname, "utf8");
+      if (nicknameBytes > MAX_METADATA_DATALEN - 1)
+        throw new Error(
+          `Nickname too long (${MAX_METADATA_DATALEN - 1} bytes max): ${nickname} is ${nicknameBytes} bytes`
+        );
+      if (offset + 3 + nicknameBytes >= storage_size)
         throw new Error(
           `Not enough memory on this device to restore this backup`
         );
-      metadatas[offset++] = nickname.length + 1;
+      metadatas[offset++] = nicknameBytes + 1;
       metadatas[offset++] = 0x00;
       metadatas[offset++] = charsets;
-      metadatas.write(nickname, offset);
-      offset += nickname.length;
+      metadatas.write(nickname, offset, nicknameBytes, "utf8");
+      offset += nicknameBytes;
     });
     // mark free space at the end of the buffer
     metadatas[offset++] = 0x00;
@@ -167,24 +236,48 @@ class PasswordsManager {
   }
 
   _toJSON(metadatas) {
-    let metadatas_list = [];
-    let erased_list = [];
+    const metadatas_list = [];
+    const erased_list = [];
+    // Kept for backup-file compatibility. Malformed data now aborts the parse instead of
+    // being recorded and walked past, so this stays empty.
+    const corruptions = [];
     let offset = 0;
-    let corruptions = [];
-    while (true) {
-      let len = metadatas[offset];
-      if (len === 0) break;
-      let erased = metadatas[offset + 1] === 0xff ? true : false;
-      let charsets = metadatas[offset + 2];
-      if (len > 19 + 1)
-        corruptions += [offset, `nickname too long ${len}, max is 19`];
-      let metadata = {
+    let terminated = false;
+
+    // The device response is untrusted: a corrupted dump, or a device that merely claims to be
+    // the Passwords app, must not be able to walk this loop past the end of the buffer. Reading
+    // past the end yields `undefined`, which turned `offset` into NaN and spun forever, hanging
+    // the tab.
+    while (offset < metadatas.length) {
+      const len = metadatas[offset];
+      if (len === 0) {
+        terminated = true;
+        break;
+      }
+      if (len > MAX_METADATA_DATALEN || offset + 2 + len > metadatas.length) {
+        throw new Error(
+          `Malformed metadata at offset ${offset}: entry length ${len}`
+        );
+      }
+      if (metadatas_list.length + erased_list.length >= MAX_METADATA_COUNT) {
+        throw new Error(
+          `Malformed metadata: more than ${MAX_METADATA_COUNT} entries`
+        );
+      }
+      const erased = metadatas[offset + 1] === 0xff;
+      const charsets = metadatas[offset + 2];
+      const metadata = {
         nickname: metadatas.slice(offset + 3, offset + 2 + len).toString(),
         charsets: this._bitmaskToCharsetList(charsets),
       };
-      erased ? erased_list.push(metadata) : metadatas_list.push(metadata);
+      (erased ? erased_list : metadatas_list).push(metadata);
       offset += len + 2;
     }
+
+    if (!terminated) {
+      throw new Error("Malformed metadata: missing terminator");
+    }
+
     return {
       parsed: metadatas_list,
       nicknames_erased_but_still_stored: erased_list,
@@ -256,9 +349,19 @@ class PasswordsManager {
       if (result.length !== 6)
         throw new Error(`Can't parse app config of length ${result.length}`);
 
-      let storage_size = result.readUInt32BE(0, 4);
-      let keyboard_type = result[4];
-      let press_enter_after_typing = result[5];
+      // The size is used as an allocation size and a loop bound, so it is validated before it
+      // leaves this method. A device that only claims to be the Passwords app could otherwise
+      // report 0xffffffff and have the page allocate 4 GiB.
+      const storage_size = result.readUInt32BE(0);
+      if (
+        !Number.isSafeInteger(storage_size) ||
+        storage_size <= 0 ||
+        storage_size > MAX_METADATA_STORAGE_SIZE
+      )
+        throw new Error(`Unexpected metadata storage size: ${storage_size}`);
+
+      const keyboard_type = result[4];
+      const press_enter_after_typing = result[5];
       return { storage_size, keyboard_type, press_enter_after_typing };
     } finally {
       this._unlock();
@@ -268,8 +371,9 @@ class PasswordsManager {
   async dump_metadatas() {
     this._lock();
     try {
+      const total = this._validatedStorageSize();
       let metadatas = Buffer.alloc(0);
-      while (metadatas.length < this.storage_size) {
+      while (metadatas.length < total) {
         let result = await this.transport.send(
           0xe0,
           insAPDU.DUMP_METADATAS_COMMAND,
@@ -279,13 +383,20 @@ class PasswordsManager {
           this.allowedStatuses
         );
         if (!this.isSuccess(result)) this.mapProtocolError(result);
-        metadatas = Buffer.concat([
-          metadatas,
-          Buffer.from(result.slice(1, -2)),
-        ]);
-        if (result[0] === 0xff && metadatas.length < this.storage_size) {
+        const chunk = Buffer.from(result.slice(1, -2));
+        // Every response has to make forward progress without overshooting the total: an empty
+        // chunk would keep this loop (and the tab) spinning forever, and the total is what
+        // bounds how much memory the dump can take. The chunk size itself is deliberately not
+        // capped here -- it is MAX_PAYLOAD_SIZE on the device, derived from the SDK's APDU
+        // buffer, so it varies by target and is not the client's business.
+        if (chunk.length === 0 || metadatas.length + chunk.length > total)
           throw new Error(
-            `${this.storage_size} bytes requested but only ${metadatas.length} bytes available`
+            `Invalid metadata dump chunk of ${chunk.length} bytes from the device`
+          );
+        metadatas = Buffer.concat([metadatas, chunk]);
+        if (result[0] === 0xff && metadatas.length < total) {
+          throw new Error(
+            `${total} bytes requested but only ${metadatas.length} bytes available`
           );
         }
       }

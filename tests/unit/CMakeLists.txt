@@ -45,6 +45,7 @@ add_compile_definitions(OS_IO_SEPH_BUFFER_SIZE=300)
 
 include_directories(
   ../../src
+  ../../src/apdu_handlers
   ../../include
   ./mocks/
 )
@@ -61,6 +62,16 @@ add_executable(test_password test_password.c)
 add_library(password SHARED ../../src/password.c ../../src/metadata.c)
 target_link_libraries(test_password PUBLIC cmocka gcov password bsd)
 
+add_executable(test_dump_metadatas test_dump_metadatas.c)
+add_library(dump_metadatas SHARED ../../src/apdu_handlers/dump_metadatas.c ../../src/metadata.c)
+target_link_libraries(test_dump_metadatas PUBLIC cmocka gcov dump_metadatas bsd)
+
+add_executable(test_options test_options.c)
+add_library(options SHARED ../../src/options.c)
+target_link_libraries(test_options PUBLIC cmocka gcov options bsd)
+
 add_test(password_list test_password_list)
 add_test(hid_mapping test_hid_mapping)
 add_test(password test_password)
+add_test(dump_metadatas test_dump_metadatas)
+add_test(options test_options)

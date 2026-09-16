@@ -59,6 +59,21 @@ def test_wrong_data_length(cmd: PasswordsManagerCommand):
 
 
 @pytest.mark.xfail(raises=WrongDataLengthError)
+def test_generate_password_with_empty_payload(cmd: PasswordsManagerCommand):
+    # The charset byte is mandatory. With Lc=0 the handler used to read a byte from outside the
+    # APDU data and underflow `input->size - 1` to SIZE_MAX, which became the hash input length.
+    response = cmd.transport.exchange(
+        cla=0xE0,
+        ins=0x99,  # RUN_TEST
+        p1=0x01,  # GENERATE_PASSWORD
+        p2=0x00,
+        data=b"",
+    )
+
+    raise DeviceException(error_code=response.status)
+
+
+@pytest.mark.xfail(raises=WrongDataLengthError)
 def test_load_metadatas_with_too_much_data(cmd: PasswordsManagerCommand, test_vector):
     # [0] to avoid huge test names filled with the data.
     # Instead, it is filled with the data index
