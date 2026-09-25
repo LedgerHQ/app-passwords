@@ -48,9 +48,8 @@ void app_main() {
     bool storage_freshly_initialized = init_storage();
     memset(&app_state, 0, sizeof(app_state));
 
-    // A restore that never reached its last chunk -- host unplugged mid-transfer, or the app
-    // was closed -- left the database half overwritten. Nothing can tell the old bytes from
-    // the new ones, so drop it instead of parsing it.
+    // A restore commit cut short by a power loss left the database half overwritten: drop it
+    // instead of parsing it.
     if (metadata_restore_in_progress()) {
         abort_metadata_restore();
     }

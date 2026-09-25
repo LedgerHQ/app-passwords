@@ -16,3 +16,5 @@
 int dump_metadatas();
 int get_app_config(uint8_t p1, uint8_t p2, const buf_t *input);
 int load_metadatas(uint8_t p1, uint8_t p2, const buf_t *input);
+// Drop a partially received restore image.
+void discard_metadata_restore(void);
