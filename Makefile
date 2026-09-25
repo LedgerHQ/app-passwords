@@ -29,7 +29,7 @@ APPNAME ="Passwords"
 # Application version
 APPVERSION_M=1
 APPVERSION_N=3
-APPVERSION_P=5
+APPVERSION_P=6
 APPVERSION=$(APPVERSION_M).$(APPVERSION_N).$(APPVERSION_P)
 
 # Application source files
