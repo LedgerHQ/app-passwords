@@ -4,20 +4,23 @@
 #include "globals.h"
 
 /*
- * Reads the record header at `offset`, checking that the whole record fits inside
- * `N_storage.metadatas` *before* any of its fields is dereferenced. Every parsing loop goes
- * through this so a crafted or truncated database cannot walk past the end of the array.
+ * Reads the record header at `offset` of the MAX_METADATAS-byte database `db`, checking that
+ * the whole record fits inside it *before* any of its fields is dereferenced. Every parsing
+ * loop goes through this so a crafted or truncated database cannot walk past its end.
  *
  * On success `*total_len` is the number of bytes the record occupies, or 0 for the
  * end-of-database terminator, and `*kind` is META_NONE or META_ERASED.
  */
-static error_type_t metadata_record_at(uint32_t offset, uint32_t *total_len, uint8_t *kind) {
+static error_type_t record_at(const volatile uint8_t *db,
+                              uint32_t offset,
+                              uint32_t *total_len,
+                              uint8_t *kind) {
     if (offset >= MAX_METADATAS) {
         // Ran off the end without meeting a terminator.
         return ERR_CORRUPTED_METADATA;
     }
 
-    const uint8_t datalen = N_storage.metadatas[offset];
+    const uint8_t datalen = db[offset];
     if (datalen == 0) {
         *total_len = 0;
         *kind = META_NONE;
@@ -33,13 +36,50 @@ static error_type_t metadata_record_at(uint32_t offset, uint32_t *total_len, uin
         return ERR_CORRUPTED_METADATA;
     }
 
-    const uint8_t record_kind = N_storage.metadatas[offset + 1];
+    const uint8_t record_kind = db[offset + 1];
     if ((record_kind != META_NONE) && (record_kind != META_ERASED)) {
         return ERR_CORRUPTED_METADATA;
     }
 
     *total_len = total;
     *kind = record_kind;
+    return OK;
+}
+
+static error_type_t metadata_record_at(uint32_t offset, uint32_t *total_len, uint8_t *kind) {
+    return record_at(N_storage.metadatas, offset, total_len, kind);
+}
+
+error_type_t validate_metadata_image(const uint8_t *image) {
+    uint32_t offset = 0;
+    size_t count = 0;
+    for (;;) {
+        uint32_t entry_len;
+        uint8_t kind;
+        const error_type_t err = record_at(image, offset, &entry_len, &kind);
+        if (err != OK) {
+            return err;
+        }
+        if (entry_len == 0) {
+            return OK;
+        }
+        // Same limit compact_metadata() enforces once the erased entries are dropped.
+        if ((kind != META_ERASED) && (++count > MAX_METADATA_COUNT)) {
+            return ERR_NO_MORE_SPACE_AVAILABLE;
+        }
+        offset += entry_len;
+    }
+}
+
+error_type_t commit_metadata_image(const uint8_t *image) {
+    begin_metadata_restore();
+    nvm_write((void *) N_storage.metadatas, (void *) image, sizeof(N_storage.metadatas));
+    const error_type_t err = compact_metadata();
+    if (err != OK) {
+        abort_metadata_restore();
+        return err;
+    }
+    end_metadata_restore();
     return OK;
 }
 
@@ -73,16 +113,6 @@ error_type_t write_metadata(uint8_t *data, uint8_t dataSize) {
     return OK;
 }
 
-error_type_t override_metadatas(size_t offset, void *ptr, size_t size) {
-    /* Re-check the destination here rather than trust the transfer offset the caller tracks:
-     * the first test also keeps the second one from wrapping around on a size_t. */
-    if ((offset > sizeof(N_storage.metadatas)) || (size > sizeof(N_storage.metadatas) - offset)) {
-        return ERR_NO_MORE_SPACE_AVAILABLE;
-    }
-    nvm_write((void *) &N_storage.metadatas[offset], ptr, size);
-    return OK;
-}
-
 void begin_metadata_restore(void) {
     const uint8_t marker = 1;
     nvm_write((void *) &N_storage.restore_in_progress, (void *) &marker, sizeof(marker));
@@ -101,12 +131,6 @@ void abort_metadata_restore(void) {
     // them apart, so drop the whole database rather than leave it to be parsed later.
     reset_metadatas();
     end_metadata_restore();
-}
-
-void clear_metadatas_from(size_t offset) {
-    if (offset < MAX_METADATAS) {
-        nvm_write((void *) &N_storage.metadatas[offset], NULL, MAX_METADATAS - offset);
-    }
 }
 
 void reset_metadatas(void) {

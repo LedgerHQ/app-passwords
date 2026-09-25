@@ -49,9 +49,7 @@ def test_load_metadatas_short_final_chunk_replaces_the_whole_database(
     cmd.reset_approval_state()
 
 
-def test_load_metadatas_interrupted_transfer_clears_database(cmd: PasswordsManagerCommand):
-    # A restore that never sends its last chunk used to leave the live database as a mix of
-    # the old and the new image, with metadata_count still describing the old one.
+def test_load_metadatas_interrupted_transfer_keeps_database(cmd: PasswordsManagerCommand):
     populated = EXISTING_METADATA + b"\x00" * (STORAGE_SIZE - len(EXISTING_METADATA))
     assert cmd.dump_metadatas(STORAGE_SIZE) == populated
     cmd.reset_approval_state()
@@ -61,17 +59,18 @@ def test_load_metadatas_interrupted_transfer_clears_database(cmd: PasswordsManag
     cmd.load_metadatas_chunk(b"\x02\x00\x07z" + b"\xaa" * 100, is_last=False)
     cmd.get_app_config()
 
-    # Neither the old entries nor the partially written new image may survive.
-    assert cmd.dump_metadatas(STORAGE_SIZE) == b"\x00" * STORAGE_SIZE
+    # The previous database is untouched.
+    assert cmd.dump_metadatas(STORAGE_SIZE) == populated
     cmd.reset_approval_state()
 
 
-def test_load_metadatas_malformed_image_clears_database(cmd: PasswordsManagerCommand):
+def test_load_metadatas_malformed_image_keeps_database(cmd: PasswordsManagerCommand):
+    populated = EXISTING_METADATA + b"\x00" * (STORAGE_SIZE - len(EXISTING_METADATA))
+
     # The parser refuses this image (a record claiming more payload than a nickname holds).
-    # The refused bytes must not be left in storage for a later flow to parse.
     malformed = bytes.fromhex("150007" + "61" * 21) + b"\x00" * (STORAGE_SIZE - 24)
     with pytest.raises(MetadatasParsingError):
         cmd.load_metadatas(malformed)
 
-    assert cmd.dump_metadatas(STORAGE_SIZE) == b"\x00" * STORAGE_SIZE
+    assert cmd.dump_metadatas(STORAGE_SIZE) == populated
     cmd.reset_approval_state()

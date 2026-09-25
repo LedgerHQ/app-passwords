@@ -23,7 +23,6 @@
 #include "dispatcher.h"
 #include "error.h"
 #include "globals.h"
-#include "metadata.h"
 #ifdef TESTING
 #include "tests.h"
 #endif
@@ -36,11 +35,9 @@ int dispatch() {
 
     uint8_t ins = G_io_apdu_buffer[OFFSET_INS];
     if (app_state.current_command != ins) {
-        // Another command interrupts a restore that already wrote into the live database:
-        // discard it rather than let the half-written image stand.
-        if ((app_state.current_command == LOAD_METADATAS) && metadata_restore_in_progress()) {
-            abort_metadata_restore();
-            app_state.bytes_transferred = 0;
+        // Another command interrupts a restore: drop the partially received image.
+        if (app_state.current_command == LOAD_METADATAS) {
+            discard_metadata_restore();
         }
         app_state.current_command = ins;
         app_state.user_approval = false;

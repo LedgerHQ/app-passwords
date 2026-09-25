@@ -26,9 +26,9 @@ typedef struct internalStorage_t {
     uint8_t metadatas[MAX_METADATAS];
     uint8_t charset_options;
     /**
-     * Set while a LOAD_METADATAS transfer is writing into `metadatas`, cleared once the image
-     * has been validated. Found set at startup, it means a restore never completed and the
-     * database is a half-written mix of the old and the new image.
+     * Set while a restored image is being committed into `metadatas`. Found set at startup, it
+     * means the commit never completed and the database is a half-written mix of the old and
+     * the new image.
      */
     uint8_t restore_in_progress;
 } internalStorage_t;
