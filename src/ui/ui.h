@@ -27,4 +27,5 @@ void display_create_pwd(void);
 void confirm_all_passwords_deletion(void);
 void confirm_password_deletion_cb(const size_t index);
 void show_password_cb(const size_t index);
+void clear_displayed_password(void);
 void type_password_cb(const size_t index);

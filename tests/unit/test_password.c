@@ -160,52 +160,54 @@ static void test_create_new_password_accepts_the_longest_storable_nickname(
     assert_memory_equal(&N_storage_real.metadatas[3], longest, MAX_NICKNAME_LEN);
 }
 
-static void test_override_metadatas_high_offset(void **state __attribute__((unused))) {
-    // Regression: override_metadatas() took the offset as a uint8_t, so offsets
-    // >= 256 were truncated mod 256. A restore is streamed in 255-byte chunks,
-    // so the second chunk onward landed at the wrong place and overwrote earlier
-    // data. Writing at offset 300 must land at 300, not at 300 % 256 == 44.
-    const uint8_t payload[] = {0xAA, 0xBB, 0xCC};
-    assert_int_equal(override_metadatas(300, (void *) payload, sizeof(payload)), OK);
+static void test_validate_metadata_image(void **state __attribute__((unused))) {
+    uint8_t image[MAX_METADATAS] = {0};
+    add_password("before");
+    const internalStorage_t before = N_storage_real;
 
-    assert_memory_equal(&N_storage_real.metadatas[300], payload, sizeof(payload));
-    // The location it would have hit when truncated must be untouched.
-    assert_int_equal(N_storage_real.metadatas[44], 0);
-    assert_int_equal(N_storage_real.metadatas[45], 0);
-    assert_int_equal(N_storage_real.metadatas[46], 0);
+    // Entries "a" (live) and "allah" (erased), then the terminator.
+    const uint8_t valid[] =
+        {0x02, META_NONE, 0x07, 'a', 0x06, META_ERASED, 0x07, 'a', 'l', 'l', 'a', 'h'};
+    memcpy(image, valid, sizeof(valid));
+    assert_int_equal(validate_metadata_image(image), OK);
+
+    // A record claiming more data than a nickname holds.
+    image[0] = MAX_METANAME + 1;
+    assert_int_equal(validate_metadata_image(image), ERR_METADATA_ENTRY_TOO_BIG);
+
+    // No terminator before the end of the image.
+    memset(image, 0xFF, sizeof(image));
+    assert_int_not_equal(validate_metadata_image(image), OK);
+
+    // More live entries than the password list can address.
+    memset(image, 0, sizeof(image));
+    for (size_t i = 0; i <= MAX_METADATA_COUNT; i++) {
+        image[3 * i] = 1;
+        image[3 * i + 2] = 0x07;
+    }
+    assert_int_equal(validate_metadata_image(image), ERR_NO_MORE_SPACE_AVAILABLE);
+
+    // Validation never writes to the live database.
+    assert_memory_equal(&N_storage_real, &before, sizeof(before));
 }
 
-static void test_override_metadatas_buffer_end(void **state __attribute__((unused))) {
-    // Writing the final bytes (offset + size == MAX_METADATAS) must be placed
-    // correctly and stay within the buffer.
-    const uint8_t payload[] = {0x11, 0x22, 0x33, 0x44};
-    const size_t offset = MAX_METADATAS - sizeof(payload);
-    assert_int_equal(override_metadatas(offset, (void *) payload, sizeof(payload)), OK);
+static void test_commit_metadata_image(void **state __attribute__((unused))) {
+    uint8_t image[MAX_METADATAS] = {0};
+    add_password("before");
 
-    assert_memory_equal(&N_storage_real.metadatas[offset], payload, sizeof(payload));
-}
+    const uint8_t erased_then_live[] =
+        {0x02, META_ERASED, 0x07, 'a', 0x06, META_NONE, 0x07, 'a', 'l', 'l', 'a', 'h'};
+    memcpy(image, erased_then_live, sizeof(erased_then_live));
+    assert_int_equal(commit_metadata_image(image), OK);
 
-static void test_override_metadatas_rejects_out_of_bounds(void **state __attribute__((unused))) {
-    // The write used to land wherever the caller's transfer offset pointed. It now validates
-    // the destination itself, so a bad offset cannot reach past the metadata array -- in
-    // particular it must not trust a length check that wrapped around on a size_t.
-    const uint8_t payload[] = {0x11, 0x22};
-
-    // Starts inside the array, but the last byte would fall past the end.
-    assert_int_equal(override_metadatas(MAX_METADATAS - 1, (void *) payload, sizeof(payload)),
-                     ERR_NO_MORE_SPACE_AVAILABLE);
-    // Starts exactly at the end.
-    assert_int_equal(override_metadatas(MAX_METADATAS, (void *) payload, sizeof(payload)),
-                     ERR_NO_MORE_SPACE_AVAILABLE);
-    // Starts past the end: this is the offset that makes the caller's
-    // `size > sizeof(metadatas) - offset` test wrap around and pass.
-    assert_int_equal(override_metadatas(MAX_METADATAS + 1, (void *) payload, sizeof(payload)),
-                     ERR_NO_MORE_SPACE_AVAILABLE);
-
-    // None of the refused writes touched the store.
-    for (size_t i = 0; i < sizeof(N_storage_real.metadatas); i++) {
+    // The previous database is gone, the erased entry compacted away.
+    const uint8_t expected[] = {0x06, META_NONE, 0x07, 'a', 'l', 'l', 'a', 'h', 0x00, 0x00};
+    assert_memory_equal(N_storage_real.metadatas, expected, sizeof(expected));
+    for (size_t i = sizeof(expected); i < MAX_METADATAS; i++) {
         assert_int_equal(N_storage_real.metadatas[i], 0);
     }
+    assert_int_equal(N_storage_real.metadata_count, 1);
+    assert_false(metadata_restore_in_progress());
 }
 
 static void test_write_metadata_enforces_capacity(void **state __attribute__((unused))) {
@@ -499,30 +501,6 @@ static void test_get_metadata_terminates_on_corrupt_storage(void **state __attri
     assert_int_equal(find_free_metadata(), MAX_METADATAS);
 }
 
-static void test_clear_metadatas_from(void **state __attribute__((unused))) {
-    // A restore that stops short must not leave the previous database reachable past the bytes
-    // it delivered, otherwise an image ending on a record boundary with no terminator runs into
-    // the old records and the parser accepts the mix.
-    memset(N_storage_real.metadatas, 0xAB, sizeof(N_storage_real.metadatas));
-
-    clear_metadatas_from(12);
-
-    for (size_t i = 0; i < 12; i++) {
-        assert_int_equal(N_storage_real.metadatas[i], 0xAB);
-    }
-    for (size_t i = 12; i < sizeof(N_storage_real.metadatas); i++) {
-        assert_int_equal(N_storage_real.metadatas[i], 0);
-    }
-
-    // At or past the end there is nothing to clear, and nothing may be written out of bounds.
-    memset(N_storage_real.metadatas, 0xAB, sizeof(N_storage_real.metadatas));
-    clear_metadatas_from(MAX_METADATAS);
-    clear_metadatas_from(MAX_METADATAS + 1);
-    for (size_t i = 0; i < sizeof(N_storage_real.metadatas); i++) {
-        assert_int_equal(N_storage_real.metadatas[i], 0xAB);
-    }
-}
-
 static void test_find_free_metadata_sentinel_is_unambiguous(void **state __attribute__((unused))) {
     // dump_metadatas() tells a corrupt store from a real length by comparing against
     // MAX_METADATAS, so a well-formed store must never answer that value. It cannot: a
@@ -565,9 +543,8 @@ int main(void) {
             test_create_new_password_accepts_the_longest_storable_nickname,
             setup,
             NULL),
-        cmocka_unit_test_setup_teardown(test_override_metadatas_high_offset, setup, NULL),
-        cmocka_unit_test_setup_teardown(test_override_metadatas_buffer_end, setup, NULL),
-        cmocka_unit_test_setup_teardown(test_override_metadatas_rejects_out_of_bounds, setup, NULL),
+        cmocka_unit_test_setup_teardown(test_validate_metadata_image, setup, NULL),
+        cmocka_unit_test_setup_teardown(test_commit_metadata_image, setup, NULL),
         cmocka_unit_test_setup_teardown(test_write_metadata_enforces_capacity, setup, NULL),
         cmocka_unit_test_setup_teardown(test_compact_metadata_erased_first_entry, setup, NULL),
         cmocka_unit_test_setup_teardown(test_compact_metadata_erased_middle_entry, setup, NULL),
@@ -594,7 +571,6 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_get_metadata_terminates_on_corrupt_storage,
                                         setup,
                                         NULL),
-        cmocka_unit_test_setup_teardown(test_clear_metadatas_from, setup, NULL),
         cmocka_unit_test_setup_teardown(test_find_free_metadata_sentinel_is_unambiguous,
                                         setup,
                                         NULL),

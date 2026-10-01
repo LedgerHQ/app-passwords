@@ -273,7 +273,7 @@ void display_password_list(void) {
  * @brief Wipe the plaintext password left in the display buffer
  *
  */
-static void clear_displayed_password(void) {
+void clear_displayed_password(void) {
     explicit_bzero(password_to_display, sizeof(password_to_display));
     ptrToPwd[1] = NULL;
 }

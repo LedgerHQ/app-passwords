@@ -533,6 +533,8 @@ static void startup_callback(bool confirm) {
  *
  */
 void ui_idle(void) {
+    // The host can replace the password page without going through its back callback.
+    clear_displayed_password();
     init_settings();
     // First start: the keyboard layout is not selected yet
     if (N_storage.keyboard_layout == HID_MAPPING_NONE) {
@@ -575,6 +577,7 @@ static void approval_choice(bool confirmed) {
  *
  */
 void ui_request_user_approval(message_pair_t *msg) {
+    clear_displayed_password();
     // using errorMessage to store the message to display
     snprintf(&errorMessage[0],
              sizeof(errorMessage),

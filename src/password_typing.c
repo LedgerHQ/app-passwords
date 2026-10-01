@@ -5,6 +5,7 @@
 
 #include "hid_mapping.h"
 
+#include "password_path.h"
 #include "password_typing.h"
 #include "globals.h"
 
@@ -124,9 +125,8 @@ bool type_password(uint8_t *data,
                    setmask_t setMask,
                    const uint8_t *minFromSet,
                    uint32_t size) {
-    uint32_t derive[9];
+    uint32_t derive[PASSWORD_PATH_LEN];
     uint8_t tmp[64];
-    uint32_t i;
     entropy_ctx_t entropy_ctx = {0};
     mbedtls_ctr_drbg_context ctx;
 
@@ -134,19 +134,10 @@ bool type_password(uint8_t *data,
         explicit_bzero(tmp, sizeof(tmp));
         return false;
     }
-    derive[0] = DERIVE_PASSWORD_PATH;
-    for (i = 0; i < 8; i++) {
-        /* The digest bytes are promoted to a signed int before shifting, so a byte with its
-         * high bit set shifted by 24 is not representable and the result is undefined. Cast to
-         * uint32_t first. The packed value is unchanged on the target toolchains, so derived
-         * passwords stay the same -- this removes the reliance on undefined behaviour, which
-         * an optimisation or compiler change could otherwise turn into different passwords. */
-        derive[i + 1] = 0x80000000u | ((uint32_t) tmp[4 * i] << 24) |
-                        ((uint32_t) tmp[4 * i + 1] << 16) | ((uint32_t) tmp[4 * i + 2] << 8) |
-                        ((uint32_t) tmp[4 * i + 3]);
-    }
+    password_path_from_digest(tmp, derive);
 
-    if (os_derive_bip32_no_throw(CX_CURVE_SECP256K1, derive, 9, tmp, tmp + 32) != CX_OK) {
+    if (os_derive_bip32_no_throw(CX_CURVE_SECP256K1, derive, PASSWORD_PATH_LEN, tmp, tmp + 32) !=
+        CX_OK) {
         explicit_bzero(derive, sizeof(derive));
         explicit_bzero(tmp, sizeof(tmp));
         return false;

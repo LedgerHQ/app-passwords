@@ -75,12 +75,13 @@ jobs:
     name: Deploy to GitHub Pages
     runs-on: ubuntu-latest
     needs: build
-    # Target is this repository's private preview Pages site (no custom domain). The public
-    # passwords.ledger.com site is deployed from the public app-passwords repository.
-    # Build on PRs and on master for validation, but only deploy from develop:
-    # the github-pages environment protection rules only allow that branch, so a
-    # push to master (e.g. a merge) would otherwise fail the deployment.
-    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/develop'
+    # The public repository serves passwords.ledger.com and deploys from master only; this
+    # private mirror deploys its preview site from develop. Each repository's github-pages
+    # environment must allow exactly that branch.
+    if: >-
+      github.event_name != 'pull_request' &&
+      github.ref == (github.repository == 'LedgerHQ/app-passwords'
+                     && 'refs/heads/master' || 'refs/heads/develop')
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
