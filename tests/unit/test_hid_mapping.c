@@ -109,6 +109,87 @@ static void test_map_char_azerty_alt(void **state __attribute__((unused))) {
     check_map(map, RIGHT_ALT_KEY, 0x1f);
 }
 
+static void test_map_char_qwertz_regular(void **state __attribute__((unused))) {
+    uint8_t map[3] = {0, 0, 0};
+    map_char(HID_MAPPING_QWERTZ, 'y', map);
+    check_map(map, 0, 0x1d);
+    map_char(HID_MAPPING_QWERTZ, 'z', map);
+    check_map(map, 0, 0x1c);
+    map_char(HID_MAPPING_QWERTZ, 'a', map);
+    check_map(map, 0, 0x4);
+    map_char(HID_MAPPING_QWERTZ, '-', map);
+    check_map(map, 0, 0x38);
+    map_char(HID_MAPPING_QWERTZ, '+', map);
+    check_map(map, 0, 0x30);
+    map_char(HID_MAPPING_QWERTZ, '#', map);
+    check_map(map, 0, 0x32);
+    map_char(HID_MAPPING_QWERTZ, '<', map);
+    check_map(map, 0, 0x64);
+    map_char(HID_MAPPING_QWERTZ, '^', map);
+    check_map(map, 0, 0x35);
+}
+
+static void test_map_char_qwertz_shift(void **state __attribute__((unused))) {
+    uint8_t map[3] = {0, 0, 0};
+    map_char(HID_MAPPING_QWERTZ, 'Y', map);
+    check_map(map, SHIFT_KEY, 0x1d);
+    map_char(HID_MAPPING_QWERTZ, 'Z', map);
+    check_map(map, SHIFT_KEY, 0x1c);
+    map_char(HID_MAPPING_QWERTZ, '"', map);
+    check_map(map, SHIFT_KEY, 0x1f);
+    map_char(HID_MAPPING_QWERTZ, '/', map);
+    check_map(map, SHIFT_KEY, 0x24);
+    map_char(HID_MAPPING_QWERTZ, '=', map);
+    check_map(map, SHIFT_KEY, 0x27);
+    map_char(HID_MAPPING_QWERTZ, '?', map);
+    check_map(map, SHIFT_KEY, 0x2d);
+    map_char(HID_MAPPING_QWERTZ, '_', map);
+    check_map(map, SHIFT_KEY, 0x38);
+    map_char(HID_MAPPING_QWERTZ, '\'', map);
+    check_map(map, SHIFT_KEY, 0x32);
+    map_char(HID_MAPPING_QWERTZ, '`', map);
+    check_map(map, SHIFT_KEY, 0x2e);
+    map_char(HID_MAPPING_QWERTZ, '>', map);
+    check_map(map, SHIFT_KEY, 0x64);
+}
+
+static void test_map_char_qwertz_alt(void **state __attribute__((unused))) {
+    uint8_t map[3] = {0, 0, 0};
+    map_char(HID_MAPPING_QWERTZ, '@', map);
+    check_map(map, RIGHT_ALT_KEY, 0x14);
+    map_char(HID_MAPPING_QWERTZ, '{', map);
+    check_map(map, RIGHT_ALT_KEY, 0x24);
+    map_char(HID_MAPPING_QWERTZ, '[', map);
+    check_map(map, RIGHT_ALT_KEY, 0x25);
+    map_char(HID_MAPPING_QWERTZ, ']', map);
+    check_map(map, RIGHT_ALT_KEY, 0x26);
+    map_char(HID_MAPPING_QWERTZ, '}', map);
+    check_map(map, RIGHT_ALT_KEY, 0x27);
+    map_char(HID_MAPPING_QWERTZ, '\\', map);
+    check_map(map, RIGHT_ALT_KEY, 0x2d);
+    map_char(HID_MAPPING_QWERTZ, '~', map);
+    check_map(map, RIGHT_ALT_KEY, 0x30);
+    map_char(HID_MAPPING_QWERTZ, '|', map);
+    check_map(map, RIGHT_ALT_KEY, 0x64);
+}
+
+static void test_is_dead_key(void **state __attribute__((unused))) {
+    assert_true(is_dead_key(HID_MAPPING_QWERTY_INTL, '"'));
+    assert_true(is_dead_key(HID_MAPPING_QWERTY_INTL, '\''));
+    assert_true(is_dead_key(HID_MAPPING_QWERTY_INTL, '`'));
+    assert_true(is_dead_key(HID_MAPPING_QWERTY_INTL, '~'));
+    assert_true(is_dead_key(HID_MAPPING_QWERTY_INTL, '^'));
+    assert_false(is_dead_key(HID_MAPPING_QWERTY_INTL, 'a'));
+
+    assert_true(is_dead_key(HID_MAPPING_QWERTZ, '^'));
+    assert_true(is_dead_key(HID_MAPPING_QWERTZ, '`'));
+    assert_false(is_dead_key(HID_MAPPING_QWERTZ, '~'));
+    assert_false(is_dead_key(HID_MAPPING_QWERTZ, '"'));
+
+    assert_false(is_dead_key(HID_MAPPING_QWERTY, '^'));
+    assert_false(is_dead_key(HID_MAPPING_AZERTY, '^'));
+}
+
 static void test_map_char_reports_unmappable(void **state __attribute__((unused))) {
     // map_char() used to raise an exception for keys outside the mapped range, which unwound
     // past the caller's plaintext buffer. It now reports the failure instead.
@@ -137,6 +218,10 @@ int main() {
         cmocka_unit_test_setup_teardown(test_map_char_azerty_regular, NULL, NULL),
         cmocka_unit_test_setup_teardown(test_map_char_azerty_shift, NULL, NULL),
         cmocka_unit_test_setup_teardown(test_map_char_azerty_alt, NULL, NULL),
+        cmocka_unit_test_setup_teardown(test_map_char_qwertz_regular, NULL, NULL),
+        cmocka_unit_test_setup_teardown(test_map_char_qwertz_shift, NULL, NULL),
+        cmocka_unit_test_setup_teardown(test_map_char_qwertz_alt, NULL, NULL),
+        cmocka_unit_test_setup_teardown(test_is_dead_key, NULL, NULL),
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }

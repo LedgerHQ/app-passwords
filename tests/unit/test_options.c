@@ -32,6 +32,9 @@ static void test_set_keyboard_layout_stores_value(void **state __attribute__((un
 
     assert_false(set_keyboard_layout(HID_MAPPING_QWERTY_INTL));
     assert_int_equal(N_storage_real.keyboard_layout, HID_MAPPING_QWERTY_INTL);
+
+    assert_false(set_keyboard_layout(HID_MAPPING_QWERTZ));
+    assert_int_equal(N_storage_real.keyboard_layout, HID_MAPPING_QWERTZ);
 }
 
 static void test_set_keyboard_layout_keeps_metadata_count(void **state __attribute__((unused))) {

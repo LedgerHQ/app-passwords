@@ -30,9 +30,14 @@ enum hid_mapping_e {
     HID_MAPPING_QWERTY = 1,
     HID_MAPPING_QWERTY_INTL = 2,
     HID_MAPPING_AZERTY = 3,
+    HID_MAPPING_QWERTZ = 4,
 };
 typedef enum hid_mapping_e hid_mapping_t;
 
 /* Fills `out` with the 3-byte HID report for `key`. Returns false, leaving `out` untouched, if
  * the key is outside the mapped printable-ASCII range. */
 bool map_char(hid_mapping_t mapping, uint8_t key, uint8_t *out);
+
+/* True if `key` is a dead key on `mapping`: the host waits for a following key before
+ * producing it, so a space must be typed after it. */
+bool is_dead_key(hid_mapping_t mapping, uint8_t key);

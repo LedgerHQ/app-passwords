@@ -44,6 +44,7 @@ bool set_keyboard_layout(hid_mapping_t mapping) {
         case HID_MAPPING_QWERTY:
         case HID_MAPPING_QWERTY_INTL:
         case HID_MAPPING_AZERTY:
+        case HID_MAPPING_QWERTZ:
             break;
         default:
             // Never persist a layout map_char() cannot resolve.

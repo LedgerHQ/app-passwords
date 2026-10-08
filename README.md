@@ -27,7 +27,7 @@ on the device is a password you cannot get back.
 
 In the application settings, the user can configure
 
-- Which keyboard the device should emulate when typing a password (Qwerty, International Qwerty or Azerty).
+- Which keyboard the device should emulate when typing a password (Qwerty, International Qwerty, Azerty or German Qwertz).
 - If the `Enter` key should be pressed automatically after typing a password
   (this is convenient for typing start-up password at encrypted servers without attaching display and keyboard, for instance).
 

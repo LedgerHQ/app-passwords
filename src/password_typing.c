@@ -87,19 +87,10 @@ static bool type_password_over_hid(const uint8_t *password, uint32_t size) {
             usb_write_wait((uint8_t *) EMPTY_REPORT);
         }
 
-        // for international keyboard, make sure to insert space after special symbols
-        if (N_storage.keyboard_layout == HID_MAPPING_QWERTY_INTL) {
-            switch (password[i]) {
-                case '\"':
-                case '\'':
-                case '`':
-                case '~':
-                case '^':
-                    // insert a extra space to validate the symbol
-                    usb_write_wait((uint8_t *) SPACE_REPORT);
-                    usb_write_wait((uint8_t *) EMPTY_REPORT);
-                    break;
-            }
+        // Type a space after a dead key so the host emits the symbol itself.
+        if (is_dead_key(N_storage.keyboard_layout, password[i])) {
+            usb_write_wait((uint8_t *) SPACE_REPORT);
+            usb_write_wait((uint8_t *) EMPTY_REPORT);
         }
     }
     usb_write_wait((uint8_t *) EMPTY_REPORT);

@@ -85,6 +85,7 @@ enum {
     KBD_QWERTY_ID = 0,
     KBD_QWERTY_INTL_ID,
     KBD_AZERTY_ID,
+    KBD_QWERTZ_ID,
     KBD_OPTIONS_NB,
 };
 
@@ -104,7 +105,7 @@ static void display_home_page(void);
 static nbgl_contentSwitch_t switches[SETTINGS_SWITCHES_NB] = {0};
 
 // Settings keyboard layouts
-static const char *const availableKbd[KBD_OPTIONS_NB] = {"QWERTY", "QWERTY INT.", "AZERTY"};
+static const char *const availableKbd[KBD_OPTIONS_NB] = {"QWERTY", "QWERTY INT.", "AZERTY", "QWERTZ (DE)"};
 bool kbdMappingInit = false;
 
 // App info
@@ -248,6 +249,9 @@ static void controls_callback(int token, uint8_t index, int page) {
                     break;
                 case KBD_AZERTY_ID:
                     set_keyboard_layout(HID_MAPPING_AZERTY);
+                    break;
+                case KBD_QWERTZ_ID:
+                    set_keyboard_layout(HID_MAPPING_QWERTZ);
                     break;
                 default:
                     break;
