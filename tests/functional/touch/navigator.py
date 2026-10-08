@@ -4,12 +4,17 @@
 # pylint: disable=no-member
 from enum import auto
 from functools import partial
-from time import sleep
+from pathlib import Path
+from tempfile import TemporaryDirectory
+from time import sleep, time
 
 from ragger.navigator import BaseNavInsID, NavInsID
 from ragger.navigator.navigator import Navigator
 
 from .screen import CustomTouchScreen
+
+# Timeout while waiting for a chosen entry to open its page.
+SCREEN_SETTLE_TIMEOUT = 10.0
 
 
 class CustomNavInsID(BaseNavInsID):
@@ -78,8 +83,30 @@ class CustomTouchNavigator(Navigator):
         super().__init__(backend, device, callbacks, golden_run)
 
     def _choose(self, position: int):
-        # Choosing a field in settings list will display a temporary screen where the chosen field
-        # is highlighted, then will go the result page. The sleep helps **not** catching this
-        # intermediate screen
+        # Choosing an entry redraws the list with that entry checked, then the next page, which
+        # can take a while to come (password derivation). The checked list shows the same text as
+        # before the tap, so wait for the text to change, then for the screen to settle. The
+        # ticker is paused during navigation, so each poll sends a tick to let the app run.
+        texts_before = self._screen_texts()
         self.screen.list_choice.choose(position)
-        sleep(0.2)
+        deadline = time() + SCREEN_SETTLE_TIMEOUT
+        while self._screen_texts() == texts_before:
+            if time() > deadline:
+                # The navigator then reports the missing screen change.
+                return
+            self._backend.send_tick()
+        self._wait_for_stable_screen(deadline)
+
+    def _screen_texts(self) -> list:
+        return [event["text"] for event in self._backend.get_current_screen_content()["events"]]
+
+    def _wait_for_stable_screen(self, deadline: float):
+        """Wait until the screen is unchanged across one tick."""
+        with TemporaryDirectory() as tmp_dir:
+            current = Path(tmp_dir) / "current.png"
+            self._backend.compare_screen_with_snapshot(current, golden_run=True)
+            while time() <= deadline:
+                self._backend.send_tick()
+                if self._backend.compare_screen_with_snapshot(current):
+                    return
+                self._backend.compare_screen_with_snapshot(current, golden_run=True)
