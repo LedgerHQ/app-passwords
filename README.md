@@ -71,7 +71,8 @@ so you don't have to hide your backup like you did with your recovery phrase. Se
   - version 0: at least one uppercase letter, lowercase letter, digit and space, for each of those
     sets that is enabled
   - version 1 (app 1.4.0 and later): at least one uppercase letter, lowercase letter and digit, one
-    separator (`-`, `_` or space) and one special character, for each of those groups that is enabled
+    separator (`-`, `_` or space) and one special character, for each of those groups that is enabled;
+    each character is drawn uniformly (the version 0 draw slightly favours some characters)
 
 ## Troubleshooting
 

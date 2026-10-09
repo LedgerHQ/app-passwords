@@ -19,13 +19,6 @@ GROUP_CHARS = {
 SEEDS = [f"seed{i:03d}" for i in range(40)]
 
 
-@pytest.mark.parametrize("charsets", [0x01, 0x03, 0x07])
-def test_v1_matches_v0_without_separators_or_specials(cmd: PasswordsManagerCommand, charsets: int):
-    # Version 1 only adds minimums for separators and special characters.
-    for seed in SEEDS:
-        assert cmd.generate_password(charsets, seed, version=1) == cmd.generate_password(charsets, seed)
-
-
 @pytest.mark.parametrize("charsets", [0x0F, 0x3F, 0x47, 0x7F, 0xC7, 0xFF])
 def test_v1_draws_from_every_enabled_group(cmd: PasswordsManagerCommand, charsets: int):
     for seed in SEEDS:

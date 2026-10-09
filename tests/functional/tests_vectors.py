@@ -14,9 +14,10 @@ tests_vectors = {
         [0xFF, "aseedoflengthequal20", "29!uO;UPx UT8Hkmi- 5"],
         [0xFF, "aSeedOfLengthEqual20", " $4,P.usI*C\\k1fv2;M;"],
     ],
-    # Generation version 1: separators and special characters each have a minimum of one.
+    # Generation version 1: separators and special characters each have a minimum of one, and the
+    # character draw is uniform.
     "test_generate_password_v1": [
-        [0x0F, "gmail", "w-4JrbA9HNvWU1ON5MGP"],
+        [0x0F, "gmail", "-5r4GUPb19HMNwvNJW8O"],
         [0x3F, "gmail", "kD83CP1UZO vQvJIuNx4"],
         [0x7F, "gmail", "?u8htP1|DO v7vJ*YNb4"],
         [0xC7, "gmail", "Oc4Pv]v1^dJ<2Wo;8NpT"],

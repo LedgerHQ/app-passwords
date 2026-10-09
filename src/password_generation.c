@@ -29,24 +29,13 @@ static const char *SETS[] = {"ABCDEFGHIJKLMNOPQRSTUVWXYZ",  // 26
                              "[]{}()<>",                  // 8
                              NULL};
 
-/* Draws a value below `modulo` by rejection sampling. Returns false if no value could be drawn,
- * so callers can unwind and wipe their buffers instead of unwinding through an exception.
- *
- * The draw is NOT uniform, deliberately. The rejection boundary is off by one: `candidate ==
- * rng_limit` is accepted, so residue 0 keeps one preimage more than the others -- 3 against 2
- * for the 95-character alphabet, a factor of 1.5. Moduli that divide 256 are unaffected, their
- * rng_limit being unreachable for a uint8_t.
- *
- * Rejecting `>= rng_limit` would fix it, and must not be done here: the draw would consume a
- * different DRBG byte, shifting every later character, and about one password in seven would
- * come out different. They are derived deterministically and stored nowhere, so users would
- * lose access to those accounts. The bias costs 0.035 bits out of 131 over a 20-character
- * password, which is the cheaper end of that trade. Accepted as a known risk in V-003;
- * revisiting it needs a per-entry version byte in the metadata format, so that old entries
- * keep this boundary and new ones get the correct one.
- *
- * The vectors in tests/functional/tests_vectors.py pin the current output. */
-static bool rng_u8_modulo(mbedtls_ctr_drbg_context *drbg, uint8_t modulo, uint8_t *out) {
+/* Draws a value below `modulo` by rejection sampling. Returns false if no value could be drawn.
+ * With `uniform` false (generation version 0), `candidate == rng_limit` is accepted, which favours
+ * residue 0; that boundary is kept so version 0 passwords do not change. */
+static bool rng_u8_modulo(mbedtls_ctr_drbg_context *drbg,
+                          uint8_t modulo,
+                          bool uniform,
+                          uint8_t *out) {
     if (modulo == 0) {
         return false;
     }
@@ -57,13 +46,16 @@ static bool rng_u8_modulo(mbedtls_ctr_drbg_context *drbg, uint8_t modulo, uint8_
         if (mbedtls_ctr_drbg_random(drbg, &candidate, 1) != 0) {
             return false;
         }
-    } while (candidate > rng_limit);
+    } while (uniform ? (candidate >= rng_limit) : (candidate > rng_limit));
     // PRINTF("r:%02X ", candidate);
     *out = candidate % modulo;
     return true;
 }
 
-static bool shuffle_array(mbedtls_ctr_drbg_context *drbg, uint8_t *buffer, uint32_t size) {
+static bool shuffle_array(mbedtls_ctr_drbg_context *drbg,
+                          uint8_t *buffer,
+                          uint32_t size,
+                          bool uniform) {
     uint32_t i;
     // Nothing to shuffle for an empty array, and guard against the unsigned
     // underflow of `size - 1` (which would index buffer way out of bounds).
@@ -72,7 +64,7 @@ static bool shuffle_array(mbedtls_ctr_drbg_context *drbg, uint8_t *buffer, uint3
     }
     for (i = size - 1; i > 0; i--) {
         uint8_t index;
-        if (!rng_u8_modulo(drbg, i + 1, &index)) {
+        if (!rng_u8_modulo(drbg, i + 1, uniform, &index)) {
             return false;
         }
         uint8_t tmp = buffer[i];
@@ -86,12 +78,13 @@ static bool shuffle_array(mbedtls_ctr_drbg_context *drbg, uint8_t *buffer, uint3
 static bool sample(mbedtls_ctr_drbg_context *drbg,
                    const uint8_t *set,
                    uint32_t setSize,
+                   bool uniform,
                    uint8_t *out,
                    uint32_t size) {
     uint32_t i;
     for (i = 0; i < size; i++) {
         uint8_t index;
-        if (!rng_u8_modulo(drbg, setSize, &index)) {
+        if (!rng_u8_modulo(drbg, setSize, uniform, &index)) {
             return false;
         }
         out[i] = set[index];
@@ -117,7 +110,7 @@ static const set_group_t GROUPS_V0[] = {
     {BRACKETS, 0},
 };
 
-/* Version 1: separators and special characters each form one group. */
+/* Version 1: separators and special characters each form one group, and the draw is uniform. */
 static const set_group_t GROUPS_V1[] = {
     {UPPERCASE, 1},
     {LOWERCASE, 1},
@@ -154,6 +147,7 @@ bool generate_password(mbedtls_ctr_drbg_context *drbg,
                        uint32_t size) {
     const set_group_t *groups;
     uint32_t nbGroups;
+    bool uniform;
     uint8_t setChars[100];
     uint32_t outOffset = 0;
 
@@ -161,10 +155,12 @@ bool generate_password(mbedtls_ctr_drbg_context *drbg,
         case META_VERSION_0:
             groups = (const set_group_t *) PIC(GROUPS_V0);
             nbGroups = ARRAYLEN(GROUPS_V0);
+            uniform = false;
             break;
         case META_VERSION_1:
             groups = (const set_group_t *) PIC(GROUPS_V1);
             nbGroups = ARRAYLEN(GROUPS_V1);
+            uniform = true;
             break;
         default:
             return false;
@@ -181,7 +177,7 @@ bool generate_password(mbedtls_ctr_drbg_context *drbg,
         if ((groupSize == 0) || (outOffset + min > size)) {
             return false;
         }
-        if (!sample(drbg, setChars, groupSize, out + outOffset, min)) {
+        if (!sample(drbg, setChars, groupSize, uniform, out + outOffset, min)) {
             return false;
         }
         outOffset += min;
@@ -195,11 +191,11 @@ bool generate_password(mbedtls_ctr_drbg_context *drbg,
 
     // PRINTF("chars from: %.*H\n", setCharsOffset, setChars);
 
-    if (!sample(drbg, setChars, setCharsOffset, out + outOffset, size - outOffset)) {
+    if (!sample(drbg, setChars, setCharsOffset, uniform, out + outOffset, size - outOffset)) {
         return false;
     }
     // PRINTF("selected: %.*H\n", size, out);
-    if (!shuffle_array(drbg, out, size)) {
+    if (!shuffle_array(drbg, out, size, uniform)) {
         return false;
     }
     out[size] = '\0';

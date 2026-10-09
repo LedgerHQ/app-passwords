@@ -19,6 +19,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fix
 
+- New passwords draw each character uniformly (generation version 1). Existing passwords keep the
+  previous draw, which slightly favours some characters.
 - Touch functional tests: choosing an entry waits for the next page instead of a fixed delay.
 
 ## [1.3.6] - 2026-09-25
