@@ -59,6 +59,18 @@ static error_type_t metadata_record_at(uint32_t offset, uint32_t *total_len, uin
     return record_at(N_storage.metadatas, offset, total_len, kind);
 }
 
+/* A live record's nickname is the password derivation input and must be retypable on the device:
+ * at least one byte, printable ASCII only. */
+static bool nickname_is_valid(const uint8_t *image, uint32_t offset, uint8_t kind) {
+    const uint32_t params_len = (kind == META_VERSION_0) ? 1 : 2;
+    const uint32_t datalen = image[offset];
+    if (datalen <= params_len) {
+        return false;
+    }
+    return is_printable_string((const char *) &image[offset + 2 + params_len],
+                               datalen - params_len);
+}
+
 error_type_t validate_metadata_image(const uint8_t *image) {
     uint32_t offset = 0;
     size_t count = 0;
@@ -72,9 +84,14 @@ error_type_t validate_metadata_image(const uint8_t *image) {
         if (entry_len == 0) {
             return OK;
         }
-        // Same limit compact_metadata() enforces once the erased entries are dropped.
-        if ((kind != META_ERASED) && (++count > MAX_METADATA_COUNT)) {
-            return ERR_NO_MORE_SPACE_AVAILABLE;
+        if (kind != META_ERASED) {
+            if (!nickname_is_valid(image, offset, kind)) {
+                return ERR_CORRUPTED_METADATA;
+            }
+            // Same limit compact_metadata() enforces once the erased entries are dropped.
+            if (++count > MAX_METADATA_COUNT) {
+                return ERR_NO_MORE_SPACE_AVAILABLE;
+            }
         }
         offset += entry_len;
     }

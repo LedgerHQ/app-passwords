@@ -23,6 +23,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - New passwords draw each character uniformly (generation version 1). Existing passwords keep the
   previous draw, which slightly favours some characters.
+- Restoring a password list refuses nicknames that are empty or not printable ASCII: such a
+  nickname could not be retyped on the device to get the same password back.
 - Touch functional tests: choosing an entry waits for the next page instead of a fixed delay.
 
 ## [1.3.6] - 2026-09-25

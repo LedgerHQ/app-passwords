@@ -74,3 +74,22 @@ def test_load_metadatas_malformed_image_keeps_database(cmd: PasswordsManagerComm
 
     assert cmd.dump_metadatas(STORAGE_SIZE) == populated
     cmd.reset_approval_state()
+
+
+@pytest.mark.parametrize(
+    "entry",
+    [
+        bytes.fromhex("060007") + b"foo\x00x",  # hidden byte after the displayed "foo"
+        bytes.fromhex("010007"),  # empty nickname
+        bytes.fromhex("03000761") + b"\x07",  # control character
+        bytes.fromhex("0401071461") + b"\xc3",  # non-ASCII byte, current version layout
+    ],
+)
+def test_load_metadatas_invalid_nickname_keeps_database(cmd: PasswordsManagerCommand, entry: bytes):
+    populated = EXISTING_METADATA + b"\x00" * (STORAGE_SIZE - len(EXISTING_METADATA))
+
+    with pytest.raises(MetadatasParsingError):
+        cmd.load_metadatas(entry + b"\x00\x00")
+
+    assert cmd.dump_metadatas(STORAGE_SIZE) == populated
+    cmd.reset_approval_state()

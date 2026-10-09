@@ -39,7 +39,8 @@ error_type_t write_metadata(uint8_t *data, uint8_t dataSize, uint8_t version);
 void reset_metadatas(void);
 
 /*
- * Check a complete MAX_METADATAS-byte database image held in RAM, without touching NVM.
+ * Check a complete MAX_METADATAS-byte database image held in RAM, without touching NVM: record
+ * structure, entry count, and live nicknames (non-empty, printable ASCII).
  */
 error_type_t validate_metadata_image(const uint8_t *image);
 

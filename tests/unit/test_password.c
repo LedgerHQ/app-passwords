@@ -256,6 +256,52 @@ static void test_compaction_keeps_the_entry_version(void **state __attribute__((
     assert_int_equal(N_storage_real.metadatas[3], stub_password_length);
 }
 
+static void test_validate_metadata_image_nicknames(void **state __attribute__((unused))) {
+    uint8_t image[MAX_METADATAS] = {0};
+    add_password("before");
+    const internalStorage_t before = N_storage_real;
+
+    // Printable nicknames of 1 to MAX_NICKNAME_LEN bytes, in both layouts.
+    const uint8_t valid[] = {0x02, META_VERSION_0, 0x07, ' ', 0x03, META_VERSION_1, 0x07, 20, '~'};
+    memcpy(image, valid, sizeof(valid));
+    assert_int_equal(validate_metadata_image(image), OK);
+
+    // Hidden byte after a displayed prefix: "foo\0x".
+    const uint8_t hidden[] = {0x06, META_VERSION_0, 0x07, 'f', 'o', 'o', 0x00, 'x'};
+    memset(image, 0, sizeof(image));
+    memcpy(image, hidden, sizeof(hidden));
+    assert_int_equal(validate_metadata_image(image), ERR_CORRUPTED_METADATA);
+
+    // Control character, DEL, and non-ASCII bytes.
+    const uint8_t bad_bytes[] = {0x1F, 0x7F, 0x80, 0xFF};
+    for (size_t i = 0; i < sizeof(bad_bytes); i++) {
+        const uint8_t entry[] = {0x03, META_VERSION_1, 0x07, 20, bad_bytes[i]};
+        memset(image, 0, sizeof(image));
+        memcpy(image, entry, sizeof(entry));
+        assert_int_equal(validate_metadata_image(image), ERR_CORRUPTED_METADATA);
+    }
+
+    // Empty nicknames, in both layouts.
+    const uint8_t empty_v0[] = {0x01, META_VERSION_0, 0x07};
+    memset(image, 0, sizeof(image));
+    memcpy(image, empty_v0, sizeof(empty_v0));
+    assert_int_equal(validate_metadata_image(image), ERR_CORRUPTED_METADATA);
+    const uint8_t empty_v1[] = {0x02, META_VERSION_1, 0x07, 20};
+    memset(image, 0, sizeof(image));
+    memcpy(image, empty_v1, sizeof(empty_v1));
+    assert_int_equal(validate_metadata_image(image), ERR_CORRUPTED_METADATA);
+
+    // An erased record keeps its wiped data block.
+    const uint8_t erased[] =
+        {0x04, META_ERASED, 0x00, 0x00, 0x00, 0x00, 0x02, META_VERSION_0, 0x07, 'a'};
+    memset(image, 0, sizeof(image));
+    memcpy(image, erased, sizeof(erased));
+    assert_int_equal(validate_metadata_image(image), OK);
+
+    // Validation never writes to the live database.
+    assert_memory_equal(&N_storage_real, &before, sizeof(before));
+}
+
 static void test_validate_metadata_image(void **state __attribute__((unused))) {
     uint8_t image[MAX_METADATAS] = {0};
     add_password("before");
@@ -278,8 +324,9 @@ static void test_validate_metadata_image(void **state __attribute__((unused))) {
     // More live entries than the password list can address.
     memset(image, 0, sizeof(image));
     for (size_t i = 0; i <= MAX_METADATA_COUNT; i++) {
-        image[3 * i] = 1;
-        image[3 * i + 2] = 0x07;
+        image[4 * i] = 2;
+        image[4 * i + 2] = 0x07;
+        image[4 * i + 3] = 'a';
     }
     assert_int_equal(validate_metadata_image(image), ERR_NO_MORE_SPACE_AVAILABLE);
 
@@ -644,6 +691,7 @@ int main(void) {
             setup,
             NULL),
         cmocka_unit_test_setup_teardown(test_validate_metadata_image, setup, NULL),
+        cmocka_unit_test_setup_teardown(test_validate_metadata_image_nicknames, setup, NULL),
         cmocka_unit_test_setup_teardown(test_create_new_password_writes_the_current_version,
                                         setup,
                                         NULL),
