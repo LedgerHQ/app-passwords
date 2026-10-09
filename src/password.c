@@ -11,6 +11,9 @@ error_type_t create_new_password(const char *const pwd_name, const size_t pwd_si
     if (pwd_size > MAX_NICKNAME_LEN) {
         return ERR_METADATA_ENTRY_TOO_BIG;
     }
+    if (charsets_are_weak(get_charset_options())) {
+        return ERR_WEAK_CHARSETS;
+    }
     // use the G_io_seproxyhal_spi_buffer as temp buffer to build the data block: the requested
     // set of chars, the password length, then the nickname
     memmove(G_io_seproxyhal_spi_buffer + 2, pwd_name, pwd_size);

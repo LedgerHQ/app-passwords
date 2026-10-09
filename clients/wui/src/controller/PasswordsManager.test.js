@@ -476,3 +476,41 @@ describe("password lengths", () => {
     expect(out.nicknames_erased_but_still_stored).toHaveLength(1);
   });
 });
+
+describe("weak charsets", () => {
+  const backup = (entries) => JSON.stringify({ parsed: entries });
+
+  test("refuses a new entry using separators only", () => {
+    for (const charsets of [["MINUS"], ["SPACE"], ["MINUS", "UNDERLINE", "SPACE"]]) {
+      expect(() =>
+        makeManager()._toBytes(backup([{ nickname: "x", charsets, version: 1 }]))
+      ).toThrow(/separators only/);
+    }
+  });
+
+  test("restores a version 0 entry using separators only", () => {
+    const bytes = makeManager()._toBytes(backup([{ nickname: "old", charsets: ["MINUS"] }]));
+    expect([...bytes.subarray(0, 3)]).toEqual([4, 0x00, 0x08]);
+  });
+
+  test("lists the entries using separators only", () => {
+    const parsed = [
+      { nickname: "weak", charsets: ["MINUS", "SPACE"] },
+      { nickname: "strong", charsets: ["MINUS", "NUMBERS"] },
+      { nickname: "all", charsets: ["ALL_SETS"] },
+    ];
+    expect(makeManager().weakNicknames(parsed)).toEqual(["weak"]);
+  });
+
+  test("load_metadatas reports the weak entries it restored", async () => {
+    const m = makeManager();
+    m.transport = { send: async () => Buffer.from([0x90, 0x00]) };
+    const weak = await m.load_metadatas(
+      backup([
+        { nickname: "weak", charsets: ["UNDERLINE"] },
+        { nickname: "fine", charsets: [] },
+      ])
+    );
+    expect(weak).toEqual(["weak"]);
+  });
+});

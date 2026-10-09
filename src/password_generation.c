@@ -17,6 +17,7 @@
 
 #include "cx.h"
 #include "metadata.h"
+#include "password.h"
 #include "password_generation.h"
 
 static const char *SETS[] = {"ABCDEFGHIJKLMNOPQRSTUVWXYZ",  // 26
@@ -158,6 +159,9 @@ bool generate_password(mbedtls_ctr_drbg_context *drbg,
             uniform = false;
             break;
         case META_VERSION_1:
+            if (charsets_are_weak(setMask)) {
+                return false;
+            }
             groups = (const set_group_t *) PIC(GROUPS_V1);
             nbGroups = ARRAYLEN(GROUPS_V1);
             uniform = true;

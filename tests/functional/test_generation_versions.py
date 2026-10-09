@@ -63,3 +63,15 @@ def test_unsupported_length_is_refused(cmd: PasswordsManagerCommand, length: int
 def test_generate_password_lengths(cmd: PasswordsManagerCommand):
     for charsets, seed, length, expected in tests_vectors["test_generate_password_lengths"]:
         assert cmd.generate_password(charsets, seed, version=1, length=length) == expected
+
+
+@pytest.mark.parametrize("charsets", [0x08, 0x10, 0x20, 0x38])
+def test_separators_only_are_refused_for_new_entries(cmd: PasswordsManagerCommand, charsets: int):
+    response = cmd.transport.exchange(cla=0xE0, ins=0x99, p1=0x01, p2=0x01, data=bytes([charsets, 20]) + b"gmail")
+    assert response.status == 0x6400  # SWO_EXECUTION_ERROR
+
+
+def test_separators_only_still_generate_version_0(cmd: PasswordsManagerCommand):
+    # Version 0 keeps its rule: these passwords may be in use.
+    assert cmd.generate_password(0x08, "gmail") == "-" * 20
+    assert len(cmd.generate_password(0x38, "gmail")) == 20

@@ -47,8 +47,9 @@ bool type_password(uint8_t *seed,
     return false;
 }
 
+static uint8_t stub_charsets = 0;
 uint8_t get_charset_options(void) {
-    return 0;
+    return stub_charsets;
 }
 
 static const uint8_t stub_password_length = 32;
@@ -77,6 +78,7 @@ static void add_password(const char *nickname) {
 
 static int setup(void **state __attribute__((unused))) {
     memset(&N_storage_real, 0, sizeof(N_storage_real));
+    stub_charsets = 0;
     return 0;
 }
 
@@ -300,6 +302,44 @@ static void test_validate_metadata_image_nicknames(void **state __attribute__((u
 
     // Validation never writes to the live database.
     assert_memory_equal(&N_storage_real, &before, sizeof(before));
+}
+
+static void test_charsets_are_weak(void **state __attribute__((unused))) {
+    // Separators only, together or alone.
+    assert_true(charsets_are_weak(0x38));
+    assert_true(charsets_are_weak(0x08));
+    assert_true(charsets_are_weak(0x10));
+    assert_true(charsets_are_weak(0x20));
+    // Zero means all the sets; any other set makes the alphabet acceptable.
+    assert_false(charsets_are_weak(0x00));
+    assert_false(charsets_are_weak(0x39));
+    assert_false(charsets_are_weak(0x78));
+    assert_false(charsets_are_weak(0x04));
+}
+
+static void test_create_new_password_refuses_weak_charsets(void **state __attribute__((unused))) {
+    stub_charsets = 0x38;
+    assert_int_equal(create_new_password("mail", 4), ERR_WEAK_CHARSETS);
+    assert_int_equal(N_storage_real.metadata_count, 0);
+    assert_int_equal(N_storage_real.metadatas[0], 0);
+
+    stub_charsets = 0x3C;
+    assert_int_equal(create_new_password("mail", 4), OK);
+}
+
+static void test_validate_metadata_image_weak_charsets(void **state __attribute__((unused))) {
+    uint8_t image[MAX_METADATAS] = {0};
+
+    // A version 0 entry keeps its weak charset: its password may be in use.
+    const uint8_t legacy[] = {0x02, META_VERSION_0, 0x08, 'a'};
+    memcpy(image, legacy, sizeof(legacy));
+    assert_int_equal(validate_metadata_image(image), OK);
+
+    // A newer entry cannot have one.
+    const uint8_t weak[] = {0x03, META_CURRENT_VERSION, 0x38, 20, 'a'};
+    memset(image, 0, sizeof(image));
+    memcpy(image, weak, sizeof(weak));
+    assert_int_equal(validate_metadata_image(image), ERR_CORRUPTED_METADATA);
 }
 
 static void test_validate_metadata_image(void **state __attribute__((unused))) {
@@ -692,6 +732,11 @@ int main(void) {
             NULL),
         cmocka_unit_test_setup_teardown(test_validate_metadata_image, setup, NULL),
         cmocka_unit_test_setup_teardown(test_validate_metadata_image_nicknames, setup, NULL),
+        cmocka_unit_test_setup_teardown(test_charsets_are_weak, setup, NULL),
+        cmocka_unit_test_setup_teardown(test_create_new_password_refuses_weak_charsets,
+                                        setup,
+                                        NULL),
+        cmocka_unit_test_setup_teardown(test_validate_metadata_image_weak_charsets, setup, NULL),
         cmocka_unit_test_setup_teardown(test_create_new_password_writes_the_current_version,
                                         setup,
                                         NULL),

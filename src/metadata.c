@@ -88,6 +88,10 @@ error_type_t validate_metadata_image(const uint8_t *image) {
             if (!nickname_is_valid(image, offset, kind)) {
                 return ERR_CORRUPTED_METADATA;
             }
+            // Version 0 entries are kept as they are, weak or not: their passwords are in use.
+            if ((kind != META_VERSION_0) && charsets_are_weak(image[offset + 2])) {
+                return ERR_CORRUPTED_METADATA;
+            }
             // Same limit compact_metadata() enforces once the erased entries are dropped.
             if (++count > MAX_METADATA_COUNT) {
                 return ERR_NO_MORE_SPACE_AVAILABLE;

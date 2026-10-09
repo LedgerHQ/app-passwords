@@ -27,6 +27,9 @@ Backups made before versions existed have no `version` field: their entries are
 version 0, with 20-character passwords. A backup holding version 1 entries can
 only be restored on Passwords app 1.4.0 or later.
 
+Passwords that use separators only (`-`, `_`, space) are easy to guess: Backup
+and Restore list them with a warning, so they can be changed where they are used.
+
 For more information on the device application itself, see the
 [app README](https://github.com/LedgerHQ/app-passwords/blob/master/README.md).
 

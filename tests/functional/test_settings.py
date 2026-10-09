@@ -1,7 +1,7 @@
 from pathlib import Path
 
 from ledgered.devices import Device
-from ragger.navigator import Navigator, NavIns
+from ragger.navigator import Navigator, NavIns, NavInsID
 from touch.navigator import CustomNavInsID
 
 
@@ -40,6 +40,38 @@ def test_settings_screens(navigator: Navigator, device: Device, default_screensh
     navigator.navigate_and_compare(
         default_screenshot_path,
         "settings",
+        instructions,
+        screen_change_before_first_instruction=False,
+    )
+
+
+def test_settings_keep_letters_numbers_or_specials(navigator: Navigator, device: Device, default_screenshot_path: Path):
+    # Disable uppercase, lowercase, then numbers: with special characters off, the last change would
+    # leave no letters, numbers or special characters, so it is refused and numbers stay enabled.
+    if device.is_nano:
+        # One switch per step: uppercase, lowercase, numbers.
+        toggles = [
+            CustomNavInsID.BUTTON_APPROVE,
+            CustomNavInsID.SETTINGS_NEXT,
+            CustomNavInsID.BUTTON_APPROVE,
+            CustomNavInsID.SETTINGS_NEXT,
+            CustomNavInsID.BUTTON_APPROVE,
+        ]
+    else:
+        # Uppercase, lowercase and numbers are the first three switches of the first page.
+        toggles = [NavIns(CustomNavInsID.SETTINGS_CHOOSE, (position,)) for position in (1, 2, 3)]
+    instructions = [
+        CustomNavInsID.DISCLAIMER_CONFIRM,
+        CustomNavInsID.CHOOSE_KBL_QWERTY,
+        CustomNavInsID.HOME_TO_SETTINGS,
+        *toggles,
+        # The refusal message, then back to the settings.
+        NavInsID.WAIT_FOR_SCREEN_CHANGE,
+    ]
+
+    navigator.navigate_and_compare(
+        default_screenshot_path,
+        "settings_keep_strong_charset",
         instructions,
         screen_change_before_first_instruction=False,
     )

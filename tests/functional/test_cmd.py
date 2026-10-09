@@ -93,3 +93,22 @@ def test_load_metadatas_invalid_nickname_keeps_database(cmd: PasswordsManagerCom
 
     assert cmd.dump_metadatas(STORAGE_SIZE) == populated
     cmd.reset_approval_state()
+
+
+def test_load_metadatas_weak_new_entry_keeps_database(cmd: PasswordsManagerCommand):
+    populated = EXISTING_METADATA + b"\x00" * (STORAGE_SIZE - len(EXISTING_METADATA))
+
+    # A current-version entry using separators only.
+    with pytest.raises(MetadatasParsingError):
+        cmd.load_metadatas(bytes.fromhex("0301381461") + b"\x00\x00")
+
+    assert cmd.dump_metadatas(STORAGE_SIZE) == populated
+    cmd.reset_approval_state()
+
+
+def test_load_metadatas_keeps_weak_version_0_entry(cmd: PasswordsManagerCommand):
+    # A version 0 entry using separators only is restored as it is.
+    metadatas = bytes.fromhex("02003861") + b"\x00" * (STORAGE_SIZE - 4)
+    cmd.load_metadatas(metadatas)
+    assert cmd.dump_metadatas(STORAGE_SIZE) == metadatas
+    cmd.reset_approval_state()

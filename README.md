@@ -32,7 +32,8 @@ In the application settings, the user can configure
 
 - Which kinds of characters new passwords use: uppercase letters, lowercase letters, numbers,
   separators (`-`, `_` and space) and special characters. Since version 1.4.0, a new password
-  contains at least one character of each enabled kind.
+  contains at least one character of each enabled kind, and at least one of letters, numbers or
+  special characters must stay enabled.
 - The length of new passwords: 8, 12, 16, 20, 24, 32, 48 or 64 characters (20 by default, and the
   only length before version 1.4.0).
 

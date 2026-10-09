@@ -50,6 +50,11 @@ const passwordsCharsets = Object.freeze({
 
 const allPasswordsCharsets = 0xff;
 
+// Mirrors charsets_are_weak() in src/password.h: separators only give weak or constant passwords.
+const separatorCharsets =
+  passwordsCharsets.MINUS | passwordsCharsets.UNDERLINE | passwordsCharsets.SPACE;
+const isWeakCharsetMask = (mask) => mask !== 0 && (mask & ~separatorCharsets) === 0;
+
 class PasswordsManager {
   constructor() {
     this.allowedStatuses = [
@@ -230,6 +235,13 @@ class PasswordsManager {
     return length;
   }
 
+  /* Nicknames of the entries whose password uses separators only, so is easy to guess. */
+  weakNicknames(parsed) {
+    return parsed
+      .filter((element) => isWeakCharsetMask(this._charsetListToBitmask(element["charsets"])))
+      .map((element) => element["nickname"]);
+  }
+
   _toBytes(json_metadatas) {
     const storage_size = this._validatedStorageSize();
     let metadatas = Buffer.alloc(storage_size);
@@ -246,6 +258,11 @@ class PasswordsManager {
       const charsets = this._charsetListToBitmask(element["charsets"]);
       const version = this._entryVersion(element);
       const length = this._entryLength(element, version);
+      // Version 0 entries are restored as they are: their passwords may be in use.
+      if (version !== 0 && isWeakCharsetMask(charsets))
+        throw new Error(
+          `This backup has an entry using separators only, which makes a weak password: ${JSON.stringify(nickname)}`
+        );
       if (typeof nickname !== "string" || nickname.length === 0)
         throw new Error("This backup contains an entry with an empty nickname");
       // The device keyboard can only produce printable ASCII, and the nickname is what the
@@ -477,6 +494,7 @@ class PasswordsManager {
       if (metadatas.length === 0) {
         throw new Error("No data to load");
       }
+      const weak = this.weakNicknames(JSON.parse(JSON_metadatas)["parsed"]);
       for (let i = 0; i < metadatas.length; i += 0xff) {
         let chunk = metadatas.slice(i, i + 0xff);
         await this._load_metadatas_chunk(
@@ -484,6 +502,7 @@ class PasswordsManager {
           i + chunk.length === metadatas.length ? true : false
         );
       }
+      return weak;
     } finally {
       this._unlock();
     }

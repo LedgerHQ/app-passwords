@@ -10,6 +10,13 @@
 #define PASSWORD_DEFAULT_SIZE 20
 #define PASSWORD_MAX_SIZE     64
 
+/* Separator sets ('-', '_', space). An alphabet made of them only gives weak or constant
+ * passwords; a zero mask stands for all the sets. */
+#define SEPARATOR_SETS 0x38
+static inline bool charsets_are_weak(uint8_t sets) {
+    return (sets != 0) && ((sets & (uint8_t) ~SEPARATOR_SETS) == 0);
+}
+
 /* Lengths offered for new passwords. */
 static inline bool password_length_is_supported(uint8_t length) {
     switch (length) {

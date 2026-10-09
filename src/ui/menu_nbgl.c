@@ -27,6 +27,7 @@
 #include "dispatcher.h"
 #include "globals.h"
 #include "options.h"
+#include "password.h"
 
 #define MAX_ERROR_MSG_SIZE 100
 static char errorMessage[MAX_ERROR_MSG_SIZE] = {0};
@@ -277,6 +278,32 @@ static uint8_t password_length_index(void) {
     return 0;
 }
 
+// Settings page to come back to after refusing a charset change.
+static uint8_t charsetRefusalPage = 0;
+
+static void return_after_charset_refusal(void) {
+    return_to_settings_at(charsetRefusalPage);
+}
+
+/**
+ * @brief Toggle a charset setting, unless no letters, numbers or special characters would remain
+ *        enabled
+ *
+ * @param[in] bitflag charset setting to toggle
+ * @param[in] page settings page to come back to after a refusal
+ */
+static void toggle_charset_setting(uint8_t bitflag, int page) {
+    // Separators alone are too weak, and an empty charset would silently mean all the sets.
+    if (((get_charset_options() ^ bitflag) & (uint8_t) ~SEPARATOR_SETS) == 0) {
+        charsetRefusalPage = (uint8_t) page;
+        nbgl_useCaseStatus("Keep letters, numbers\nor special characters",
+                           false,
+                           return_after_charset_refusal);
+        return;
+    }
+    set_charset_option(bitflag);
+}
+
 /**
  * @brief Settings Action callback
  *
@@ -286,32 +313,28 @@ static uint8_t password_length_index(void) {
  *
  */
 static void controls_callback(int token, uint8_t index, int page) {
-#ifndef SCREEN_SIZE_WALLET
-    UNUSED(page);
-#endif
-
     // NBGL re-reads switches[].initState on every page re-render, so we must
     // keep it in sync with NVM after each toggle (otherwise an exit/re-enter
     // would show the pre-toggle value).
     switch (token) {
         case UPPERCASE_TOKEN:
-            set_charset_option(UPPERCASE_BITFLAG);
+            toggle_charset_setting(UPPERCASE_BITFLAG, page);
             switches[UPPERCASE_ID].initState = has_charset_option(UPPERCASE_BITFLAG);
             break;
         case LOWERCASE_TOKEN:
-            set_charset_option(LOWERCASE_BITFLAG);
+            toggle_charset_setting(LOWERCASE_BITFLAG, page);
             switches[LOWERCASE_ID].initState = has_charset_option(LOWERCASE_BITFLAG);
             break;
         case NUMBERS_TOKEN:
-            set_charset_option(NUMBERS_BITFLAG);
+            toggle_charset_setting(NUMBERS_BITFLAG, page);
             switches[NUMBERS_ID].initState = has_charset_option(NUMBERS_BITFLAG);
             break;
         case BARS_TOKEN:
-            set_charset_option(BARS_BITFLAG);
+            toggle_charset_setting(BARS_BITFLAG, page);
             switches[BARS_ID].initState = has_charset_option(BARS_BITFLAG);
             break;
         case EXT_SYMBOLS_TOKEN:
-            set_charset_option(EXT_SYMBOLS_BITFLAG);
+            toggle_charset_setting(EXT_SYMBOLS_BITFLAG, page);
             switches[EXT_SYMBOLS_ID].initState = has_charset_option(EXT_SYMBOLS_BITFLAG);
             break;
         case NO_ENTER_TOKEN:
