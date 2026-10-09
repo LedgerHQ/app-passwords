@@ -3,6 +3,7 @@
 
 #include "options.h"
 #include "globals.h"
+#include "password.h"
 
 static void set_charset_options(uint8_t value) {
     nvm_write((void *) &N_storage.charset_options, (void *) &value, sizeof(value));
@@ -15,6 +16,19 @@ uint8_t get_charset_options() {
 void init_charset_options() {
     // default: uppercase (1) + lowercase (2) + numbers (4) = 7
     set_charset_options(0x07);
+}
+
+uint8_t get_password_length(void) {
+    const uint8_t length = N_storage.password_length;
+    return password_length_is_supported(length) ? length : PASSWORD_DEFAULT_SIZE;
+}
+
+bool set_password_length(uint8_t length) {
+    if (!password_length_is_supported(length)) {
+        return false;
+    }
+    nvm_write((void *) &N_storage.password_length, (void *) &length, sizeof(length));
+    return true;
 }
 
 bool has_charset_option(const uint8_t bitflag) {

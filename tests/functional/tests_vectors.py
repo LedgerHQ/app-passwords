@@ -1,5 +1,5 @@
 # Demo entries seeded by a POPULATE build, created as generation version 1.
-EXISTING_METADATA = b"\n\x01\x07password1\n\x01\x07password2\n\x01\x07password3"
+EXISTING_METADATA = b"\x0b\x01\x07\x14password1\x0b\x01\x07\x14password2\x0b\x01\x07\x14password3"
 
 tests_vectors = {
     "test_generate_password": [
@@ -24,6 +24,13 @@ tests_vectors = {
         [0xFF, "gmail", "*m8ZlP1|}O vzvJ^QNT4"],
         [0xFF, "aseedoflengthequal20", "29!uO;UPx UT8Hkmi$-5"],
         [0xFF, "aSeedOfLengthEqual20", "1fs,2$u4|;k;v*IM_C\\P"],
+    ],
+    # Generation version 1 with the other password lengths: [charsets, seed, length, password].
+    "test_generate_password_lengths": [
+        [0x07, "gmail", 8, "O14WvxJP"],
+        [0xFF, "gmail", 12, "m 4zvPQ}^ZJ1"],
+        [0xFF, "gmail", 32, " F4Os2!Nvvd`^P(lO8P1}|QzZJTm*/(a"],
+        [0xFF, "gmail", 64, 'h5ZXN1s`|FW^2ATL_PvwO1a/*J8Zk"b}PT)z}~ *!v9Qy((H+14?dTuOlm7{>=1F'],
     ],
     "test_dump_metadatas": [
         [0, b""],

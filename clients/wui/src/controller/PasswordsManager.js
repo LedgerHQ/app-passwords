@@ -7,9 +7,14 @@ export const SW_ACTION_CANCELLED = 0x6985;
 // Mirrors MAX_METADATA_COUNT in src/types.h: MAX_METADATAS / (1 + 1 + 1 + MAX_METANAME).
 const MAX_METADATA_COUNT = 178;
 
-// Mirrors MAX_METANAME in src/types.h. An entry's length byte covers the charset byte plus the
-// nickname, so it never exceeds this.
-const MAX_METADATA_DATALEN = 20;
+// Mirrors MAX_NICKNAME_LEN and MAX_METANAME in src/types.h. An entry's data block is the
+// charset byte, the password length byte (versions above 0), then the nickname.
+const MAX_NICKNAME_LEN = 19;
+const MAX_METADATA_DATALEN = MAX_NICKNAME_LEN + 2;
+
+// Mirrors password.h: length of version 0 passwords, and the lengths of later ones.
+const DEFAULT_PASSWORD_LENGTH = 20;
+const PASSWORD_LENGTHS = Object.freeze([8, 12, 16, 20, 24, 32, 48, 64]);
 
 // Mirrors MAX_METADATAS in src/types.h: the largest metadata store the protocol can describe.
 // The device reports its own size, but that value is untrusted, so it is bounded by this.
@@ -214,6 +219,17 @@ class PasswordsManager {
     return version;
   }
 
+  /* Password length of a backup entry. Entries without the field are 20 characters long, the
+   * only length version 0 knows. */
+  _entryLength(element, version) {
+    const length = Object.hasOwn(element, "length") ? element["length"] : DEFAULT_PASSWORD_LENGTH;
+    if (!PASSWORD_LENGTHS.includes(length))
+      throw new Error(`This backup has an entry of unsupported length: ${JSON.stringify(length)}`);
+    if (version === 0 && length !== DEFAULT_PASSWORD_LENGTH)
+      throw new Error(`A version 0 entry is always ${DEFAULT_PASSWORD_LENGTH} characters long`);
+    return length;
+  }
+
   _toBytes(json_metadatas) {
     const storage_size = this._validatedStorageSize();
     let metadatas = Buffer.alloc(storage_size);
@@ -229,6 +245,7 @@ class PasswordsManager {
       const nickname = element["nickname"];
       const charsets = this._charsetListToBitmask(element["charsets"]);
       const version = this._entryVersion(element);
+      const length = this._entryLength(element, version);
       if (typeof nickname !== "string" || nickname.length === 0)
         throw new Error("This backup contains an entry with an empty nickname");
       // The device keyboard can only produce printable ASCII, and the nickname is what the
@@ -243,17 +260,19 @@ class PasswordsManager {
       // the entry claimed the wrong length and the UTF-8 expansion overwrote the next record's
       // header. The ASCII check above makes the two equal, and using byteLength keeps them so.
       const nicknameBytes = Buffer.byteLength(nickname, "utf8");
-      if (nicknameBytes > MAX_METADATA_DATALEN - 1)
+      if (nicknameBytes > MAX_NICKNAME_LEN)
         throw new Error(
-          `Nickname too long (${MAX_METADATA_DATALEN - 1} bytes max): ${nickname} is ${nicknameBytes} bytes`
+          `Nickname too long (${MAX_NICKNAME_LEN} bytes max): ${nickname} is ${nicknameBytes} bytes`
         );
-      if (offset + 3 + nicknameBytes >= storage_size)
+      const datalen = (version === 0 ? 1 : 2) + nicknameBytes;
+      if (offset + 2 + datalen >= storage_size)
         throw new Error(
           `Not enough memory on this device to restore this backup`
         );
-      metadatas[offset++] = nicknameBytes + 1;
+      metadatas[offset++] = datalen;
       metadatas[offset++] = version;
       metadatas[offset++] = charsets;
+      if (version !== 0) metadatas[offset++] = length;
       metadatas.write(nickname, offset, nicknameBytes, "utf8");
       offset += nicknameBytes;
     });
@@ -296,12 +315,23 @@ class PasswordsManager {
       const erased = kind === META_ERASED;
       if (!erased && kind > MAX_GENERATION_VERSION)
         throw new Error(`Unknown entry version ${kind} at offset ${offset}`);
+      // Version 0 data block: [charset][nickname]; later ones: [charset][length][nickname].
+      // Erased entries keep the version 0 reading: their data block is wiped.
+      const paramsLen = erased || kind === 0 ? 1 : 2;
+      if (len < paramsLen || (!erased && kind === 0 && len > MAX_NICKNAME_LEN + 1))
+        throw new Error(`Malformed metadata at offset ${offset}: entry length ${len}`);
       const charsets = metadatas[offset + 2];
       const metadata = {
-        nickname: metadatas.slice(offset + 3, offset + 2 + len).toString(),
+        nickname: metadatas.slice(offset + 2 + paramsLen, offset + 2 + len).toString(),
         charsets: this._bitmaskToCharsetList(charsets),
       };
       if (!erased) metadata.version = kind;
+      if (!erased && kind !== 0) {
+        const length = metadatas[offset + 3];
+        if (!PASSWORD_LENGTHS.includes(length))
+          throw new Error(`Unsupported password length ${length} at offset ${offset}`);
+        metadata.length = length;
+      }
       (erased ? erased_list : metadatas_list).push(metadata);
       offset += len + 2;
     }

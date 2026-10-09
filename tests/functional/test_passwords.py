@@ -181,7 +181,7 @@ def test_show_password_uses_the_entry_version(
         ],
         screen_change_before_first_instruction=False,
     )
-    cmd.load_metadatas(bytes([len(name) + 1, 0x01, charsets]) + name.encode())
+    cmd.load_metadatas(bytes([len(name) + 2, 0x01, charsets, 20]) + name.encode())
 
     navigator.navigate(
         [
@@ -194,3 +194,64 @@ def test_show_password_uses_the_entry_version(
     shown = _screen_texts(custom_backend)
     assert name in shown
     assert expected in shown, f"expected the version 1 password of '{name}'"
+
+
+def _choice_position(texts: list, choice: str, choices: list) -> int:
+    """1-based position of `choice` among the `choices` shown on the current page."""
+    shown = [t for t in texts if t in choices]
+    return shown.index(choice) + 1
+
+
+@pytest.mark.skip_nano  # Reads the settings and the shown value from the touch screen texts
+def test_password_length_setting(
+    cmd: PasswordsManagerCommand,
+    navigator: Navigator,
+    custom_backend: BackendInterface,
+):
+    """A password created after choosing a length in the settings has that length."""
+    lengths = [f"{n} characters" for n in (8, 12, 16, 20, 24, 32, 48, 64)]
+    navigator.navigate(
+        [
+            CustomNavInsID.DISCLAIMER_CONFIRM,
+            CustomNavInsID.CHOOSE_KBL_QWERTY,
+            CustomNavInsID.HOME_TO_SETTINGS,
+        ],
+        screen_change_before_first_instruction=False,
+    )
+    for _ in range(4):
+        if "Password length" in _screen_texts(custom_backend):
+            break
+        navigator.navigate([CustomNavInsID.SETTINGS_NEXT], screen_change_before_first_instruction=False)
+    navigator.navigate(
+        [NavIns(CustomNavInsID.SETTINGS_CHOOSE, (1,))],
+        screen_change_before_first_instruction=False,
+    )
+    for _ in range(3):
+        if "64 characters" in _screen_texts(custom_backend):
+            break
+        navigator.navigate([CustomNavInsID.SETTINGS_NEXT], screen_change_before_first_instruction=False)
+    position = _choice_position(_screen_texts(custom_backend), "64 characters", lengths)
+    navigator.navigate(
+        [
+            NavIns(CustomNavInsID.SETTINGS_CHOOSE, (position,)),
+            CustomNavInsID.SETTINGS_TO_HOME,
+            CustomNavInsID.SETTINGS_TO_HOME,
+            CustomNavInsID.HOME_TO_MENU,
+            CustomNavInsID.MENU_TO_CREATE,
+            NavIns(CustomNavInsID.KEYBOARD_WRITE, ("l",)),
+            NavIns(CustomNavInsID.KEYBOARD_WRITE, ("e",)),
+            NavIns(CustomNavInsID.KEYBOARD_WRITE, ("n",)),
+            CustomNavInsID.KEYBOARD_TO_CONFIRM,
+            NavInsID.WAIT_FOR_SCREEN_CHANGE,
+            CustomNavInsID.MENU_TO_DISPLAY,
+        ],
+        screen_change_before_first_instruction=False,
+    )
+    position = _choice_position(_screen_texts(custom_backend), "len", ["password1", "password2", "password3", "len"])
+    navigator.navigate(
+        [NavIns(CustomNavInsID.LIST_CHOOSE, (position,))],
+        screen_change_before_first_instruction=False,
+    )
+    expected = cmd.generate_password(0x07, "len", version=1, length=64)
+    assert len(expected) == 64
+    assert expected in "".join(_screen_texts(custom_backend)), "the 64-character password is not shown in full"

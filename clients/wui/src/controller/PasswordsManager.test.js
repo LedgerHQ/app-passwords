@@ -355,8 +355,9 @@ describe("generation versions", () => {
     const m = makeManager();
     const bytes = m._toBytes(backup([{ nickname: "new", charsets: ["ALL_SETS"], version: 1 }]));
     expect(firstKind(bytes)).toBe(0x01);
+    // A version 1 entry without a length field is 20 characters long.
     expect(m._toJSON(bytes).parsed).toEqual([
-      { nickname: "new", charsets: ["ALL_SETS"], version: 1 },
+      { nickname: "new", charsets: ["ALL_SETS"], version: 1, length: 20 },
     ]);
   });
 
@@ -414,5 +415,64 @@ describe("generation versions", () => {
   test("reads the generation version from the app config", async () => {
     const config = await appConfigAnswer(Buffer.from([0, 0, 0x10, 0, 1, 0, 1])).getAppConfig();
     expect(config.generation_version).toBe(1);
+  });
+});
+
+describe("password lengths", () => {
+  const backup = (entries) => JSON.stringify({ parsed: entries });
+
+  test("a version 1 entry stores its length before the nickname", () => {
+    const m = makeManager();
+    const bytes = m._toBytes(
+      backup([{ nickname: "new", charsets: ["ALL_SETS"], version: 1, length: 64 }])
+    );
+    expect([...bytes.subarray(0, 7)]).toEqual([5, 0x01, 0xff, 64, ...Buffer.from("new")]);
+    expect(m._toJSON(bytes).parsed).toEqual([
+      { nickname: "new", charsets: ["ALL_SETS"], version: 1, length: 64 },
+    ]);
+  });
+
+  test("a version 0 entry keeps its layout and has no length field", () => {
+    const m = makeManager();
+    const bytes = m._toBytes(backup([{ nickname: "old", charsets: [] }]));
+    expect([...bytes.subarray(0, 6)]).toEqual([4, 0x00, 0xff, ...Buffer.from("old")]);
+    expect(m._toJSON(bytes).parsed).toEqual([{ nickname: "old", charsets: ["ALL_SETS"], version: 0 }]);
+  });
+
+  test("a version 1 entry fits the longest nickname", () => {
+    const m = makeManager();
+    const nickname = "a".repeat(19);
+    const bytes = m._toBytes(backup([{ nickname, charsets: [], version: 1, length: 8 }]));
+    expect(bytes[0]).toBe(21);
+    expect(m._toJSON(bytes).parsed[0]).toMatchObject({ nickname, length: 8 });
+  });
+
+  test("refuses unsupported lengths", () => {
+    const m = makeManager();
+    for (const length of [0, 13, 65, "20", null]) {
+      expect(() =>
+        m._toBytes(backup([{ nickname: "x", charsets: [], version: 1, length }]))
+      ).toThrow(/unsupported length/);
+    }
+  });
+
+  test("refuses a length other than 20 on a version 0 entry", () => {
+    const m = makeManager();
+    expect(() => m._toBytes(backup([{ nickname: "x", charsets: [], length: 32 }]))).toThrow(
+      /always 20 characters/
+    );
+    expect(() => m._toBytes(backup([{ nickname: "x", charsets: [], length: 20 }]))).not.toThrow();
+  });
+
+  test("refuses a dump holding an unsupported length", () => {
+    const dump = Buffer.concat([Buffer.from([0x03, 0x01, 0x07, 13]), Buffer.from("x"), Buffer.alloc(10)]);
+    expect(() => makeManager()._toJSON(dump)).toThrow(/Unsupported password length 13/);
+  });
+
+  test("an erased entry of the longest layout still parses", () => {
+    const dump = Buffer.concat([Buffer.from([21, 0xff]), Buffer.alloc(21), Buffer.alloc(10)]);
+    const out = makeManager()._toJSON(dump);
+    expect(out.parsed).toEqual([]);
+    expect(out.nicknames_erased_but_still_stored).toHaveLength(1);
   });
 });

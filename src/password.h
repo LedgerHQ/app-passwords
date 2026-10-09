@@ -1,11 +1,31 @@
 #pragma once
 
 #include <stdbool.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 #include "error.h"
 
-#define PASSWORD_MAX_SIZE 20
+// Length of version 0 passwords, and default length of new ones.
+#define PASSWORD_DEFAULT_SIZE 20
+#define PASSWORD_MAX_SIZE     64
+
+/* Lengths offered for new passwords. */
+static inline bool password_length_is_supported(uint8_t length) {
+    switch (length) {
+        case 8:
+        case 12:
+        case 16:
+        case 20:
+        case 24:
+        case 32:
+        case 48:
+        case 64:
+            return true;
+        default:
+            return false;
+    }
+}
 
 /*
  * Inserts a new password into the storage.

@@ -27,7 +27,7 @@ static error_type_t record_at(const volatile uint8_t *db,
         return OK;
     }
 
-    // A record always carries its charset byte, and never more than a full nickname.
+    // A record never holds more than its parameters and a full nickname.
     if (datalen > MAX_METANAME) {
         return ERR_METADATA_ENTRY_TOO_BIG;
     }
@@ -37,7 +37,16 @@ static error_type_t record_at(const volatile uint8_t *db,
     }
 
     const uint8_t record_kind = db[offset + 1];
-    if ((record_kind > META_CURRENT_VERSION) && (record_kind != META_ERASED)) {
+    if (record_kind == META_VERSION_0) {
+        if (datalen > MAX_NICKNAME_LEN + 1) {
+            return ERR_METADATA_ENTRY_TOO_BIG;
+        }
+    } else if (record_kind <= META_CURRENT_VERSION) {
+        // Charset and password length, then the nickname.
+        if ((datalen < 2) || !password_length_is_supported(db[offset + 3])) {
+            return ERR_CORRUPTED_METADATA;
+        }
+    } else if (record_kind != META_ERASED) {
         return ERR_CORRUPTED_METADATA;
     }
 

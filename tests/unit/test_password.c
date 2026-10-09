@@ -17,6 +17,8 @@
 // symbol without `const` and let it land in writable BSS. The linker resolves
 // the two declarations by symbol name; the qualifier mismatch is harmless.
 internalStorage_t N_storage_real;
+// The METADATA_* accessors read through N_storage, as on device.
+#define N_storage N_storage_real
 uint8_t G_io_seproxyhal_spi_buffer[300];
 
 void nvm_write(void *dst, void *src, unsigned int len) {
@@ -47,6 +49,11 @@ bool type_password(uint8_t *seed,
 
 uint8_t get_charset_options(void) {
     return 0;
+}
+
+static const uint8_t stub_password_length = 32;
+uint8_t get_password_length(void) {
+    return stub_password_length;
 }
 
 // --- helpers ----------------------------------------------------------------
@@ -109,29 +116,27 @@ static void test_nickname_exists_case_sensitive(void **state __attribute__((unus
 }
 
 static void test_nickname_exists_truncation(void **state __attribute__((unused))) {
-    // write_metadata clips the data block at MAX_METANAME bytes (charset +
-    // nickname), so the longest persistable nickname is MAX_METANAME - 1 = 19
-    // bytes. Anything longer is silently truncated. nickname_exists must
+    // The longest persistable nickname is MAX_NICKNAME_LEN = 19 bytes, and
+    // older entries could hold a truncated longer one. nickname_exists must
     // detect that a longer input would land on the same stored value, otherwise
     // a 20-char input could bypass the duplicate check.
     const char stored[] = "AAAAAAAAAAAAAAAAAAA";  // 19 chars
-    assert_int_equal(strlen(stored), MAX_METANAME - 1);
+    assert_int_equal(strlen(stored), MAX_NICKNAME_LEN);
     add_password(stored);
 
     // Exact 19-char match still works.
-    assert_true(nickname_exists(stored, MAX_METANAME - 1));
+    assert_true(nickname_exists(stored, MAX_NICKNAME_LEN));
 
     // 20 chars sharing the first 19 with the stored entry: truncation aware
     // duplicate detection must flag it as a conflict.
     const char twenty_chars_same_prefix[] = "AAAAAAAAAAAAAAAAAAAB";  // 20 chars
-    assert_int_equal(strlen(twenty_chars_same_prefix), MAX_METANAME);
-    assert_true(nickname_exists(twenty_chars_same_prefix, MAX_METANAME));
+    assert_int_equal(strlen(twenty_chars_same_prefix), MAX_NICKNAME_LEN + 1);
+    assert_true(nickname_exists(twenty_chars_same_prefix, MAX_NICKNAME_LEN + 1));
 }
 
 static void test_create_new_password_rejects_an_untruncatable_nickname(void **state
                                                                        __attribute__((unused))) {
-    // MAX_METANAME caps the data block, which is [charset byte][nickname], so only
-    // MAX_NICKNAME_LEN nickname bytes fit. write_metadata() clamps the block silently, so a
+    // Only MAX_NICKNAME_LEN nickname bytes fit. write_metadata() clamps the block silently, so a
     // longer nickname used to be accepted and then stored short -- the entry no longer matched
     // what the caller asked for, and since the nickname is the derivation seed, the password
     // generated from it was not the one the user thought they had created.
@@ -154,23 +159,83 @@ static void test_create_new_password_accepts_the_longest_storable_nickname(
 
     assert_int_equal(create_new_password(longest, strlen(longest)), OK);
     assert_int_equal(N_storage_real.metadata_count, 1);
-    // Stored whole, not clamped: the data block is the charset byte plus every nickname byte.
-    assert_int_equal(N_storage_real.metadatas[0], 1 + MAX_NICKNAME_LEN);
-    // Nickname bytes start after the datalen, kind and charset bytes.
-    assert_memory_equal(&N_storage_real.metadatas[3], longest, MAX_NICKNAME_LEN);
+    // Stored whole, not clamped: the data block is the charset and length bytes plus every
+    // nickname byte.
+    assert_int_equal(N_storage_real.metadatas[0], 2 + MAX_NICKNAME_LEN);
+    // Nickname bytes start after the datalen, kind, charset and length bytes.
+    assert_memory_equal(&N_storage_real.metadatas[4], longest, MAX_NICKNAME_LEN);
+    assert_int_equal(METADATA_NICKNAME_LEN(0), MAX_NICKNAME_LEN);
 }
 
 static void test_create_new_password_writes_the_current_version(void **state
                                                                 __attribute__((unused))) {
     assert_int_equal(create_new_password("mail", 4), OK);
     assert_int_equal(N_storage_real.metadatas[1], META_CURRENT_VERSION);
+    // The password length comes from the setting (stubbed below).
+    assert_int_equal(N_storage_real.metadatas[3], stub_password_length);
+    assert_int_equal(METADATA_PASSWORD_LEN(0), stub_password_length);
+    assert_memory_equal(METADATA_NICKNAME(0), "mail", 4);
+    assert_int_equal(METADATA_NICKNAME_LEN(0), 4);
+}
+
+static void test_version_0_entry_accessors(void **state __attribute__((unused))) {
+    add_password("legacy");
+    assert_int_equal(METADATA_PASSWORD_LEN(0), PASSWORD_DEFAULT_SIZE);
+    assert_memory_equal(METADATA_NICKNAME(0), "legacy", 6);
+    assert_int_equal(METADATA_NICKNAME_LEN(0), 6);
+}
+
+static void test_validate_metadata_image_lengths(void **state __attribute__((unused))) {
+    uint8_t image[MAX_METADATAS] = {0};
+
+    // A new entry with a supported length and the longest nickname.
+    image[0] = 2 + MAX_NICKNAME_LEN;
+    image[1] = META_CURRENT_VERSION;
+    image[2] = 0x07;
+    image[3] = 64;
+    memset(&image[4], 'A', MAX_NICKNAME_LEN);
+    assert_int_equal(validate_metadata_image(image), OK);
+
+    // Unsupported lengths.
+    image[3] = 0;
+    assert_int_equal(validate_metadata_image(image), ERR_CORRUPTED_METADATA);
+    image[3] = 65;
+    assert_int_equal(validate_metadata_image(image), ERR_CORRUPTED_METADATA);
+
+    // No room for the length byte.
+    memset(image, 0, sizeof(image));
+    image[0] = 1;
+    image[1] = META_CURRENT_VERSION;
+    image[2] = 0x07;
+    assert_int_equal(validate_metadata_image(image), ERR_CORRUPTED_METADATA);
+
+    // A version 0 entry cannot hold a 20-byte nickname.
+    memset(image, 0, sizeof(image));
+    image[0] = 2 + MAX_NICKNAME_LEN;
+    image[1] = META_VERSION_0;
+    assert_int_equal(validate_metadata_image(image), ERR_METADATA_ENTRY_TOO_BIG);
+}
+
+static void test_validate_full_version_0_database(void **state __attribute__((unused))) {
+    // As many version 0 entries with the longest nickname as before: any existing backup fits.
+    uint8_t image[MAX_METADATAS] = {0};
+    uint32_t offset = 0;
+    for (size_t i = 0; i < MAX_METADATA_COUNT; i++) {
+        image[offset] = 1 + MAX_NICKNAME_LEN;
+        image[offset + 1] = META_VERSION_0;
+        image[offset + 2] = 0x07;
+        memset(&image[offset + 3], 'A', MAX_NICKNAME_LEN);
+        offset += 3 + MAX_NICKNAME_LEN;
+    }
+    assert_true(offset + 2 <= MAX_METADATAS);
+    assert_int_equal(validate_metadata_image(image), OK);
 }
 
 static void test_validate_metadata_image_versions(void **state __attribute__((unused))) {
     uint8_t image[MAX_METADATAS] = {0};
 
     // One version 0 entry and one version 1 entry.
-    const uint8_t valid[] = {0x02, META_VERSION_0, 0x07, 'a', 0x02, META_VERSION_1, 0xFF, 'b'};
+    const uint8_t valid[] = {0x02, META_VERSION_0, 0x07, 'a', 0x03, META_VERSION_1, 0xFF, 20, 'b'};
     memcpy(image, valid, sizeof(valid));
     assert_int_equal(validate_metadata_image(image), OK);
 
@@ -181,15 +246,14 @@ static void test_validate_metadata_image_versions(void **state __attribute__((un
 
 static void test_compaction_keeps_the_entry_version(void **state __attribute__((unused))) {
     add_password("alpha");
-    add_password("beta");
-    // "beta" is a version 1 entry, moved down when "alpha" is erased.
-    const uint32_t beta = get_metadata(1);
-    N_storage_real.metadatas[beta + 1] = META_VERSION_1;
+    // A version 1 entry, moved down when "alpha" is erased.
+    assert_int_equal(create_new_password("beta", 4), OK);
     assert_int_equal(erase_metadata(get_metadata(0)), OK);
 
     assert_int_equal(compact_metadata(), OK);
-    assert_int_equal(N_storage_real.metadatas[0], 1 + strlen("beta"));
+    assert_int_equal(N_storage_real.metadatas[0], 2 + strlen("beta"));
     assert_int_equal(N_storage_real.metadatas[1], META_VERSION_1);
+    assert_int_equal(N_storage_real.metadatas[3], stub_password_length);
 }
 
 static void test_validate_metadata_image(void **state __attribute__((unused))) {
@@ -247,6 +311,8 @@ static void test_write_metadata_enforces_capacity(void **state __attribute__((un
     // the limit, so the 4096-byte buffer can never overflow.
     uint8_t name[MAX_METANAME];
     memset(name, 'A', sizeof(name));
+    name[0] = 0x07;                   // charset
+    name[1] = PASSWORD_DEFAULT_SIZE;  // password length
 
     error_type_t err = OK;
     int written = 0;
@@ -446,7 +512,7 @@ static void test_abort_metadata_restore_clears_database(void **state __attribute
 static void test_write_metadata_enforces_count_cap(void **state __attribute__((unused))) {
     // MAX_METADATAS fits far more short entries than the fixed-size UI list arrays can hold,
     // so creation has to stop at MAX_METADATA_COUNT and not just when the bytes run out.
-    uint8_t name[2] = {0x07, 'a'};  // charset byte + 1-char nickname
+    uint8_t name[3] = {0x07, PASSWORD_DEFAULT_SIZE, 'a'};  // charset, length, 1-char nickname
 
     error_type_t err = OK;
     size_t written = 0;
@@ -501,7 +567,7 @@ static void test_compact_metadata_rejects_record_overrunning_the_end(void **stat
         N_storage_real.metadatas[offset] = 2;  // datalen: charset + 1 byte -> 4 bytes total
         N_storage_real.metadatas[offset + 1] = META_NONE;
     }
-    // Only 4 bytes are left here, but this record claims MAX_METANAME + 2 == 22.
+    // Only 4 bytes are left here, but this record claims MAX_METANAME + 2 == 23.
     N_storage_real.metadatas[last] = MAX_METANAME;
     N_storage_real.metadatas[last + 1] = META_NONE;
 
@@ -544,6 +610,8 @@ static void test_find_free_metadata_sentinel_is_unambiguous(void **state __attri
     // Fill the store through the supported path and check the bound still holds when full.
     uint8_t name[MAX_METANAME];
     memset(name, 'A', sizeof(name));
+    name[0] = 0x07;                   // charset
+    name[1] = PASSWORD_DEFAULT_SIZE;  // password length
     while (write_metadata(name, sizeof(name), META_CURRENT_VERSION) == OK) {
         ;
     }
@@ -580,6 +648,9 @@ int main(void) {
                                         setup,
                                         NULL),
         cmocka_unit_test_setup_teardown(test_validate_metadata_image_versions, setup, NULL),
+        cmocka_unit_test_setup_teardown(test_version_0_entry_accessors, setup, NULL),
+        cmocka_unit_test_setup_teardown(test_validate_metadata_image_lengths, setup, NULL),
+        cmocka_unit_test_setup_teardown(test_validate_full_version_0_database, setup, NULL),
         cmocka_unit_test_setup_teardown(test_compaction_keeps_the_entry_version, setup, NULL),
         cmocka_unit_test_setup_teardown(test_commit_metadata_image, setup, NULL),
         cmocka_unit_test_setup_teardown(test_write_metadata_enforces_capacity, setup, NULL),

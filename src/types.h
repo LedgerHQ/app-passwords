@@ -5,13 +5,14 @@
 #include <stdbool.h>
 
 #define MAX_METADATAS 4096
-// Cap on a record's *data block*, which is [charset byte][nickname] -- it is not the nickname
-// length. See METADATA_DATALEN in metadata.h.
-#define MAX_METANAME 20
-// The longest nickname that can actually be persisted: the data block minus its charset byte.
-#define MAX_NICKNAME_LEN (MAX_METANAME - 1)
-// Considering max metadata size (1+1+1+20) = 23, we can store at most 178 metadatas
-#define MAX_METADATA_COUNT (MAX_METADATAS / (1 + 1 + 1 + MAX_METANAME))
+// The longest nickname a record can hold.
+#define MAX_NICKNAME_LEN 19
+// Cap on a record's *data block*, which is not the nickname length: [charset][nickname] for a
+// version 0 entry, [charset][password length][nickname] for later ones. See metadata.h.
+#define MAX_METANAME (MAX_NICKNAME_LEN + 2)
+// Entries the password list can hold: the same count as with version 0 records only, so that any
+// existing backup still restores.
+#define MAX_METADATA_COUNT 178
 
 typedef struct internalStorage_t {
 #define STORAGE_MAGIC 0xDEAD1337
@@ -31,9 +32,11 @@ typedef struct internalStorage_t {
      * the new image.
      */
     uint8_t restore_in_progress;
+    // Length of new passwords, see options.h.
+    uint8_t password_length;
 } internalStorage_t;
 
-/* `restore_in_progress` has to stay inside the padding that already followed
+/* `restore_in_progress` and `password_length` have to stay inside the padding that already followed
  * `charset_options`: the structure then keeps the size and the field offsets it had before,
  * and an app update reads the user's data where it left it. That holds exactly when the
  * structure ends one alignment unit past the offset of `charset_options`. */

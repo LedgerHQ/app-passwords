@@ -5,6 +5,7 @@
 
 #include "hid_mapping.h"
 
+#include "password.h"
 #include "password_path.h"
 #include "password_typing.h"
 #include "globals.h"
@@ -121,6 +122,10 @@ bool type_password(uint8_t *data,
     entropy_ctx_t entropy_ctx = {0};
     mbedtls_ctr_drbg_context ctx;
 
+    if ((size == 0) || (size > PASSWORD_MAX_SIZE)) {
+        return false;
+    }
+
     if (cx_hash_sha256(data, dataSize, tmp, sizeof(tmp)) != CX_SHA256_SIZE) {
         explicit_bzero(tmp, sizeof(tmp));
         return false;
@@ -166,12 +171,12 @@ bool type_password(uint8_t *data,
         }
         // On success the caller owns `out` and clears it once it is done displaying it.
     } else {
-        generated = generate_password(&ctx, setMask, version, tmp, size);
+        uint8_t password[PASSWORD_MAX_SIZE + 1];
+        generated = generate_password(&ctx, setMask, version, password, size);
         if (generated) {
-            generated = type_password_over_hid(tmp, size);
+            generated = type_password_over_hid(password, size);
         }
-        // tmp held the plaintext password.
-        explicit_bzero(tmp, sizeof(tmp));
+        explicit_bzero(password, sizeof(password));
     }
 
     mbedtls_ctr_drbg_free(&ctx);

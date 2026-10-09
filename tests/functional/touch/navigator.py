@@ -39,6 +39,8 @@ class CustomNavInsID(BaseNavInsID):
     KEYBOARD_TO_CONFIRM = auto()
     # choosing option in choice lists (settings, menu)
     LIST_CHOOSE = auto()
+    # choosing an option in a settings choice list, which stays on the same page
+    SETTINGS_CHOOSE = auto()
     # Keyboard layout selection
     CHOOSE_KBL_QWERTY = auto()
     # startup disclaimer
@@ -72,6 +74,7 @@ class CustomTouchNavigator(Navigator):
             CustomNavInsID.KEYBOARD_WRITE: self.screen.keyboard.write,
             CustomNavInsID.KEYBOARD_TO_CONFIRM: self.screen.keyboard_confirm.tap,
             CustomNavInsID.LIST_CHOOSE: self._choose,
+            CustomNavInsID.SETTINGS_CHOOSE: self.screen.list_choice.choose,
             CustomNavInsID.CHOOSE_KBL_QWERTY: partial(self._choose, 1),
             CustomNavInsID.DISCLAIMER_CONFIRM: self.screen.disclaimer.confirm,
             CustomNavInsID.BUTTON_APPROVE: self.screen.button.tap,

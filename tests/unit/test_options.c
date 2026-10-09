@@ -5,6 +5,7 @@
 #include <cmocka.h>
 
 #include "options.h"
+#include "password.h"
 #include "types.h"
 
 // See test_password.c for why N_storage_real is defined without `const` here.
@@ -56,11 +57,24 @@ static void test_set_keyboard_layout_rejects_unknown(void **state __attribute__(
     assert_int_equal(N_storage_real.keyboard_layout, HID_MAPPING_NONE);
 }
 
+static void test_password_length(void **state __attribute__((unused))) {
+    // An unset or invalid stored value reads as the default.
+    assert_int_equal(get_password_length(), PASSWORD_DEFAULT_SIZE);
+    N_storage_real.password_length = 13;
+    assert_int_equal(get_password_length(), PASSWORD_DEFAULT_SIZE);
+
+    assert_true(set_password_length(64));
+    assert_int_equal(get_password_length(), 64);
+    assert_false(set_password_length(65));
+    assert_int_equal(get_password_length(), 64);
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup_teardown(test_set_keyboard_layout_stores_value, setup, NULL),
         cmocka_unit_test_setup_teardown(test_set_keyboard_layout_keeps_metadata_count, setup, NULL),
         cmocka_unit_test_setup_teardown(test_set_keyboard_layout_rejects_unknown, setup, NULL),
+        cmocka_unit_test_setup_teardown(test_password_length, setup, NULL),
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }

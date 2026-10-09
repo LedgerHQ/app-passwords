@@ -13,9 +13,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - New passwords contain at least one special character when special characters are enabled, and
   at least one of `-`, `_` or space when separators are enabled (generation version 1). Existing
   passwords, and passwords restored from an existing backup, do not change.
+- Password length setting: 8, 12, 16, 20, 24, 32, 48 or 64 characters, recorded with each new
+  password (20 by default). Existing passwords keep their 20 characters.
 - `GET_APP_CONFIG` returns the generation version as a 7th byte.
-- Web UI: backups record the generation `version` of each entry. Restoring entries created with
-  version 1.4.0 or later on an older app is refused with an explicit message.
+- Web UI: backups record the generation `version` and the password `length` of each entry. Restoring
+  entries created with version 1.4.0 or later on an older app is refused with an explicit message.
 
 ### Fix
 
