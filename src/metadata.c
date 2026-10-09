@@ -9,7 +9,7 @@
  * loop goes through this so a crafted or truncated database cannot walk past its end.
  *
  * On success `*total_len` is the number of bytes the record occupies, or 0 for the
- * end-of-database terminator, and `*kind` is META_NONE or META_ERASED.
+ * end-of-database terminator, and `*kind` is META_ERASED or a known generation version.
  */
 static error_type_t record_at(const volatile uint8_t *db,
                               uint32_t offset,
@@ -37,7 +37,7 @@ static error_type_t record_at(const volatile uint8_t *db,
     }
 
     const uint8_t record_kind = db[offset + 1];
-    if ((record_kind != META_NONE) && (record_kind != META_ERASED)) {
+    if ((record_kind > META_CURRENT_VERSION) && (record_kind != META_ERASED)) {
         return ERR_CORRUPTED_METADATA;
     }
 
@@ -83,7 +83,7 @@ error_type_t commit_metadata_image(const uint8_t *image) {
     return OK;
 }
 
-error_type_t write_metadata(uint8_t *data, uint8_t dataSize) {
+error_type_t write_metadata(uint8_t *data, uint8_t dataSize, uint8_t version) {
     if (dataSize > MAX_METANAME) {
         dataSize = MAX_METANAME;
     }
@@ -106,7 +106,7 @@ error_type_t write_metadata(uint8_t *data, uint8_t dataSize) {
     tmp[1] = META_NONE;
     nvm_write((void *) &N_storage.metadatas[offset + 2 + dataSize], tmp, 2);
     tmp[0] = dataSize;
-    tmp[1] = META_NONE;
+    tmp[1] = version;
     nvm_write((void *) &N_storage.metadatas[offset], tmp, 2);
     size_t metadata_count = N_storage.metadata_count + 1;
     nvm_write((void *) &N_storage.metadata_count, &metadata_count, 4);

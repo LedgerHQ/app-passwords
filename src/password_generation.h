@@ -40,12 +40,12 @@ typedef enum {
 
 /*
  * Fills `out` with `size` characters plus a NUL terminator, so `out` must be at least
- * `size + 1` bytes. Returns false without writing a terminator if generation failed, in which
- * case the caller is responsible for wiping `out`.
+ * `size + 1` bytes, with the rule of generation `version`. Returns false without writing a
+ * terminator if generation failed, in which case the caller is responsible for wiping `out`.
  */
 bool generate_password(mbedtls_ctr_drbg_context *drbg,
                        setmask_t setMask,
-                       const uint8_t *minFromSet,
+                       uint8_t version,
                        uint8_t *out,
                        uint32_t size);
 

@@ -12,7 +12,7 @@ def test_app_info(cmd: PasswordsManagerCommand, app_version: tuple[int, int, int
 
 
 def test_app_config(cmd: PasswordsManagerCommand):
-    assert cmd.get_app_config() == (4096, 0, 0)
+    assert cmd.get_app_config() == (4096, 0, 0, 1)
 
 
 def test_generate_password(cmd: PasswordsManagerCommand, test_vector):

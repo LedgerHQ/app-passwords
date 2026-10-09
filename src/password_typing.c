@@ -114,7 +114,7 @@ bool type_password(uint8_t *data,
                    uint32_t dataSize,
                    uint8_t *out,
                    setmask_t setMask,
-                   const uint8_t *minFromSet,
+                   uint8_t version,
                    uint32_t size) {
     uint32_t derive[PASSWORD_PATH_LEN];
     uint8_t tmp[64];
@@ -158,7 +158,7 @@ bool type_password(uint8_t *data,
 
     bool generated;
     if (out != NULL) {
-        generated = generate_password(&ctx, setMask, minFromSet, out, size);
+        generated = generate_password(&ctx, setMask, version, out, size);
         if (!generated) {
             /* Partially generated characters, and no terminator was written: leave the
              * caller's buffer empty rather than holding an unterminated fragment. */
@@ -166,7 +166,7 @@ bool type_password(uint8_t *data,
         }
         // On success the caller owns `out` and clears it once it is done displaying it.
     } else {
-        generated = generate_password(&ctx, setMask, minFromSet, tmp, size);
+        generated = generate_password(&ctx, setMask, version, tmp, size);
         if (generated) {
             generated = type_password_over_hid(tmp, size);
         }

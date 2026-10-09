@@ -10,6 +10,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Add
 
 - German QWERTZ host keyboard layout.
+- New passwords contain at least one special character when special characters are enabled, and
+  at least one of `-`, `_` or space when separators are enabled (generation version 1). Existing
+  passwords, and passwords restored from an existing backup, do not change.
+- `GET_APP_CONFIG` returns the generation version as a 7th byte.
+- Web UI: backups record the generation `version` of each entry. Restoring entries created with
+  version 1.4.0 or later on an older app is refused with an explicit message.
 
 ### Fix
 

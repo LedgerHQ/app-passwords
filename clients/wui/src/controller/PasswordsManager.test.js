@@ -3,6 +3,7 @@ import PasswordsManager, { SW_ACTION_CANCELLED } from "./PasswordsManager.js";
 function makeManager() {
   const m = new PasswordsManager();
   m.storage_size = 4096;
+  m.generation_version = 1;
   return m;
 }
 
@@ -92,9 +93,9 @@ describe("metadata serialization round-trip", () => {
     const out = m._toJSON(bytes);
 
     expect(out.parsed).toEqual([
-      { nickname: "github", charsets: ["UPPERCASE", "LOWERCASE", "NUMBERS"] },
+      { nickname: "github", charsets: ["UPPERCASE", "LOWERCASE", "NUMBERS"], version: 0 },
       // An empty charset list is stored as "all", so it decodes to ALL_SETS.
-      { nickname: "email", charsets: ["ALL_SETS"] },
+      { nickname: "email", charsets: ["ALL_SETS"], version: 0 },
     ]);
     expect(out.nicknames_erased_but_still_stored).toEqual([]);
   });
@@ -295,7 +296,7 @@ describe("metadata parsing treats the device response as untrusted", () => {
     const buf = Buffer.concat([entry("mail"), Buffer.alloc(100)]);
     const out = m._toJSON(buf);
     expect(out.parsed).toEqual([
-      { nickname: "mail", charsets: ["UPPERCASE", "LOWERCASE", "NUMBERS"] },
+      { nickname: "mail", charsets: ["UPPERCASE", "LOWERCASE", "NUMBERS"], version: 0 },
     ]);
   });
 
@@ -337,5 +338,81 @@ describe("metadata parsing treats the device response as untrusted", () => {
     const out = m._toJSON(Buffer.alloc(4096));
     expect(out.parsed).toEqual([]);
     expect(out.nicknames_erased_but_still_stored).toEqual([]);
+  });
+});
+
+describe("generation versions", () => {
+  const backup = (entries) => JSON.stringify({ parsed: entries });
+  // Kind byte of the first entry of a serialized backup.
+  const firstKind = (bytes) => bytes[1];
+
+  test("an entry without a version field is version 0", () => {
+    const bytes = makeManager()._toBytes(backup([{ nickname: "legacy", charsets: [] }]));
+    expect(firstKind(bytes)).toBe(0x00);
+  });
+
+  test("a version 1 entry round-trips", () => {
+    const m = makeManager();
+    const bytes = m._toBytes(backup([{ nickname: "new", charsets: ["ALL_SETS"], version: 1 }]));
+    expect(firstKind(bytes)).toBe(0x01);
+    expect(m._toJSON(bytes).parsed).toEqual([
+      { nickname: "new", charsets: ["ALL_SETS"], version: 1 },
+    ]);
+  });
+
+  test("a backup of an old app restores as version 0 on a new app", () => {
+    // An old app dump: every live entry has kind 0x00.
+    const dump = Buffer.concat([
+      Buffer.from([0x05, 0x00, 0x07]),
+      Buffer.from("mail", "ascii"),
+      Buffer.alloc(10),
+    ]);
+    const m = makeManager();
+    const restored = m._toBytes(JSON.stringify(m._toJSON(dump)));
+    expect(firstKind(restored)).toBe(0x00);
+  });
+
+  test("refuses to restore a version 1 entry on an app that only knows version 0", () => {
+    const m = makeManager();
+    m.generation_version = 0;
+    expect(() =>
+      m._toBytes(backup([{ nickname: "new", charsets: [], version: 1 }]))
+    ).toThrow(/needs version 1\.4\.0 or later of the Passwords app/);
+    // A version 0 backup still restores there.
+    expect(() => m._toBytes(backup([{ nickname: "old", charsets: [] }]))).not.toThrow();
+  });
+
+  test("refuses an unknown or malformed version", () => {
+    const m = makeManager();
+    for (const version of [2, -1, 1.5, "1", null]) {
+      expect(() =>
+        m._toBytes(backup([{ nickname: "x", charsets: [], version }]))
+      ).toThrow(/unknown version/);
+    }
+  });
+
+  test("refuses a dump holding an entry of an unknown version", () => {
+    const dump = Buffer.concat([
+      Buffer.from([0x02, 0x02, 0x07]),
+      Buffer.from("x", "ascii"),
+      Buffer.alloc(10),
+    ]);
+    expect(() => makeManager()._toJSON(dump)).toThrow(/Unknown entry version 2/);
+  });
+
+  const appConfigAnswer = (payload) => {
+    const m = new PasswordsManager();
+    m.transport = { send: async () => Buffer.concat([payload, Buffer.from([0x90, 0x00])]) };
+    return m;
+  };
+
+  test("an app config without the version byte comes from a version 0 app", async () => {
+    const config = await appConfigAnswer(Buffer.from([0, 0, 0x10, 0, 1, 0])).getAppConfig();
+    expect(config.generation_version).toBe(0);
+  });
+
+  test("reads the generation version from the app config", async () => {
+    const config = await appConfigAnswer(Buffer.from([0, 0, 0x10, 0, 1, 0, 1])).getAppConfig();
+    expect(config.generation_version).toBe(1);
   });
 });

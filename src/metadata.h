@@ -18,7 +18,15 @@
 #define META_NONE   0x00
 #define META_ERASED 0xFF
 
-error_type_t write_metadata(uint8_t *data, uint8_t dataSize);
+/* The kind byte of a live entry is the version of the rule its password is generated with. */
+#define META_VERSION_0       0x00
+#define META_VERSION_1       0x01
+#define META_CURRENT_VERSION META_VERSION_1
+
+/*
+ * Appends an entry made of `data` (charset byte + nickname), generated with rule `version`.
+ */
+error_type_t write_metadata(uint8_t *data, uint8_t dataSize, uint8_t version);
 
 void reset_metadatas(void);
 

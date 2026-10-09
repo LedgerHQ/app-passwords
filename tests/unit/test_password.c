@@ -34,13 +34,13 @@ bool type_password(uint8_t *seed,
                    size_t seed_size,
                    uint8_t *out_buffer,
                    uint8_t enabledSets,
-                   const uint8_t *minSets,
+                   uint8_t version,
                    size_t out_size) {
     (void) seed;
     (void) seed_size;
     (void) out_buffer;
     (void) enabledSets;
-    (void) minSets;
+    (void) version;
     (void) out_size;
     return false;
 }
@@ -160,6 +160,38 @@ static void test_create_new_password_accepts_the_longest_storable_nickname(
     assert_memory_equal(&N_storage_real.metadatas[3], longest, MAX_NICKNAME_LEN);
 }
 
+static void test_create_new_password_writes_the_current_version(void **state
+                                                                __attribute__((unused))) {
+    assert_int_equal(create_new_password("mail", 4), OK);
+    assert_int_equal(N_storage_real.metadatas[1], META_CURRENT_VERSION);
+}
+
+static void test_validate_metadata_image_versions(void **state __attribute__((unused))) {
+    uint8_t image[MAX_METADATAS] = {0};
+
+    // One version 0 entry and one version 1 entry.
+    const uint8_t valid[] = {0x02, META_VERSION_0, 0x07, 'a', 0x02, META_VERSION_1, 0xFF, 'b'};
+    memcpy(image, valid, sizeof(valid));
+    assert_int_equal(validate_metadata_image(image), OK);
+
+    // A version this app does not know.
+    image[5] = META_CURRENT_VERSION + 1;
+    assert_int_equal(validate_metadata_image(image), ERR_CORRUPTED_METADATA);
+}
+
+static void test_compaction_keeps_the_entry_version(void **state __attribute__((unused))) {
+    add_password("alpha");
+    add_password("beta");
+    // "beta" is a version 1 entry, moved down when "alpha" is erased.
+    const uint32_t beta = get_metadata(1);
+    N_storage_real.metadatas[beta + 1] = META_VERSION_1;
+    assert_int_equal(erase_metadata(get_metadata(0)), OK);
+
+    assert_int_equal(compact_metadata(), OK);
+    assert_int_equal(N_storage_real.metadatas[0], 1 + strlen("beta"));
+    assert_int_equal(N_storage_real.metadatas[1], META_VERSION_1);
+}
+
 static void test_validate_metadata_image(void **state __attribute__((unused))) {
     uint8_t image[MAX_METADATAS] = {0};
     add_password("before");
@@ -218,7 +250,7 @@ static void test_write_metadata_enforces_capacity(void **state __attribute__((un
 
     error_type_t err = OK;
     int written = 0;
-    while ((err = write_metadata(name, sizeof(name))) == OK) {
+    while ((err = write_metadata(name, sizeof(name), META_CURRENT_VERSION)) == OK) {
         // Guard against an unbounded loop if the limit were not enforced.
         assert_true(++written < MAX_METADATAS);
     }
@@ -418,7 +450,7 @@ static void test_write_metadata_enforces_count_cap(void **state __attribute__((u
 
     error_type_t err = OK;
     size_t written = 0;
-    while ((err = write_metadata(name, sizeof(name))) == OK) {
+    while ((err = write_metadata(name, sizeof(name), META_CURRENT_VERSION)) == OK) {
         written++;
         assert_true(written <= MAX_METADATA_COUNT);
     }
@@ -478,7 +510,7 @@ static void test_compact_metadata_rejects_record_overrunning_the_end(void **stat
 
 static void test_compact_metadata_rejects_bad_kind(void **state __attribute__((unused))) {
     add_password("alpha");
-    N_storage_real.metadatas[1] = 0x42;  // neither META_NONE nor META_ERASED
+    N_storage_real.metadatas[1] = 0x42;  // neither a known version nor META_ERASED
 
     assert_int_equal(compact_metadata(), ERR_CORRUPTED_METADATA);
 }
@@ -512,7 +544,7 @@ static void test_find_free_metadata_sentinel_is_unambiguous(void **state __attri
     // Fill the store through the supported path and check the bound still holds when full.
     uint8_t name[MAX_METANAME];
     memset(name, 'A', sizeof(name));
-    while (write_metadata(name, sizeof(name)) == OK) {
+    while (write_metadata(name, sizeof(name), META_CURRENT_VERSION) == OK) {
         ;
     }
     assert_true(find_free_metadata() < MAX_METADATAS);
@@ -544,6 +576,11 @@ int main(void) {
             setup,
             NULL),
         cmocka_unit_test_setup_teardown(test_validate_metadata_image, setup, NULL),
+        cmocka_unit_test_setup_teardown(test_create_new_password_writes_the_current_version,
+                                        setup,
+                                        NULL),
+        cmocka_unit_test_setup_teardown(test_validate_metadata_image_versions, setup, NULL),
+        cmocka_unit_test_setup_teardown(test_compaction_keeps_the_entry_version, setup, NULL),
         cmocka_unit_test_setup_teardown(test_commit_metadata_image, setup, NULL),
         cmocka_unit_test_setup_teardown(test_write_metadata_enforces_capacity, setup, NULL),
         cmocka_unit_test_setup_teardown(test_compact_metadata_erased_first_entry, setup, NULL),

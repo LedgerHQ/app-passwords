@@ -21,6 +21,11 @@ The backup is a human-readable `passwords_backup.json` file containing a dump of
 the application storage. It holds only nicknames (no secrets), so it is not
 confidential.
 
+Each entry records its nickname, its character sets and the `version` of the
+rule its password is generated with. Backups made before versions existed have
+no `version` field: their entries are version 0. A backup holding version 1
+entries can only be restored on Passwords app 1.4.0 or later.
+
 For more information on the device application itself, see the
 [app README](https://github.com/LedgerHQ/app-passwords/blob/master/README.md).
 

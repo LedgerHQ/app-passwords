@@ -9,8 +9,9 @@
 // matching the `#ifdef TESTING` guard on the dispatch site in dispatcher.c.
 #ifdef TESTING
 
-/* Takes a metadata as an input (charset + seed) and returns a PASSWORD_MAX_SIZE char password*/
-int test_generate_password(const buf_t *input) {
+/* Takes a metadata as an input (charset + seed) and the generation version, and returns a
+ * PASSWORD_MAX_SIZE char password */
+int test_generate_password(uint8_t version, const buf_t *input) {
     // The charset byte is mandatory. Reading it from an empty payload used to fetch a byte from
     // outside the APDU data, and `input->size - 1` then underflowed the size_t to SIZE_MAX,
     // which was handed to the derivation hash as its input length.
@@ -28,12 +29,7 @@ int test_generate_password(const buf_t *input) {
     uint8_t out_buffer[PASSWORD_MAX_SIZE + 1] = {0};
     int status = 0;
 
-    if (!type_password(seed_ptr,
-                       seed_len,
-                       out_buffer,
-                       enabledSets,
-                       (const uint8_t *) PIC(DEFAULT_MIN_SET),
-                       PASSWORD_MAX_SIZE)) {
+    if (!type_password(seed_ptr, seed_len, out_buffer, enabledSets, version, PASSWORD_MAX_SIZE)) {
         explicit_bzero(out_buffer, sizeof(out_buffer));
         return io_send_sw(SWO_EXECUTION_ERROR);
     }
@@ -48,10 +44,11 @@ int test_generate_password(const buf_t *input) {
     return status;
 }
 
-int test_dispatcher(uint8_t p1, __attribute__((unused)) uint8_t p2, const buf_t *input) {
+int test_dispatcher(uint8_t p1, uint8_t p2, const buf_t *input) {
     switch (p1) {
         case GENERATE_PASSWORD:
-            return test_generate_password(input);
+            // P2 is the generation version.
+            return test_generate_password(p2, input);
         default:
             return io_send_sw(SWO_INVALID_INS + 1);
     }

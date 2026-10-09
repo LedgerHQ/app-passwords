@@ -15,6 +15,16 @@ const MAX_METADATA_DATALEN = 20;
 // The device reports its own size, but that value is untrusted, so it is bounded by this.
 const MAX_METADATA_STORAGE_SIZE = 4096;
 
+// Kind byte of an erased entry. A live entry's kind byte is its generation version.
+const META_ERASED = 0xff;
+
+// Highest generation version this page knows. An entry's version selects the rule its password
+// is generated with, so an entry of an unknown version can neither be kept nor written back.
+const MAX_GENERATION_VERSION = 1;
+
+// First Passwords app release that generates each version.
+const APP_VERSION_FOR_GENERATION = Object.freeze({ 1: "1.4.0" });
+
 const insAPDU = Object.freeze({
   GET_APP_INFO_COMMAND: 0x01,
   GET_APP_CONFIG_COMMAND: 0x03,
@@ -54,6 +64,8 @@ class PasswordsManager {
     this.appName = null;
     this.version = null;
     this.storage_size = null;
+    // Generation version of the connected app: the highest entry version it accepts.
+    this.generation_version = null;
     // Optional callback invoked when the device is unplugged mid-session.
     this.onDisconnect = null;
   }
@@ -75,6 +87,7 @@ class PasswordsManager {
         this.version = version;
         let appConfig = await this.getAppConfig();
         this.storage_size = appConfig["storage_size"];
+        this.generation_version = appConfig["generation_version"];
         this.connected = true;
       } catch (error) {
         await this.disconnect();
@@ -187,6 +200,20 @@ class PasswordsManager {
     return size;
   }
 
+  /* Generation version of a backup entry. Backups made before versions existed have no field,
+   * and their entries are version 0. Refuses a version the connected app cannot generate. */
+  _entryVersion(element) {
+    const version = Object.hasOwn(element, "version") ? element["version"] : 0;
+    if (!Number.isInteger(version) || version < 0 || version > MAX_GENERATION_VERSION)
+      throw new Error(`This backup has an entry of unknown version: ${JSON.stringify(version)}`);
+    const appGenerationVersion = this.generation_version ?? 0;
+    if (version > appGenerationVersion)
+      throw new Error(
+        `This backup needs version ${APP_VERSION_FOR_GENERATION[version]} or later of the Passwords app: update the app, then restore again`
+      );
+    return version;
+  }
+
   _toBytes(json_metadatas) {
     const storage_size = this._validatedStorageSize();
     let metadatas = Buffer.alloc(storage_size);
@@ -201,6 +228,7 @@ class PasswordsManager {
     parsed_metadatas.forEach((element) => {
       const nickname = element["nickname"];
       const charsets = this._charsetListToBitmask(element["charsets"]);
+      const version = this._entryVersion(element);
       if (typeof nickname !== "string" || nickname.length === 0)
         throw new Error("This backup contains an entry with an empty nickname");
       // The device keyboard can only produce printable ASCII, and the nickname is what the
@@ -224,7 +252,7 @@ class PasswordsManager {
           `Not enough memory on this device to restore this backup`
         );
       metadatas[offset++] = nicknameBytes + 1;
-      metadatas[offset++] = 0x00;
+      metadatas[offset++] = version;
       metadatas[offset++] = charsets;
       metadatas.write(nickname, offset, nicknameBytes, "utf8");
       offset += nicknameBytes;
@@ -264,12 +292,16 @@ class PasswordsManager {
           `Malformed metadata: more than ${MAX_METADATA_COUNT} entries`
         );
       }
-      const erased = metadatas[offset + 1] === 0xff;
+      const kind = metadatas[offset + 1];
+      const erased = kind === META_ERASED;
+      if (!erased && kind > MAX_GENERATION_VERSION)
+        throw new Error(`Unknown entry version ${kind} at offset ${offset}`);
       const charsets = metadatas[offset + 2];
       const metadata = {
         nickname: metadatas.slice(offset + 3, offset + 2 + len).toString(),
         charsets: this._bitmaskToCharsetList(charsets),
       };
+      if (!erased) metadata.version = kind;
       (erased ? erased_list : metadatas_list).push(metadata);
       offset += len + 2;
     }
@@ -346,7 +378,8 @@ class PasswordsManager {
       );
       if (!this.isSuccess(result)) this.mapProtocolError(result);
       result = result.slice(0, result.length - 2);
-      if (result.length !== 6)
+      // Apps that predate generation versions answer without the last byte.
+      if (result.length !== 6 && result.length !== 7)
         throw new Error(`Can't parse app config of length ${result.length}`);
 
       // The size is used as an allocation size and a loop bound, so it is validated before it
@@ -362,7 +395,8 @@ class PasswordsManager {
 
       const keyboard_type = result[4];
       const press_enter_after_typing = result[5];
-      return { storage_size, keyboard_type, press_enter_after_typing };
+      const generation_version = result.length === 7 ? result[6] : 0;
+      return { storage_size, keyboard_type, press_enter_after_typing, generation_version };
     } finally {
       this._unlock();
     }

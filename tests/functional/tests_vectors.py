@@ -1,4 +1,5 @@
-EXISTING_METADATA = b"\n\x00\x07password1\n\x00\x07password2\n\x00\x07password3"
+# Demo entries seeded by a POPULATE build, created as generation version 1.
+EXISTING_METADATA = b"\n\x01\x07password1\n\x01\x07password2\n\x01\x07password3"
 
 tests_vectors = {
     "test_generate_password": [
@@ -12,6 +13,16 @@ tests_vectors = {
         [0xFF, "gmail", "*m8ZlP1|}O vzvJrQNT4"],
         [0xFF, "aseedoflengthequal20", "29!uO;UPx UT8Hkmi- 5"],
         [0xFF, "aSeedOfLengthEqual20", " $4,P.usI*C\\k1fv2;M;"],
+    ],
+    # Generation version 1: separators and special characters each have a minimum of one.
+    "test_generate_password_v1": [
+        [0x0F, "gmail", "w-4JrbA9HNvWU1ON5MGP"],
+        [0x3F, "gmail", "kD83CP1UZO vQvJIuNx4"],
+        [0x7F, "gmail", "?u8htP1|DO v7vJ*YNb4"],
+        [0xC7, "gmail", "Oc4Pv]v1^dJ<2Wo;8NpT"],
+        [0xFF, "gmail", "*m8ZlP1|}O vzvJ^QNT4"],
+        [0xFF, "aseedoflengthequal20", "29!uO;UPx UT8Hkmi$-5"],
+        [0xFF, "aSeedOfLengthEqual20", "1fs,2$u4|;k;v*IM_C\\P"],
     ],
     "test_dump_metadatas": [
         [0, b""],

@@ -159,3 +159,38 @@ def test_show_password_on_second_page(
     shown = _screen_texts(custom_backend)
     assert expected_name in shown
     assert expected_value in shown, f"expected value of '{expected_name}' not shown; wrong entry selected"
+
+
+@pytest.mark.skip_nano  # Reads the shown value from the touch screen texts
+def test_show_password_uses_the_entry_version(
+    cmd: PasswordsManagerCommand,
+    navigator: Navigator,
+    custom_backend: BackendInterface,
+):
+    """A version 1 entry shows the version 1 password, which differs from version 0 for these
+    charsets."""
+    name = "pwdv1test"
+    charsets = 0xFF
+    expected = cmd.generate_password(charsets, name, version=1)
+    assert expected != cmd.generate_password(charsets, name), "pick a nickname where v0 and v1 differ"
+
+    navigator.navigate(
+        [
+            CustomNavInsID.DISCLAIMER_CONFIRM,
+            CustomNavInsID.CHOOSE_KBL_QWERTY,
+        ],
+        screen_change_before_first_instruction=False,
+    )
+    cmd.load_metadatas(bytes([len(name) + 1, 0x01, charsets]) + name.encode())
+
+    navigator.navigate(
+        [
+            CustomNavInsID.HOME_TO_MENU,
+            CustomNavInsID.MENU_TO_DISPLAY,
+            NavIns(CustomNavInsID.LIST_CHOOSE, (1,)),
+        ],
+        screen_change_before_first_instruction=False,
+    )
+    shown = _screen_texts(custom_backend)
+    assert name in shown
+    assert expected in shown, f"expected the version 1 password of '{name}'"
