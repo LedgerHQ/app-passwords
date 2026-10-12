@@ -63,6 +63,8 @@ static void test_password_length(void **state __attribute__((unused))) {
     N_storage_real.password_length = 13;
     assert_int_equal(get_password_length(), PASSWORD_DEFAULT_SIZE);
 
+    assert_true(set_password_length(4));
+    assert_int_equal(get_password_length(), 4);
     assert_true(set_password_length(64));
     assert_int_equal(get_password_length(), 64);
     assert_false(set_password_length(65));

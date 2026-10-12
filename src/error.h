@@ -11,7 +11,8 @@ typedef enum error_type_e {
     ERR_CORRUPTED_METADATA = 2,
     ERR_NO_METADATA = 3,
     ERR_METADATA_ENTRY_TOO_BIG = 4,
-    ERR_WEAK_CHARSETS = 5
+    ERR_WEAK_CHARSETS = 5,
+    ERR_PIN_NEEDS_NUMBERS = 6
 } error_type_t;
 
 message_pair_t get_error(const error_type_t error);

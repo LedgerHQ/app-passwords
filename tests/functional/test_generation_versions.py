@@ -75,3 +75,15 @@ def test_separators_only_still_generate_version_0(cmd: PasswordsManagerCommand):
     # Version 0 keeps its rule: these passwords may be in use.
     assert cmd.generate_password(0x08, "gmail") == "-" * 20
     assert len(cmd.generate_password(0x38, "gmail")) == 20
+
+
+@pytest.mark.parametrize("length", [4, 6])
+def test_pin_lengths(cmd: PasswordsManagerCommand, length: int):
+    for seed in SEEDS[:10]:
+        assert cmd.generate_password(NUMBERS, seed, version=1, length=length).isdigit()
+
+
+@pytest.mark.parametrize("charsets", [0x00, 0x05, 0x07, 0xFF])
+def test_pin_length_needs_numbers_only(cmd: PasswordsManagerCommand, charsets: int):
+    response = cmd.transport.exchange(cla=0xE0, ins=0x99, p1=0x01, p2=0x01, data=bytes([charsets, 4]) + b"bank")
+    assert response.status == 0x6400  # SWO_EXECUTION_ERROR

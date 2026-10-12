@@ -159,7 +159,7 @@ bool generate_password(mbedtls_ctr_drbg_context *drbg,
             uniform = false;
             break;
         case META_VERSION_1:
-            if (charsets_are_weak(setMask)) {
+            if (charsets_are_weak(setMask) || !password_length_fits_charsets(size, setMask)) {
                 return false;
             }
             groups = (const set_group_t *) PIC(GROUPS_V1);

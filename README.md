@@ -35,7 +35,8 @@ In the application settings, the user can configure
   contains at least one character of each enabled kind, and at least one of letters, numbers or
   special characters must stay enabled.
 - The length of new passwords: 8, 12, 16, 20, 24, 32, 48 or 64 characters (20 by default, and the
-  only length before version 1.4.0).
+  only length before version 1.4.0), or a 4 or 6-digit PIN, which requires numbers to be the only
+  kind of characters enabled.
 
 The character kinds and the length are recorded with each entry when it is created: changing the
 settings later does not change existing passwords.

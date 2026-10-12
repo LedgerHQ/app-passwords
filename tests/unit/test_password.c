@@ -52,7 +52,7 @@ uint8_t get_charset_options(void) {
     return stub_charsets;
 }
 
-static const uint8_t stub_password_length = 32;
+static uint8_t stub_password_length = 32;
 uint8_t get_password_length(void) {
     return stub_password_length;
 }
@@ -79,6 +79,7 @@ static void add_password(const char *nickname) {
 static int setup(void **state __attribute__((unused))) {
     memset(&N_storage_real, 0, sizeof(N_storage_real));
     stub_charsets = 0;
+    stub_password_length = 32;
     return 0;
 }
 
@@ -339,6 +340,42 @@ static void test_validate_metadata_image_weak_charsets(void **state __attribute_
     const uint8_t weak[] = {0x03, META_CURRENT_VERSION, 0x38, 20, 'a'};
     memset(image, 0, sizeof(image));
     memcpy(image, weak, sizeof(weak));
+    assert_int_equal(validate_metadata_image(image), ERR_CORRUPTED_METADATA);
+}
+
+static void test_password_length_fits_charsets(void **state __attribute__((unused))) {
+    // PIN lengths take numbers only; zero means all the sets, so it does not fit them.
+    assert_true(password_length_fits_charsets(4, NUMBERS_SET));
+    assert_true(password_length_fits_charsets(6, NUMBERS_SET));
+    assert_false(password_length_fits_charsets(4, 0x07));
+    assert_false(password_length_fits_charsets(6, 0x00));
+    // Other lengths take any charset, numbers only included.
+    assert_true(password_length_fits_charsets(8, 0xFF));
+    assert_true(password_length_fits_charsets(20, NUMBERS_SET));
+}
+
+static void test_create_new_password_pin_needs_numbers(void **state __attribute__((unused))) {
+    stub_password_length = 4;
+    stub_charsets = 0x07;
+    assert_int_equal(create_new_password("pin", 3), ERR_PIN_NEEDS_NUMBERS);
+    assert_int_equal(N_storage_real.metadata_count, 0);
+
+    stub_charsets = NUMBERS_SET;
+    assert_int_equal(create_new_password("pin", 3), OK);
+    assert_int_equal(METADATA_PASSWORD_LEN(0), 4);
+}
+
+static void test_validate_metadata_image_pin_lengths(void **state __attribute__((unused))) {
+    uint8_t image[MAX_METADATAS] = {0};
+
+    const uint8_t pin[] = {0x05, META_CURRENT_VERSION, NUMBERS_SET, 6, 'b', 'a', 'n'};
+    memcpy(image, pin, sizeof(pin));
+    assert_int_equal(validate_metadata_image(image), OK);
+
+    // A PIN length with other characters, or with all the sets.
+    image[2] = 0x07;
+    assert_int_equal(validate_metadata_image(image), ERR_CORRUPTED_METADATA);
+    image[2] = 0x00;
     assert_int_equal(validate_metadata_image(image), ERR_CORRUPTED_METADATA);
 }
 
@@ -737,6 +774,9 @@ int main(void) {
                                         setup,
                                         NULL),
         cmocka_unit_test_setup_teardown(test_validate_metadata_image_weak_charsets, setup, NULL),
+        cmocka_unit_test_setup_teardown(test_password_length_fits_charsets, setup, NULL),
+        cmocka_unit_test_setup_teardown(test_create_new_password_pin_needs_numbers, setup, NULL),
+        cmocka_unit_test_setup_teardown(test_validate_metadata_image_pin_lengths, setup, NULL),
         cmocka_unit_test_setup_teardown(test_create_new_password_writes_the_current_version,
                                         setup,
                                         NULL),

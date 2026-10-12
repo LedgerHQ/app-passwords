@@ -96,7 +96,7 @@ enum {
  * @brief Settings: password length IDs
  *
  */
-#define LENGTH_OPTIONS_NB 8
+#define LENGTH_OPTIONS_NB 10
 
 /**
  * @brief Settings: contents indexes
@@ -121,10 +121,10 @@ static const char *const availableKbd[KBD_OPTIONS_NB] = {"QWERTY", "QWERTY INT."
 bool kbdMappingInit = false;
 
 // Settings password lengths
-static const uint8_t availableLengths[LENGTH_OPTIONS_NB] = {8, 12, 16, 20, 24, 32, 48, 64};
+static const uint8_t availableLengths[LENGTH_OPTIONS_NB] = {4, 6, 8, 12, 16, 20, 24, 32, 48, 64};
 static const char *const availableLengthNames[LENGTH_OPTIONS_NB] = {
-    "8 characters", "12 characters", "16 characters", "20 characters",
-    "24 characters", "32 characters", "48 characters", "64 characters"};
+    "4 digits (PIN)", "6 digits (PIN)", "8 characters", "12 characters", "16 characters",
+    "20 characters",  "24 characters",  "32 characters", "48 characters", "64 characters"};
 
 // App info
 #define SETTING_INFO_NB 3
@@ -287,18 +287,24 @@ static void return_after_charset_refusal(void) {
 
 /**
  * @brief Toggle a charset setting, unless no letters, numbers or special characters would remain
- *        enabled
+ *        enabled, or the password length is a PIN one and the charset would no longer be numbers
+ *        only
  *
  * @param[in] bitflag charset setting to toggle
  * @param[in] page settings page to come back to after a refusal
  */
 static void toggle_charset_setting(uint8_t bitflag, int page) {
+    const uint8_t sets = get_charset_options() ^ bitflag;
+    const char *refusal = NULL;
     // Separators alone are too weak, and an empty charset would silently mean all the sets.
-    if (((get_charset_options() ^ bitflag) & (uint8_t) ~SEPARATOR_SETS) == 0) {
+    if ((sets & (uint8_t) ~SEPARATOR_SETS) == 0) {
+        refusal = "Keep letters, numbers\nor special characters";
+    } else if (!password_length_fits_charsets(get_password_length(), sets)) {
+        refusal = "PIN lengths need\nnumbers only";
+    }
+    if (refusal != NULL) {
         charsetRefusalPage = (uint8_t) page;
-        nbgl_useCaseStatus("Keep letters, numbers\nor special characters",
-                           false,
-                           return_after_charset_refusal);
+        nbgl_useCaseStatus(refusal, false, return_after_charset_refusal);
         return;
     }
     set_charset_option(bitflag);
@@ -377,6 +383,13 @@ static void controls_callback(int token, uint8_t index, int page) {
             const size_t choice = index;
 #endif
             if (choice < LENGTH_OPTIONS_NB) {
+                if (!password_length_fits_charsets(availableLengths[choice],
+                                                   get_charset_options())) {
+                    nbgl_useCaseStatus("PIN lengths need\nnumbers only",
+                                       false,
+                                       display_length_sub_menu);
+                    break;
+                }
                 set_password_length(availableLengths[choice]);
             }
             lengthChoicesContent.content.choicesList.initChoice = password_length_index();

@@ -40,8 +40,8 @@ void reset_metadatas(void);
 
 /*
  * Check a complete MAX_METADATAS-byte database image held in RAM, without touching NVM: record
- * structure, entry count, live nicknames (non-empty, printable ASCII), and the charsets of entries
- * above version 0.
+ * structure, entry count, live nicknames (non-empty, printable ASCII), and the charsets and
+ * password length of entries above version 0.
  */
 error_type_t validate_metadata_image(const uint8_t *image);
 

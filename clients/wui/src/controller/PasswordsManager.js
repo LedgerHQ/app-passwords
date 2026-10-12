@@ -14,7 +14,9 @@ const MAX_METADATA_DATALEN = MAX_NICKNAME_LEN + 2;
 
 // Mirrors password.h: length of version 0 passwords, and the lengths of later ones.
 const DEFAULT_PASSWORD_LENGTH = 20;
-const PASSWORD_LENGTHS = Object.freeze([8, 12, 16, 20, 24, 32, 48, 64]);
+const PASSWORD_LENGTHS = Object.freeze([4, 6, 8, 12, 16, 20, 24, 32, 48, 64]);
+// PIN lengths generate digits only.
+const PIN_LENGTHS = Object.freeze([4, 6]);
 
 // Mirrors MAX_METADATAS in src/types.h: the largest metadata store the protocol can describe.
 // The device reports its own size, but that value is untrusted, so it is bounded by this.
@@ -258,6 +260,10 @@ class PasswordsManager {
       const charsets = this._charsetListToBitmask(element["charsets"]);
       const version = this._entryVersion(element);
       const length = this._entryLength(element, version);
+      if (PIN_LENGTHS.includes(length) && charsets !== passwordsCharsets.NUMBERS)
+        throw new Error(
+          `A ${length}-digit PIN entry must use numbers only: ${JSON.stringify(nickname)}`
+        );
       // Version 0 entries are restored as they are: their passwords may be in use.
       if (version !== 0 && isWeakCharsetMask(charsets))
         throw new Error(

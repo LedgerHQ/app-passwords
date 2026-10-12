@@ -14,6 +14,9 @@ error_type_t create_new_password(const char *const pwd_name, const size_t pwd_si
     if (charsets_are_weak(get_charset_options())) {
         return ERR_WEAK_CHARSETS;
     }
+    if (!password_length_fits_charsets(get_password_length(), get_charset_options())) {
+        return ERR_PIN_NEEDS_NUMBERS;
+    }
     // use the G_io_seproxyhal_spi_buffer as temp buffer to build the data block: the requested
     // set of chars, the password length, then the nickname
     memmove(G_io_seproxyhal_spi_buffer + 2, pwd_name, pwd_size);

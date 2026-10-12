@@ -1,6 +1,6 @@
 #include "error.h"
 
-static const message_pair_t ERR_MESSAGES[6] = {
+static const message_pair_t ERR_MESSAGES[7] = {
     // OK
     {},
     // ERR_NO_MORE_SPACE_AVAILABLE
@@ -12,7 +12,9 @@ static const message_pair_t ERR_MESSAGES[6] = {
     // ERR_METADATA_ENTRY_TOO_BIG
     {"Write Error", "Entry is too big"},
     // ERR_WEAK_CHARSETS
-    {"Write Error", "Separators alone are too weak"}};
+    {"Write Error", "Separators alone are too weak"},
+    // ERR_PIN_NEEDS_NUMBERS
+    {"Write Error", "PIN lengths need numbers only"}};
 
 message_pair_t get_error(const error_type_t error) {
     return ERR_MESSAGES[error];

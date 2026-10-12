@@ -449,7 +449,7 @@ describe("password lengths", () => {
 
   test("refuses unsupported lengths", () => {
     const m = makeManager();
-    for (const length of [0, 13, 65, "20", null]) {
+    for (const length of [0, 5, 13, 65, "20", null]) {
       expect(() =>
         m._toBytes(backup([{ nickname: "x", charsets: [], version: 1, length }]))
       ).toThrow(/unsupported length/);
@@ -512,5 +512,25 @@ describe("weak charsets", () => {
       ])
     );
     expect(weak).toEqual(["weak"]);
+  });
+});
+
+describe("PIN lengths", () => {
+  const backup = (entries) => JSON.stringify({ parsed: entries });
+
+  test("a 4 or 6-digit entry with numbers only round-trips", () => {
+    const m = makeManager();
+    for (const length of [4, 6]) {
+      const entry = { nickname: "bank", charsets: ["NUMBERS"], version: 1, length };
+      expect(m._toJSON(m._toBytes(backup([entry]))).parsed).toEqual([entry]);
+    }
+  });
+
+  test("refuses a PIN length with other characters", () => {
+    for (const charsets of [["NUMBERS", "UPPERCASE"], [], ["ALL_SETS"]]) {
+      expect(() =>
+        makeManager()._toBytes(backup([{ nickname: "bank", charsets, version: 1, length: 4 }]))
+      ).toThrow(/numbers only/);
+    }
   });
 });

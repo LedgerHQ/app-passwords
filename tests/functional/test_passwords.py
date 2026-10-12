@@ -209,7 +209,7 @@ def test_password_length_setting(
     custom_backend: BackendInterface,
 ):
     """A password created after choosing a length in the settings has that length."""
-    lengths = [f"{n} characters" for n in (8, 12, 16, 20, 24, 32, 48, 64)]
+    lengths = ["4 digits (PIN)", "6 digits (PIN)"] + [f"{n} characters" for n in (8, 12, 16, 20, 24, 32, 48, 64)]
     navigator.navigate(
         [
             CustomNavInsID.DISCLAIMER_CONFIRM,
@@ -226,7 +226,7 @@ def test_password_length_setting(
         [NavIns(CustomNavInsID.SETTINGS_CHOOSE, (1,))],
         screen_change_before_first_instruction=False,
     )
-    for _ in range(3):
+    for _ in range(4):
         if "64 characters" in _screen_texts(custom_backend):
             break
         navigator.navigate([CustomNavInsID.SETTINGS_NEXT], screen_change_before_first_instruction=False)

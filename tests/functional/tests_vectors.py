@@ -27,6 +27,8 @@ tests_vectors = {
     ],
     # Generation version 1 with the other password lengths: [charsets, seed, length, password].
     "test_generate_password_lengths": [
+        [0x04, "bank", 4, "2968"],
+        [0x04, "bank", 6, "685962"],
         [0x07, "gmail", 8, "O14WvxJP"],
         [0xFF, "gmail", 12, "m 4zvPQ}^ZJ1"],
         [0xFF, "gmail", 32, " F4Os2!Nvvd`^P(lO8P1}|QzZJTm*/(a"],

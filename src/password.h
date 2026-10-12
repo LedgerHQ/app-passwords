@@ -10,6 +10,14 @@
 #define PASSWORD_DEFAULT_SIZE 20
 #define PASSWORD_MAX_SIZE     64
 
+/* Numbers set: the only one allowed with a PIN length. */
+#define NUMBERS_SET 0x04
+
+/* PIN lengths (4 and 6) generate digits only. */
+static inline bool password_length_fits_charsets(uint8_t length, uint8_t sets) {
+    return ((length != 4) && (length != 6)) || (sets == NUMBERS_SET);
+}
+
 /* Separator sets ('-', '_', space). An alphabet made of them only gives weak or constant
  * passwords; a zero mask stands for all the sets. */
 #define SEPARATOR_SETS 0x38
@@ -20,6 +28,8 @@ static inline bool charsets_are_weak(uint8_t sets) {
 /* Lengths offered for new passwords. */
 static inline bool password_length_is_supported(uint8_t length) {
     switch (length) {
+        case 4:
+        case 6:
         case 8:
         case 12:
         case 16:
