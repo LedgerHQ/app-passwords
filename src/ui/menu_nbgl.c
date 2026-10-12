@@ -55,10 +55,9 @@ enum {
     NO_ENTER_TOKEN,
     KBD_TOKEN,
     LENGTH_TOKEN,
+    CHARSET_BAR_TOKEN,
     LENGTH_BAR_TOKEN,
-#ifndef SCREEN_SIZE_WALLET
     KBD_BAR_TOKEN,
-#endif
     CHOICE_WRITE_TOKEN,
     CHOICE_DISPLAY_TOKEN,
     CHOICE_CREATE_TOKEN,
@@ -67,7 +66,7 @@ enum {
 };
 
 /**
- * @brief Settings: Switches IDs
+ * @brief Settings: character types switches IDs
  *
  */
 enum {
@@ -76,8 +75,18 @@ enum {
     NUMBERS_ID,
     BARS_ID,
     EXT_SYMBOLS_ID,
-    NO_ENTER_ID,
-    SETTINGS_SWITCHES_NB,
+    CHARSET_SWITCHES_NB,
+};
+
+/**
+ * @brief Settings: BARS_LIST entries IDs, each opening a sub-menu
+ *
+ */
+enum {
+    CHARSET_BAR_ID = 0,
+    LENGTH_BAR_ID,
+    KBD_BAR_ID,
+    SETTINGS_BARS_NB,
 };
 
 /**
@@ -103,18 +112,16 @@ enum {
  *
  */
 enum {
-    SETTING_OPTIONS,
-    SETTING_KBD_TYPE,
-#ifdef SCREEN_SIZE_WALLET
-    SETTING_PWD_LENGTH,
-#endif
+    SETTING_SUB_MENUS,
+    SETTING_ENTER,
     SETTING_CONTENTS_NB,
 };
 
 static void display_home_page(void);
 
-// Settings switches
-static nbgl_contentSwitch_t switches[SETTINGS_SWITCHES_NB] = {0};
+// Settings switches: the character types, in their sub-menu, and "Press enter"
+static nbgl_contentSwitch_t switches[CHARSET_SWITCHES_NB] = {0};
+static nbgl_contentSwitch_t enterSwitch = {0};
 
 // Settings keyboard layouts
 static const char *const availableKbd[KBD_OPTIONS_NB] = {"QWERTY", "QWERTY INT.", "AZERTY", "QWERTZ (DE)"};
@@ -145,24 +152,26 @@ static const nbgl_genericContents_t settingContents = {
 };
 static nbgl_homeAction_t homeAction = {0};
 
-// "Host keyboard" is the BARS_LIST label on Nano AND the sub-menu /
-// first-launch page title on both platforms. Keep one source of truth.
-static const char *const kbdSettingsBarsTexts[2] = {"Host keyboard", "Password length"};
+// Settings BARS_LIST entries, also used as the titles of their sub-menus (and of the
+// first-launch keyboard layout page). Keep one source of truth.
+static const char *const settingsBarsTexts[SETTINGS_BARS_NB] = {"Character types",
+                                                                "Password length",
+                                                                "Host keyboard"};
+static const uint8_t     settingsBarsTokens[SETTINGS_BARS_NB] = {CHARSET_BAR_TOKEN,
+                                                                 LENGTH_BAR_TOKEN,
+                                                                 KBD_BAR_TOKEN};
 
-// The password length CHOICES_LIST lives in a sub-menu reached from the
-// "Password length" BARS_LIST entry of the settings.
-static nbgl_content_t lengthChoicesContent = {0};
+// The character types switches, and the password length and keyboard layout CHOICES_LIST,
+// live in sub-menus reached from the BARS_LIST entries. The layout one is also the
+// first-launch post-disclaimer page.
+static nbgl_content_t charsetSwitchesContent  = {0};
+static nbgl_content_t kbdLayoutChoicesContent = {0};
+static nbgl_content_t lengthChoicesContent    = {0};
 
 #ifdef SCREEN_SIZE_WALLET
-static const uint8_t lengthBarTokens[1] = {LENGTH_BAR_TOKEN};
-// Settings page of the "Password length" entry, and lengths shown per sub-menu page.
-static uint8_t lengthBarPage = 0;
+// Settings page of the BARS_LIST entries, and lengths shown per sub-menu page.
+static uint8_t settingsBarsPage = 0;
 static uint8_t lengthsPerPage = 0;
-#else
-// Nano-only: the keyboard layout CHOICES_LIST also lives in a sub-menu, reused by
-// the first-launch post-disclaimer page.
-static nbgl_content_t kbdLayoutChoicesContent  = {0};
-static const uint8_t  kbdSettingsBarsTokens[2] = {KBD_BAR_TOKEN, LENGTH_BAR_TOKEN};
 #endif
 
 // Main Action menu choices
@@ -208,16 +217,48 @@ static void return_to_settings_at(uint8_t page) {
 }
 
 /**
- * @brief Quit callback for the password length sub-menu: back to the settings page holding
- *        the "Password length" entry. On Nano the horizontal flow numbers steps
- *        0..SETTINGS_SWITCHES_NB-1 for the switches, then the two BARS_LIST entries.
+ * @brief Quit callbacks for the sub-menus: back to the settings page holding their entry. On
+ *        Nano the horizontal flow has one step per BARS_LIST entry, in SETTINGS_BARS_NB order.
  */
+static void return_to_charset_setting(void) {
+#ifdef SCREEN_SIZE_WALLET
+    return_to_settings_at(settingsBarsPage);
+#else
+    return_to_settings_at(CHARSET_BAR_ID);
+#endif
+}
+
+static void return_to_kbd_setting(void) {
+#ifdef SCREEN_SIZE_WALLET
+    return_to_settings_at(settingsBarsPage);
+#else
+    return_to_settings_at(KBD_BAR_ID);
+#endif
+}
+
 static void return_to_length_setting(void) {
 #ifdef SCREEN_SIZE_WALLET
-    return_to_settings_at(lengthBarPage);
+    return_to_settings_at(settingsBarsPage);
 #else
-    return_to_settings_at(SETTINGS_SWITCHES_NB + 1);
+    return_to_settings_at(LENGTH_BAR_ID);
 #endif
+}
+
+/**
+ * @brief Settings sub-menu opened from the "Character types" BARS_LIST entry
+ *
+ * @param[in] page sub-menu page to open on
+ */
+static void display_charset_sub_menu(uint8_t page) {
+    static const nbgl_genericContents_t charsetContents = {
+        .callbackCallNeeded = false,
+        .contentsList = &charsetSwitchesContent,
+        .nbContents = 1,
+    };
+    nbgl_useCaseGenericConfiguration(settingsBarsTexts[CHARSET_BAR_ID],
+                                     page,
+                                     &charsetContents,
+                                     return_to_charset_setting);
 }
 
 /**
@@ -235,22 +276,15 @@ static void display_length_sub_menu(void) {
                                                     0,
                                                     false);
 #endif
-    nbgl_useCaseGenericConfiguration(kbdSettingsBarsTexts[1],
+    nbgl_useCaseGenericConfiguration(settingsBarsTexts[LENGTH_BAR_ID],
                                      0,
                                      &lengthChoiceContents,
                                      return_to_length_setting);
 }
 
-#ifdef SCREEN_SIZE_NANO
-static void return_to_settings(void) {
-    return_to_settings_at(SETTINGS_SWITCHES_NB);
-}
-
 /**
- * @brief Nano-only: settings sub-menu opened from the "Host keyboard"
- *        BARS_LIST entry. Reuses kbdLayoutChoicesContent (same CHOICES_LIST
- *        as the first-launch page). Back returns to the settings page on
- *        the BARS_LIST step.
+ * @brief Settings sub-menu opened from the "Host keyboard" BARS_LIST entry. Reuses
+ *        kbdLayoutChoicesContent (same CHOICES_LIST as the first-launch page).
  */
 static void display_kbd_sub_menu(void) {
     static const nbgl_genericContents_t kbdChoiceContents = {
@@ -258,12 +292,11 @@ static void display_kbd_sub_menu(void) {
         .contentsList = &kbdLayoutChoicesContent,
         .nbContents = 1,
     };
-    nbgl_useCaseGenericConfiguration(kbdSettingsBarsTexts[0],
+    nbgl_useCaseGenericConfiguration(settingsBarsTexts[KBD_BAR_ID],
                                      0,
                                      &kbdChoiceContents,
-                                     return_to_settings);
+                                     return_to_kbd_setting);
 }
-#endif
 
 /**
  * @brief Index of the stored password length in availableLengths
@@ -278,11 +311,11 @@ static uint8_t password_length_index(void) {
     return 0;
 }
 
-// Settings page to come back to after refusing a charset change.
+// Character types sub-menu page to come back to after refusing a change.
 static uint8_t charsetRefusalPage = 0;
 
 static void return_after_charset_refusal(void) {
-    return_to_settings_at(charsetRefusalPage);
+    display_charset_sub_menu(charsetRefusalPage);
 }
 
 /**
@@ -291,7 +324,7 @@ static void return_after_charset_refusal(void) {
  *        only
  *
  * @param[in] bitflag charset setting to toggle
- * @param[in] page settings page to come back to after a refusal
+ * @param[in] page sub-menu page to come back to after a refusal
  */
 static void toggle_charset_setting(uint8_t bitflag, int page) {
     const uint8_t sets = get_charset_options() ^ bitflag;
@@ -345,10 +378,22 @@ static void controls_callback(int token, uint8_t index, int page) {
             break;
         case NO_ENTER_TOKEN:
             change_enter_options();
-            switches[NO_ENTER_ID].initState = N_storage.press_enter_after_typing;
+            enterSwitch.initState = N_storage.press_enter_after_typing;
             break;
-        case KBD_TOKEN:
-            switch (index) {
+        case KBD_TOKEN: {
+#ifdef SCREEN_SIZE_WALLET
+            // On touch screens NBGL forwards the index within the current page.
+            const uint8_t choice =
+                (uint8_t) page *
+                    nbgl_useCaseGetNbChoicesInPage(KBD_OPTIONS_NB,
+                                                   &kbdLayoutChoicesContent.content.choicesList,
+                                                   0,
+                                                   false) +
+                index;
+#else
+            const uint8_t choice = index;
+#endif
+            switch (choice) {
                 case KBD_QWERTY_ID:
                     set_keyboard_layout(HID_MAPPING_QWERTY);
                     break;
@@ -364,17 +409,16 @@ static void controls_callback(int token, uint8_t index, int page) {
                 default:
                     break;
             }
-#ifdef SCREEN_SIZE_WALLET
-            contents[SETTING_KBD_TYPE].content.choicesList.initChoice = index;
-#else
-            kbdLayoutChoicesContent.content.choicesList.initChoice = index;
-#endif
+            if (choice < KBD_OPTIONS_NB) {
+                kbdLayoutChoicesContent.content.choicesList.initChoice = choice;
+            }
             // Auto-exit only on the first-launch (post-disclaimer) flow.
             if (kbdMappingInit) {
                 kbdMappingInit = false;
                 display_home_page();
             }
             break;
+        }
         case LENGTH_TOKEN: {
 #ifdef SCREEN_SIZE_WALLET
             // On touch screens NBGL forwards the index within the current page.
@@ -395,17 +439,24 @@ static void controls_callback(int token, uint8_t index, int page) {
             lengthChoicesContent.content.choicesList.initChoice = password_length_index();
             break;
         }
+        case CHARSET_BAR_TOKEN:
+#ifdef SCREEN_SIZE_WALLET
+            settingsBarsPage = (uint8_t) page;
+#endif
+            display_charset_sub_menu(0);
+            break;
+        case KBD_BAR_TOKEN:
+#ifdef SCREEN_SIZE_WALLET
+            settingsBarsPage = (uint8_t) page;
+#endif
+            display_kbd_sub_menu();
+            break;
         case LENGTH_BAR_TOKEN:
 #ifdef SCREEN_SIZE_WALLET
-            lengthBarPage = page;
+            settingsBarsPage = (uint8_t) page;
 #endif
             display_length_sub_menu();
             break;
-#ifndef SCREEN_SIZE_WALLET
-        case KBD_BAR_TOKEN:
-            display_kbd_sub_menu();
-            break;
-#endif
         default:
             break;
     }
@@ -458,64 +509,50 @@ static void init_settings(void) {
     switches[EXT_SYMBOLS_ID].tuneId = TUNE_TAP_CASUAL;
 #endif
 
-    switches[NO_ENTER_ID].initState = N_storage.press_enter_after_typing;
-    switches[NO_ENTER_ID].text = "Press enter";
-    switches[NO_ENTER_ID].subText = "after writing the password";
-    switches[NO_ENTER_ID].token = NO_ENTER_TOKEN;
+    enterSwitch.initState = N_storage.press_enter_after_typing;
+    enterSwitch.text = "Press enter";
+    enterSwitch.subText = "after writing the password";
+    enterSwitch.token = NO_ENTER_TOKEN;
 #ifdef HAVE_PIEZO_SOUND
-    switches[NO_ENTER_ID].tuneId = TUNE_TAP_CASUAL;
+    enterSwitch.tuneId = TUNE_TAP_CASUAL;
 #endif
 
     // Initialize settings content
     // ---------------------------
-    contents[SETTING_OPTIONS].type = SWITCHES_LIST;
-    contents[SETTING_OPTIONS].content.switchesList.nbSwitches = SETTINGS_SWITCHES_NB;
-    contents[SETTING_OPTIONS].content.switchesList.switches = switches;
-    contents[SETTING_OPTIONS].contentActionCallback = controls_callback;
+    charsetSwitchesContent.type = SWITCHES_LIST;
+    charsetSwitchesContent.content.switchesList.nbSwitches = CHARSET_SWITCHES_NB;
+    charsetSwitchesContent.content.switchesList.switches = switches;
+    charsetSwitchesContent.contentActionCallback = controls_callback;
 
-#ifdef SCREEN_SIZE_WALLET
-    contents[SETTING_KBD_TYPE].type = CHOICES_LIST;
-    contents[SETTING_KBD_TYPE].content.choicesList.nbChoices = KBD_OPTIONS_NB;
-    contents[SETTING_KBD_TYPE].content.choicesList.names = availableKbd;
-    contents[SETTING_KBD_TYPE].content.choicesList.token = KBD_TOKEN;
-    contents[SETTING_KBD_TYPE].contentActionCallback = controls_callback;
-    contents[SETTING_KBD_TYPE].content.choicesList.tuneId = TUNE_TAP_CASUAL;
+    contents[SETTING_ENTER].type = SWITCHES_LIST;
+    contents[SETTING_ENTER].content.switchesList.nbSwitches = 1;
+    contents[SETTING_ENTER].content.switchesList.switches = &enterSwitch;
+    contents[SETTING_ENTER].contentActionCallback = controls_callback;
 
-    if (N_storage.keyboard_layout != HID_MAPPING_NONE) {
-        contents[SETTING_KBD_TYPE].content.choicesList.initChoice = N_storage.keyboard_layout - 1;
-    }
-
-    contents[SETTING_PWD_LENGTH].type = BARS_LIST;
-    contents[SETTING_PWD_LENGTH].content.barsList.nbBars = 1;
-    contents[SETTING_PWD_LENGTH].content.barsList.barTexts = &kbdSettingsBarsTexts[1];
-    contents[SETTING_PWD_LENGTH].content.barsList.tokens = lengthBarTokens;
-    contents[SETTING_PWD_LENGTH].content.barsList.tuneId = TUNE_TAP_CASUAL;
-    contents[SETTING_PWD_LENGTH].contentActionCallback = controls_callback;
-#else
-    // Nano: settings show a "Host keyboard" bar and a "Password length" bar;
-    // each opens its CHOICES_LIST in a sub-menu. The SDK draws a downward
-    // chevron at the bottom of every BARS_LIST bar on Nano, so no app-side
-    // icon configuration is needed.
-    contents[SETTING_KBD_TYPE].type = BARS_LIST;
-    contents[SETTING_KBD_TYPE].content.barsList.nbBars = 2;
-    contents[SETTING_KBD_TYPE].content.barsList.barTexts = kbdSettingsBarsTexts;
-    contents[SETTING_KBD_TYPE].content.barsList.tokens = kbdSettingsBarsTokens;
-    contents[SETTING_KBD_TYPE].contentActionCallback = controls_callback;
+    // "Character types", "Password length" and "Host keyboard" entries, each opening a
+    // sub-menu. Nano draws a downward chevron, touch screens a push icon, on every bar.
+    contents[SETTING_SUB_MENUS].type = BARS_LIST;
+    contents[SETTING_SUB_MENUS].content.barsList.nbBars = SETTINGS_BARS_NB;
+    contents[SETTING_SUB_MENUS].content.barsList.barTexts = settingsBarsTexts;
+    contents[SETTING_SUB_MENUS].content.barsList.tokens = settingsBarsTokens;
+    contents[SETTING_SUB_MENUS].contentActionCallback = controls_callback;
 
     kbdLayoutChoicesContent.type = CHOICES_LIST;
     kbdLayoutChoicesContent.content.choicesList.nbChoices = KBD_OPTIONS_NB;
     kbdLayoutChoicesContent.content.choicesList.names = availableKbd;
     kbdLayoutChoicesContent.content.choicesList.token = KBD_TOKEN;
     kbdLayoutChoicesContent.contentActionCallback = controls_callback;
-    kbdLayoutChoicesContent.content.choicesList.selectionIcon = &C_icon_validate_10;
-    kbdLayoutChoicesContent.content.choicesList.title = kbdSettingsBarsTexts[0];
-
     if (N_storage.keyboard_layout != HID_MAPPING_NONE) {
         kbdLayoutChoicesContent.content.choicesList.initChoice = N_storage.keyboard_layout - 1;
     }
-
+#ifdef SCREEN_SIZE_WALLET
+    contents[SETTING_SUB_MENUS].content.barsList.tuneId = TUNE_TAP_CASUAL;
+    kbdLayoutChoicesContent.content.choicesList.tuneId = TUNE_TAP_CASUAL;
+#else
+    kbdLayoutChoicesContent.content.choicesList.selectionIcon = &C_icon_validate_10;
+    kbdLayoutChoicesContent.content.choicesList.title = settingsBarsTexts[KBD_BAR_ID];
     lengthChoicesContent.content.choicesList.selectionIcon = &C_icon_validate_10;
-    lengthChoicesContent.content.choicesList.title = kbdSettingsBarsTexts[1];
+    lengthChoicesContent.content.choicesList.title = settingsBarsTexts[LENGTH_BAR_ID];
 #endif
 
     lengthChoicesContent.type = CHOICES_LIST;
@@ -635,11 +672,7 @@ static void display_home_page(void) {
  */
 static void startup_kbd_quit_callback(void) {
     set_keyboard_layout(HID_MAPPING_QWERTY);
-#ifdef SCREEN_SIZE_WALLET
-    contents[SETTING_KBD_TYPE].content.choicesList.initChoice = KBD_QWERTY_ID;
-#else
     kbdLayoutChoicesContent.content.choicesList.initChoice = KBD_QWERTY_ID;
-#endif
     kbdMappingInit = false;
     display_home_page();
 }
@@ -656,14 +689,10 @@ static void startup_kbd_quit_callback(void) {
 static void display_kbd_layout_selection(void) {
     static const nbgl_genericContents_t kbdLayoutOnlyContents = {
         .callbackCallNeeded = false,
-#ifdef SCREEN_SIZE_WALLET
-        .contentsList = &contents[SETTING_KBD_TYPE],
-#else
         .contentsList = &kbdLayoutChoicesContent,
-#endif
         .nbContents = 1,
     };
-    nbgl_useCaseGenericConfiguration(kbdSettingsBarsTexts[0],
+    nbgl_useCaseGenericConfiguration(settingsBarsTexts[KBD_BAR_ID],
                                      0,
                                      &kbdLayoutOnlyContents,
                                      startup_kbd_quit_callback);

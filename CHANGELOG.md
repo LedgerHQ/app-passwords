@@ -20,6 +20,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Web UI: backups record the generation `version` and the password `length` of each entry. Restoring
   entries created with version 1.4.0 or later on an older app is refused with an explicit message.
 
+### Change
+
+- Settings are grouped into "Character types", "Password length" and "Host keyboard" entries, each
+  opening its own page, next to the "Press enter" switch. The same layout on Nano and touch screens.
+
 ### Fix
 
 - New passwords draw each character uniformly (generation version 1). Existing passwords keep the

@@ -222,8 +222,11 @@ def test_password_length_setting(
         if "Password length" in _screen_texts(custom_backend):
             break
         navigator.navigate([CustomNavInsID.SETTINGS_NEXT], screen_change_before_first_instruction=False)
+    position = _choice_position(
+        _screen_texts(custom_backend), "Password length", ["Character types", "Password length", "Host keyboard"]
+    )
     navigator.navigate(
-        [NavIns(CustomNavInsID.SETTINGS_CHOOSE, (1,))],
+        [NavIns(CustomNavInsID.SETTINGS_CHOOSE, (position,))],
         screen_change_before_first_instruction=False,
     )
     for _ in range(4):

@@ -6,35 +6,38 @@ from touch.navigator import CustomNavInsID
 
 
 def test_settings_screens(navigator: Navigator, device: Device, default_screenshot_path: Path):
-    # Touch: settings pages are the switches, the keyboard layout choices, then
-    #  the "Password length" entry, which opens the length choices sub-menu.
-    # Nano (horizontal flow): 6 switches (uppercase, lowercase, numbers, bars,
-    #  ext_symbols, no_enter) + the "Host keyboard" and "Password length"
-    #  BARS_LIST entries, each opening its sub-menu.
+    # Settings: the "Character types", "Password length" and "Host keyboard" entries, each opening
+    # its sub-menu, then the "Press enter" switch.
     instructions = [
         CustomNavInsID.DISCLAIMER_CONFIRM,
         CustomNavInsID.CHOOSE_KBL_QWERTY,
         CustomNavInsID.HOME_TO_SETTINGS,
     ]
     if device.is_nano:
-        instructions += [CustomNavInsID.SETTINGS_NEXT] * 6
+        # One step per entry; "Back" leaves a sub-menu on its entry.
         instructions += [CustomNavInsID.BUTTON_APPROVE]
-        instructions += [CustomNavInsID.SETTINGS_NEXT] * 2
-        instructions += [CustomNavInsID.BUTTON_APPROVE]
-        instructions += [CustomNavInsID.SETTINGS_NEXT]
-        instructions += [CustomNavInsID.BUTTON_APPROVE]
+        instructions += [CustomNavInsID.SETTINGS_NEXT] * 4
         instructions += [CustomNavInsID.SETTINGS_TO_HOME]
-        # "Password length" BARS_LIST entry and its sub-menu: select 12 characters.
-        instructions += [CustomNavInsID.SETTINGS_NEXT]
-        instructions += [CustomNavInsID.BUTTON_APPROVE]
+        # Password length: select 12 characters.
+        instructions += [CustomNavInsID.SETTINGS_NEXT, CustomNavInsID.BUTTON_APPROVE]
         instructions += [CustomNavInsID.SETTINGS_NEXT] * 3
-        instructions += [CustomNavInsID.BUTTON_APPROVE]
+        instructions += [CustomNavInsID.BUTTON_APPROVE, CustomNavInsID.SETTINGS_TO_HOME]
+        # Host keyboard: select QWERTZ (DE).
+        instructions += [CustomNavInsID.SETTINGS_NEXT, CustomNavInsID.BUTTON_APPROVE]
+        instructions += [CustomNavInsID.SETTINGS_NEXT] * 3
+        instructions += [CustomNavInsID.BUTTON_APPROVE, CustomNavInsID.SETTINGS_TO_HOME]
+        # Press enter.
+        instructions += [CustomNavInsID.SETTINGS_NEXT]
     else:
-        # Switches, keyboard layouts, then the "Password length" entry and its sub-menu.
-        instructions += [CustomNavInsID.SETTINGS_NEXT] * 3
-        instructions += [NavIns(CustomNavInsID.SETTINGS_CHOOSE, (1,))]
-        instructions += [CustomNavInsID.SETTINGS_NEXT]
+        # The three entries on the first page; the character types and lengths span two pages.
+        instructions += [NavIns(CustomNavInsID.SETTINGS_CHOOSE, (1,)), CustomNavInsID.SETTINGS_NEXT]
         instructions += [CustomNavInsID.SETTINGS_TO_HOME]
+        instructions += [NavIns(CustomNavInsID.SETTINGS_CHOOSE, (2,)), CustomNavInsID.SETTINGS_NEXT]
+        instructions += [CustomNavInsID.SETTINGS_TO_HOME]
+        instructions += [NavIns(CustomNavInsID.SETTINGS_CHOOSE, (3,))]
+        instructions += [CustomNavInsID.SETTINGS_TO_HOME]
+        # Press enter.
+        instructions += [CustomNavInsID.SETTINGS_NEXT]
     instructions += [CustomNavInsID.SETTINGS_TO_HOME]
 
     navigator.navigate_and_compare(
@@ -49,8 +52,9 @@ def test_settings_keep_letters_numbers_or_specials(navigator: Navigator, device:
     # Disable uppercase, lowercase, then numbers: with special characters off, the last change would
     # leave no letters, numbers or special characters, so it is refused and numbers stay enabled.
     if device.is_nano:
-        # One switch per step: uppercase, lowercase, numbers.
+        # Open "Character types", then one switch per step: uppercase, lowercase, numbers.
         toggles = [
+            CustomNavInsID.BUTTON_APPROVE,
             CustomNavInsID.BUTTON_APPROVE,
             CustomNavInsID.SETTINGS_NEXT,
             CustomNavInsID.BUTTON_APPROVE,
@@ -58,8 +62,8 @@ def test_settings_keep_letters_numbers_or_specials(navigator: Navigator, device:
             CustomNavInsID.BUTTON_APPROVE,
         ]
     else:
-        # Uppercase, lowercase and numbers are the first three switches of the first page.
-        toggles = [NavIns(CustomNavInsID.SETTINGS_CHOOSE, (position,)) for position in (1, 2, 3)]
+        # Open "Character types": uppercase, lowercase and numbers are its first three switches.
+        toggles = [NavIns(CustomNavInsID.SETTINGS_CHOOSE, (position,)) for position in (1, 1, 2, 3)]
     instructions = [
         CustomNavInsID.DISCLAIMER_CONFIRM,
         CustomNavInsID.CHOOSE_KBL_QWERTY,
@@ -81,12 +85,12 @@ def test_settings_refuse_pin_length_with_letters(navigator: Navigator, device: D
     # With the default charsets (letters and numbers), choosing a 4-digit PIN length is refused and
     # the length sub-menu comes back.
     if device.is_nano:
-        # 6 switches, "Host keyboard", then "Password length"; its sub-menu starts on 4 digits.
-        open_lengths = [CustomNavInsID.SETTINGS_NEXT] * 7 + [CustomNavInsID.BUTTON_APPROVE]
+        # "Character types", then "Password length"; its sub-menu starts on 4 digits.
+        open_lengths = [CustomNavInsID.SETTINGS_NEXT, CustomNavInsID.BUTTON_APPROVE]
         choose_pin = [CustomNavInsID.BUTTON_APPROVE]
     else:
-        # Switches, keyboard layouts, then the "Password length" entry; 4 digits comes first.
-        open_lengths = [CustomNavInsID.SETTINGS_NEXT] * 3 + [NavIns(CustomNavInsID.SETTINGS_CHOOSE, (1,))]
+        # "Password length" is the second entry of the first page; 4 digits comes first.
+        open_lengths = [NavIns(CustomNavInsID.SETTINGS_CHOOSE, (2,))]
         choose_pin = [NavIns(CustomNavInsID.SETTINGS_CHOOSE, (1,))]
     instructions = [
         CustomNavInsID.DISCLAIMER_CONFIRM,
