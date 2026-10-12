@@ -7,13 +7,30 @@ export const SW_ACTION_CANCELLED = 0x6985;
 // Mirrors MAX_METADATA_COUNT in src/types.h: MAX_METADATAS / (1 + 1 + 1 + MAX_METANAME).
 const MAX_METADATA_COUNT = 178;
 
-// Mirrors MAX_METANAME in src/types.h. An entry's length byte covers the charset byte plus the
-// nickname, so it never exceeds this.
-const MAX_METADATA_DATALEN = 20;
+// Mirrors MAX_NICKNAME_LEN and MAX_METANAME in src/types.h. An entry's data block is the
+// charset byte, the password length byte (versions above 0), then the nickname.
+const MAX_NICKNAME_LEN = 19;
+const MAX_METADATA_DATALEN = MAX_NICKNAME_LEN + 2;
+
+// Mirrors password.h: length of version 0 passwords, and the lengths of later ones.
+const DEFAULT_PASSWORD_LENGTH = 20;
+const PASSWORD_LENGTHS = Object.freeze([4, 6, 8, 12, 16, 20, 24, 32, 48, 64]);
+// PIN lengths generate digits only.
+const PIN_LENGTHS = Object.freeze([4, 6]);
 
 // Mirrors MAX_METADATAS in src/types.h: the largest metadata store the protocol can describe.
 // The device reports its own size, but that value is untrusted, so it is bounded by this.
 const MAX_METADATA_STORAGE_SIZE = 4096;
+
+// Kind byte of an erased entry. A live entry's kind byte is its generation version.
+const META_ERASED = 0xff;
+
+// Highest generation version this page knows. An entry's version selects the rule its password
+// is generated with, so an entry of an unknown version can neither be kept nor written back.
+const MAX_GENERATION_VERSION = 1;
+
+// First Passwords app release that generates each version.
+const APP_VERSION_FOR_GENERATION = Object.freeze({ 1: "1.4.0" });
 
 const insAPDU = Object.freeze({
   GET_APP_INFO_COMMAND: 0x01,
@@ -35,6 +52,11 @@ const passwordsCharsets = Object.freeze({
 
 const allPasswordsCharsets = 0xff;
 
+// Mirrors charsets_are_weak() in src/password.h: separators only give weak or constant passwords.
+const separatorCharsets =
+  passwordsCharsets.MINUS | passwordsCharsets.UNDERLINE | passwordsCharsets.SPACE;
+const isWeakCharsetMask = (mask) => mask !== 0 && (mask & ~separatorCharsets) === 0;
+
 class PasswordsManager {
   constructor() {
     this.allowedStatuses = [
@@ -54,6 +76,8 @@ class PasswordsManager {
     this.appName = null;
     this.version = null;
     this.storage_size = null;
+    // Generation version of the connected app: the highest entry version it accepts.
+    this.generation_version = null;
     // Optional callback invoked when the device is unplugged mid-session.
     this.onDisconnect = null;
   }
@@ -75,6 +99,7 @@ class PasswordsManager {
         this.version = version;
         let appConfig = await this.getAppConfig();
         this.storage_size = appConfig["storage_size"];
+        this.generation_version = appConfig["generation_version"];
         this.connected = true;
       } catch (error) {
         await this.disconnect();
@@ -187,6 +212,38 @@ class PasswordsManager {
     return size;
   }
 
+  /* Generation version of a backup entry. Backups made before versions existed have no field,
+   * and their entries are version 0. Refuses a version the connected app cannot generate. */
+  _entryVersion(element) {
+    const version = Object.hasOwn(element, "version") ? element["version"] : 0;
+    if (!Number.isInteger(version) || version < 0 || version > MAX_GENERATION_VERSION)
+      throw new Error(`This backup has an entry of unknown version: ${JSON.stringify(version)}`);
+    const appGenerationVersion = this.generation_version ?? 0;
+    if (version > appGenerationVersion)
+      throw new Error(
+        `This backup needs version ${APP_VERSION_FOR_GENERATION[version]} or later of the Passwords app: update the app, then restore again`
+      );
+    return version;
+  }
+
+  /* Password length of a backup entry. Entries without the field are 20 characters long, the
+   * only length version 0 knows. */
+  _entryLength(element, version) {
+    const length = Object.hasOwn(element, "length") ? element["length"] : DEFAULT_PASSWORD_LENGTH;
+    if (!PASSWORD_LENGTHS.includes(length))
+      throw new Error(`This backup has an entry of unsupported length: ${JSON.stringify(length)}`);
+    if (version === 0 && length !== DEFAULT_PASSWORD_LENGTH)
+      throw new Error(`A version 0 entry is always ${DEFAULT_PASSWORD_LENGTH} characters long`);
+    return length;
+  }
+
+  /* Nicknames of the entries whose password uses separators only, so is easy to guess. */
+  weakNicknames(parsed) {
+    return parsed
+      .filter((element) => isWeakCharsetMask(this._charsetListToBitmask(element["charsets"])))
+      .map((element) => element["nickname"]);
+  }
+
   _toBytes(json_metadatas) {
     const storage_size = this._validatedStorageSize();
     let metadatas = Buffer.alloc(storage_size);
@@ -201,6 +258,17 @@ class PasswordsManager {
     parsed_metadatas.forEach((element) => {
       const nickname = element["nickname"];
       const charsets = this._charsetListToBitmask(element["charsets"]);
+      const version = this._entryVersion(element);
+      const length = this._entryLength(element, version);
+      if (PIN_LENGTHS.includes(length) && charsets !== passwordsCharsets.NUMBERS)
+        throw new Error(
+          `A ${length}-digit PIN entry must use numbers only: ${JSON.stringify(nickname)}`
+        );
+      // Version 0 entries are restored as they are: their passwords may be in use.
+      if (version !== 0 && isWeakCharsetMask(charsets))
+        throw new Error(
+          `This backup has an entry using separators only, which makes a weak password: ${JSON.stringify(nickname)}`
+        );
       if (typeof nickname !== "string" || nickname.length === 0)
         throw new Error("This backup contains an entry with an empty nickname");
       // The device keyboard can only produce printable ASCII, and the nickname is what the
@@ -215,17 +283,19 @@ class PasswordsManager {
       // the entry claimed the wrong length and the UTF-8 expansion overwrote the next record's
       // header. The ASCII check above makes the two equal, and using byteLength keeps them so.
       const nicknameBytes = Buffer.byteLength(nickname, "utf8");
-      if (nicknameBytes > MAX_METADATA_DATALEN - 1)
+      if (nicknameBytes > MAX_NICKNAME_LEN)
         throw new Error(
-          `Nickname too long (${MAX_METADATA_DATALEN - 1} bytes max): ${nickname} is ${nicknameBytes} bytes`
+          `Nickname too long (${MAX_NICKNAME_LEN} bytes max): ${nickname} is ${nicknameBytes} bytes`
         );
-      if (offset + 3 + nicknameBytes >= storage_size)
+      const datalen = (version === 0 ? 1 : 2) + nicknameBytes;
+      if (offset + 2 + datalen >= storage_size)
         throw new Error(
           `Not enough memory on this device to restore this backup`
         );
-      metadatas[offset++] = nicknameBytes + 1;
-      metadatas[offset++] = 0x00;
+      metadatas[offset++] = datalen;
+      metadatas[offset++] = version;
       metadatas[offset++] = charsets;
+      if (version !== 0) metadatas[offset++] = length;
       metadatas.write(nickname, offset, nicknameBytes, "utf8");
       offset += nicknameBytes;
     });
@@ -264,12 +334,27 @@ class PasswordsManager {
           `Malformed metadata: more than ${MAX_METADATA_COUNT} entries`
         );
       }
-      const erased = metadatas[offset + 1] === 0xff;
+      const kind = metadatas[offset + 1];
+      const erased = kind === META_ERASED;
+      if (!erased && kind > MAX_GENERATION_VERSION)
+        throw new Error(`Unknown entry version ${kind} at offset ${offset}`);
+      // Version 0 data block: [charset][nickname]; later ones: [charset][length][nickname].
+      // Erased entries keep the version 0 reading: their data block is wiped.
+      const paramsLen = erased || kind === 0 ? 1 : 2;
+      if (len < paramsLen || (!erased && kind === 0 && len > MAX_NICKNAME_LEN + 1))
+        throw new Error(`Malformed metadata at offset ${offset}: entry length ${len}`);
       const charsets = metadatas[offset + 2];
       const metadata = {
-        nickname: metadatas.slice(offset + 3, offset + 2 + len).toString(),
+        nickname: metadatas.slice(offset + 2 + paramsLen, offset + 2 + len).toString(),
         charsets: this._bitmaskToCharsetList(charsets),
       };
+      if (!erased) metadata.version = kind;
+      if (!erased && kind !== 0) {
+        const length = metadatas[offset + 3];
+        if (!PASSWORD_LENGTHS.includes(length))
+          throw new Error(`Unsupported password length ${length} at offset ${offset}`);
+        metadata.length = length;
+      }
       (erased ? erased_list : metadatas_list).push(metadata);
       offset += len + 2;
     }
@@ -346,7 +431,8 @@ class PasswordsManager {
       );
       if (!this.isSuccess(result)) this.mapProtocolError(result);
       result = result.slice(0, result.length - 2);
-      if (result.length !== 6)
+      // Apps that predate generation versions answer without the last byte.
+      if (result.length !== 6 && result.length !== 7)
         throw new Error(`Can't parse app config of length ${result.length}`);
 
       // The size is used as an allocation size and a loop bound, so it is validated before it
@@ -362,7 +448,8 @@ class PasswordsManager {
 
       const keyboard_type = result[4];
       const press_enter_after_typing = result[5];
-      return { storage_size, keyboard_type, press_enter_after_typing };
+      const generation_version = result.length === 7 ? result[6] : 0;
+      return { storage_size, keyboard_type, press_enter_after_typing, generation_version };
     } finally {
       this._unlock();
     }
@@ -413,6 +500,7 @@ class PasswordsManager {
       if (metadatas.length === 0) {
         throw new Error("No data to load");
       }
+      const weak = this.weakNicknames(JSON.parse(JSON_metadatas)["parsed"]);
       for (let i = 0; i < metadatas.length; i += 0xff) {
         let chunk = metadatas.slice(i, i + 0xff);
         await this._load_metadatas_chunk(
@@ -420,6 +508,7 @@ class PasswordsManager {
           i + chunk.length === metadatas.length ? true : false
         );
       }
+      return weak;
     } finally {
       this._unlock();
     }

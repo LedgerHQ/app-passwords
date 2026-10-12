@@ -12,7 +12,7 @@ typedef struct passwordList_s {
     /*
      * Buffer where password names are stored
      */
-    char buffer[MAX_METADATA_COUNT * (MAX_METANAME + 1)];
+    char buffer[MAX_METADATA_COUNT * (MAX_NICKNAME_LEN + 1)];
     /*
      * Used to keep track of password store in buffer. Start at 0, is incremented with password
      * length (including trailing '\0' each time a password is stored.

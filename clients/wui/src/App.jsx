@@ -36,6 +36,13 @@ if (import.meta.env.DEV) {
   listen((event) => console.debug(redactLogEvent(event)));
 }
 
+// Warning for passwords that use separators only: their entries are kept so the passwords stay
+// reachable, but they are easy to guess and should be changed where they are used.
+function weakPasswordsWarning(nicknames) {
+  if (nicknames.length === 0) return "";
+  return ` These passwords use separators only and are easy to guess: ${nicknames.join(", ")}. Change them on the sites where you use them.`;
+}
+
 // Save the backup, preferring the native "Save As" dialog so the user can
 // choose the file name/location. showSaveFilePicker requires transient user
 // activation, so this MUST be called from its own click handler — not from the
@@ -151,10 +158,11 @@ export default function App() {
       // user trigger the save with a fresh click.
       const payload = await passwords.dump_metadatas();
       setPendingBackup(payload);
+      const weak = passwords.weakNicknames(payload.parsed);
       setNotice({
-        appearance: "success",
+        appearance: weak.length ? "warning" : "success",
         title: "Backup ready",
-        description: "Click Save to choose where to store the file.",
+        description: `Click Save to choose where to store the file.${weakPasswordsWarning(weak)}`,
       });
     } catch (error) {
       if (error.statusWord === SW_ACTION_CANCELLED) {
@@ -205,8 +213,12 @@ export default function App() {
       setBusy(true);
       setNotice({ appearance: "info", title: 'Approve "Restore password list?" on your device' });
       try {
-        await passwords.load_metadatas(reader.result);
-        setNotice({ appearance: "success", title: "Restore complete" });
+        const weak = await passwords.load_metadatas(reader.result);
+        setNotice({
+          appearance: weak.length ? "warning" : "success",
+          title: "Restore complete",
+          description: weakPasswordsWarning(weak).trim() || undefined,
+        });
       } catch (error) {
         if (error.statusWord === SW_ACTION_CANCELLED) {
           setNotice({ appearance: "info", title: "Restore cancelled on the device" });

@@ -5,6 +5,37 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.0] - 2026-10-08
+
+### Add
+
+- German QWERTZ host keyboard layout.
+- New passwords contain at least one special character when special characters are enabled, and
+  at least one of `-`, `_` or space when separators are enabled (generation version 1). Existing
+  passwords, and passwords restored from an existing backup, do not change.
+- Password length setting: 8, 12, 16, 20, 24, 32, 48 or 64 characters, or a 4 or 6-digit PIN
+  (numbers only), recorded with each new password (20 by default). Existing passwords keep their 20
+  characters.
+- `GET_APP_CONFIG` returns the generation version as a 7th byte.
+- Web UI: backups record the generation `version` and the password `length` of each entry. Restoring
+  entries created with version 1.4.0 or later on an older app is refused with an explicit message.
+
+### Change
+
+- Settings are grouped into "Character types", "Password length" and "Host keyboard" entries, each
+  opening its own page, next to the "Press enter" switch. The same layout on Nano and touch screens.
+
+### Fix
+
+- New passwords draw each character uniformly (generation version 1). Existing passwords keep the
+  previous draw, which slightly favours some characters.
+- At least one of letters, numbers or special characters stays enabled in the settings: separators
+  alone give passwords that are easy to guess, or always the same.
+  Existing passwords are kept, and the Web UI lists them with a warning on backup and restore.
+- Restoring a password list refuses nicknames that are empty or not printable ASCII: such a
+  nickname could not be retyped on the device to get the same password back.
+- Touch functional tests: choosing an entry waits for the next page instead of a fixed delay.
+
 ## [1.3.6] - 2026-09-25
 
 ### Fix

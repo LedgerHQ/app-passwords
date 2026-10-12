@@ -5,6 +5,7 @@
 
 #include "hid_mapping.h"
 
+#include "password.h"
 #include "password_path.h"
 #include "password_typing.h"
 #include "globals.h"
@@ -87,19 +88,10 @@ static bool type_password_over_hid(const uint8_t *password, uint32_t size) {
             usb_write_wait((uint8_t *) EMPTY_REPORT);
         }
 
-        // for international keyboard, make sure to insert space after special symbols
-        if (N_storage.keyboard_layout == HID_MAPPING_QWERTY_INTL) {
-            switch (password[i]) {
-                case '\"':
-                case '\'':
-                case '`':
-                case '~':
-                case '^':
-                    // insert a extra space to validate the symbol
-                    usb_write_wait((uint8_t *) SPACE_REPORT);
-                    usb_write_wait((uint8_t *) EMPTY_REPORT);
-                    break;
-            }
+        // Type a space after a dead key so the host emits the symbol itself.
+        if (is_dead_key(N_storage.keyboard_layout, password[i])) {
+            usb_write_wait((uint8_t *) SPACE_REPORT);
+            usb_write_wait((uint8_t *) EMPTY_REPORT);
         }
     }
     usb_write_wait((uint8_t *) EMPTY_REPORT);
@@ -123,12 +115,16 @@ bool type_password(uint8_t *data,
                    uint32_t dataSize,
                    uint8_t *out,
                    setmask_t setMask,
-                   const uint8_t *minFromSet,
+                   uint8_t version,
                    uint32_t size) {
     uint32_t derive[PASSWORD_PATH_LEN];
     uint8_t tmp[64];
     entropy_ctx_t entropy_ctx = {0};
     mbedtls_ctr_drbg_context ctx;
+
+    if ((size == 0) || (size > PASSWORD_MAX_SIZE)) {
+        return false;
+    }
 
     if (cx_hash_sha256(data, dataSize, tmp, sizeof(tmp)) != CX_SHA256_SIZE) {
         explicit_bzero(tmp, sizeof(tmp));
@@ -167,7 +163,7 @@ bool type_password(uint8_t *data,
 
     bool generated;
     if (out != NULL) {
-        generated = generate_password(&ctx, setMask, minFromSet, out, size);
+        generated = generate_password(&ctx, setMask, version, out, size);
         if (!generated) {
             /* Partially generated characters, and no terminator was written: leave the
              * caller's buffer empty rather than holding an unterminated fragment. */
@@ -175,12 +171,12 @@ bool type_password(uint8_t *data,
         }
         // On success the caller owns `out` and clears it once it is done displaying it.
     } else {
-        generated = generate_password(&ctx, setMask, minFromSet, tmp, size);
+        uint8_t password[PASSWORD_MAX_SIZE + 1];
+        generated = generate_password(&ctx, setMask, version, password, size);
         if (generated) {
-            generated = type_password_over_hid(tmp, size);
+            generated = type_password_over_hid(password, size);
         }
-        // tmp held the plaintext password.
-        explicit_bzero(tmp, sizeof(tmp));
+        explicit_bzero(password, sizeof(password));
     }
 
     mbedtls_ctr_drbg_free(&ctx);
