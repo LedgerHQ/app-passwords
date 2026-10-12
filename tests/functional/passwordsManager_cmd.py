@@ -89,28 +89,31 @@ class PasswordsManagerCommand:
         if not sw & 0x9000:
             raise DeviceException(error_code=sw, ins=ins)
 
-        assert len(response) == 6
+        assert len(response) == 7
 
         storage_size = int.from_bytes(response[:4], "big")
         keyboard_type = response[4]
         press_enter_after_typing = response[5]
+        generation_version = response[6]
 
-        return storage_size, keyboard_type, press_enter_after_typing
+        return storage_size, keyboard_type, press_enter_after_typing, generation_version
 
     def reset_approval_state(self):
         # dummy call just to reset internal approval state
         self.get_app_config()
 
-    def generate_password(self, charsets: int, seed: str) -> str:
+    def generate_password(self, charsets: int, seed: str, version: int = 0, length: int = 20) -> str:
         assert charsets <= 0xFF
         assert len(seed) <= 20
 
         ins: InsType = InsType.INS_RUN_TEST
         testIns: TestInsType = TestInsType.INS_GENERATE_PASSWORD
 
-        payload = charsets.to_bytes(1, "big") + bytes(seed, "utf-8")
+        # Same data block as a metadata entry: version 0 has no length byte.
+        params = bytes([charsets]) if version == 0 else bytes([charsets, length])
+        payload = params + bytes(seed, "utf-8")
 
-        response = self.transport.exchange(cla=CLA, ins=ins, p1=testIns, data=payload)
+        response = self.transport.exchange(cla=CLA, ins=ins, p1=testIns, p2=version, data=payload)
         sw, response = response.status, response.data
 
         if not sw & 0x9000:

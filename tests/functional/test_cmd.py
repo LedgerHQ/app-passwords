@@ -12,7 +12,7 @@ def test_app_info(cmd: PasswordsManagerCommand, app_version: tuple[int, int, int
 
 
 def test_app_config(cmd: PasswordsManagerCommand):
-    assert cmd.get_app_config() == (4096, 0, 0)
+    assert cmd.get_app_config() == (4096, 0, 0, 1)
 
 
 def test_generate_password(cmd: PasswordsManagerCommand, test_vector):
@@ -73,4 +73,42 @@ def test_load_metadatas_malformed_image_keeps_database(cmd: PasswordsManagerComm
         cmd.load_metadatas(malformed)
 
     assert cmd.dump_metadatas(STORAGE_SIZE) == populated
+    cmd.reset_approval_state()
+
+
+@pytest.mark.parametrize(
+    "entry",
+    [
+        bytes.fromhex("060007") + b"foo\x00x",  # hidden byte after the displayed "foo"
+        bytes.fromhex("010007"),  # empty nickname
+        bytes.fromhex("03000761") + b"\x07",  # control character
+        bytes.fromhex("0401071461") + b"\xc3",  # non-ASCII byte, current version layout
+    ],
+)
+def test_load_metadatas_invalid_nickname_keeps_database(cmd: PasswordsManagerCommand, entry: bytes):
+    populated = EXISTING_METADATA + b"\x00" * (STORAGE_SIZE - len(EXISTING_METADATA))
+
+    with pytest.raises(MetadatasParsingError):
+        cmd.load_metadatas(entry + b"\x00\x00")
+
+    assert cmd.dump_metadatas(STORAGE_SIZE) == populated
+    cmd.reset_approval_state()
+
+
+def test_load_metadatas_weak_new_entry_keeps_database(cmd: PasswordsManagerCommand):
+    populated = EXISTING_METADATA + b"\x00" * (STORAGE_SIZE - len(EXISTING_METADATA))
+
+    # A current-version entry using separators only.
+    with pytest.raises(MetadatasParsingError):
+        cmd.load_metadatas(bytes.fromhex("0301381461") + b"\x00\x00")
+
+    assert cmd.dump_metadatas(STORAGE_SIZE) == populated
+    cmd.reset_approval_state()
+
+
+def test_load_metadatas_keeps_weak_version_0_entry(cmd: PasswordsManagerCommand):
+    # A version 0 entry using separators only is restored as it is.
+    metadatas = bytes.fromhex("02003861") + b"\x00" * (STORAGE_SIZE - 4)
+    cmd.load_metadatas(metadatas)
+    assert cmd.dump_metadatas(STORAGE_SIZE) == metadatas
     cmd.reset_approval_state()

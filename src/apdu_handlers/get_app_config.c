@@ -24,6 +24,7 @@
 #include "error.h"
 #include "globals.h"
 #include "handlers.h"
+#include "metadata.h"
 #include "types.h"
 #include "ui.h"
 
@@ -43,6 +44,8 @@ int get_app_config(uint8_t p1, uint8_t p2, __attribute__((unused)) const buf_t *
 
     config[offset++] = N_storage.keyboard_layout;
     config[offset++] = N_storage.press_enter_after_typing;
+    // Generation version written on new entries.
+    config[offset++] = META_CURRENT_VERSION;
 
     ui_idle();
     status = io_send_response_pointer(config, offset, SWO_SUCCESS);

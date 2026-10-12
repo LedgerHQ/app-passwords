@@ -1,4 +1,5 @@
-EXISTING_METADATA = b"\n\x00\x07password1\n\x00\x07password2\n\x00\x07password3"
+# Demo entries seeded by a POPULATE build, created as generation version 1.
+EXISTING_METADATA = b"\x0b\x01\x07\x14password1\x0b\x01\x07\x14password2\x0b\x01\x07\x14password3"
 
 tests_vectors = {
     "test_generate_password": [
@@ -12,6 +13,26 @@ tests_vectors = {
         [0xFF, "gmail", "*m8ZlP1|}O vzvJrQNT4"],
         [0xFF, "aseedoflengthequal20", "29!uO;UPx UT8Hkmi- 5"],
         [0xFF, "aSeedOfLengthEqual20", " $4,P.usI*C\\k1fv2;M;"],
+    ],
+    # Generation version 1: separators and special characters each have a minimum of one, and the
+    # character draw is uniform.
+    "test_generate_password_v1": [
+        [0x0F, "gmail", "-5r4GUPb19HMNwvNJW8O"],
+        [0x3F, "gmail", "kD83CP1UZO vQvJIuNx4"],
+        [0x7F, "gmail", "?u8htP1|DO v7vJ*YNb4"],
+        [0xC7, "gmail", "Oc4Pv]v1^dJ<2Wo;8NpT"],
+        [0xFF, "gmail", "*m8ZlP1|}O vzvJ^QNT4"],
+        [0xFF, "aseedoflengthequal20", "29!uO;UPx UT8Hkmi$-5"],
+        [0xFF, "aSeedOfLengthEqual20", "1fs,2$u4|;k;v*IM_C\\P"],
+    ],
+    # Generation version 1 with the other password lengths: [charsets, seed, length, password].
+    "test_generate_password_lengths": [
+        [0x04, "bank", 4, "2968"],
+        [0x04, "bank", 6, "685962"],
+        [0x07, "gmail", 8, "O14WvxJP"],
+        [0xFF, "gmail", 12, "m 4zvPQ}^ZJ1"],
+        [0xFF, "gmail", 32, " F4Os2!Nvvd`^P(lO8P1}|QzZJTm*/(a"],
+        [0xFF, "gmail", 64, 'h5ZXN1s`|FW^2ATL_PvwO1a/*J8Zk"b}PT)z}~ *!v9Qy((H+14?dTuOlm7{>=1F'],
     ],
     "test_dump_metadatas": [
         [0, b""],

@@ -11,13 +11,19 @@ error_type_t create_new_password(const char *const pwd_name, const size_t pwd_si
     if (pwd_size > MAX_NICKNAME_LEN) {
         return ERR_METADATA_ENTRY_TOO_BIG;
     }
-    // use the G_io_seproxyhal_spi_buffer as temp buffer to build the entry (and include the
-    // requested set of chars)
-    memmove(G_io_seproxyhal_spi_buffer + 1, pwd_name, pwd_size);
-    // use the requested classes from the user
+    if (charsets_are_weak(get_charset_options())) {
+        return ERR_WEAK_CHARSETS;
+    }
+    if (!password_length_fits_charsets(get_password_length(), get_charset_options())) {
+        return ERR_PIN_NEEDS_NUMBERS;
+    }
+    // use the G_io_seproxyhal_spi_buffer as temp buffer to build the data block: the requested
+    // set of chars, the password length, then the nickname
+    memmove(G_io_seproxyhal_spi_buffer + 2, pwd_name, pwd_size);
     G_io_seproxyhal_spi_buffer[0] = get_charset_options();
+    G_io_seproxyhal_spi_buffer[1] = get_password_length();
     // add the metadata
-    return write_metadata(G_io_seproxyhal_spi_buffer, 1 + pwd_size);
+    return write_metadata(G_io_seproxyhal_spi_buffer, 2 + pwd_size, META_CURRENT_VERSION);
 }
 
 bool type_password_at_offset(const size_t offset) {
@@ -29,8 +35,8 @@ bool type_password_at_offset(const size_t offset) {
                          METADATA_NICKNAME_LEN(offset),
                          NULL,
                          enabledSets,
-                         (const uint8_t *) PIC(DEFAULT_MIN_SET),
-                         PASSWORD_MAX_SIZE);
+                         METADATA_KIND(offset),
+                         METADATA_PASSWORD_LEN(offset));
 }
 
 bool show_password_at_offset(const size_t offset, uint8_t *dest_buffer) {
@@ -42,8 +48,8 @@ bool show_password_at_offset(const size_t offset, uint8_t *dest_buffer) {
                          METADATA_NICKNAME_LEN(offset),
                          dest_buffer,
                          enabledSets,
-                         (const uint8_t *) PIC(DEFAULT_MIN_SET),
-                         PASSWORD_MAX_SIZE);
+                         METADATA_KIND(offset),
+                         METADATA_PASSWORD_LEN(offset));
 }
 
 error_type_t delete_password_at_offset(const size_t offset) {

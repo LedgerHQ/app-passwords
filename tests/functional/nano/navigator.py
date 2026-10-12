@@ -81,6 +81,7 @@ class CustomNanoNavigator(Navigator):
             # Password list (CHOICES_LIST): LIST_CHOOSE(n) selects the n-th
             # entry (1-based, matching the touch navigator semantics).
             CustomNavInsID.LIST_CHOOSE: self._list_choose,
+            CustomNavInsID.SETTINGS_CHOOSE: self._list_choose,
             CustomNavInsID.LIST_TO_MENU: self._list_to_menu,
             # Deletion confirmation (nbgl_useCaseChoice): on Nano the message
             # paginates before the "Confirm" action page, so step forward until

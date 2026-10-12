@@ -14,6 +14,11 @@ enum {
 };
 
 void init_charset_options(void);
+
+/* Length of new passwords: the stored value if it is a supported length, the default otherwise. */
+uint8_t get_password_length(void);
+/* Stores `length` if it is a supported length. Returns whether it was stored. */
+bool set_password_length(uint8_t length);
 bool has_charset_option(const uint8_t bitflag);
 uint8_t get_charset_options(void);
 void set_charset_option(const uint8_t bitflag);

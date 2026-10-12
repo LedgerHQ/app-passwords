@@ -36,7 +36,6 @@ endif()
 
 add_compile_definitions(WIDE=)
 add_compile_definitions(TEST)
-add_compile_definitions(MAX_METANAME=20)
 add_compile_definitions(HAVE_BOLOS_UX)
 add_compile_definitions(SCREEN_SIZE_WALLET)
 add_compile_definitions(TARGET_STAX)

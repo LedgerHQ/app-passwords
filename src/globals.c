@@ -1,5 +1,6 @@
 #include "globals.h"
 #include "options.h"
+#include "password.h"
 
 bool init_storage() {
     if (N_storage.magic == STORAGE_MAGIC) {
@@ -23,5 +24,6 @@ bool init_storage() {
     // otherwise still there behind the logical end of the database.
     nvm_write((void *) N_storage.metadatas, NULL, sizeof(N_storage.metadatas));
     init_charset_options();
+    set_password_length(PASSWORD_DEFAULT_SIZE);
     return true;
 }

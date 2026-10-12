@@ -17,6 +17,23 @@ void nvm_write(void *dst_adr, void *src_adr, unsigned int src_len);
 #ifndef EXCEPTION
 #define EXCEPTION 1
 #endif
+// Same as the SDK's is_printable_string() (os_utils.h): ASCII 0x20 to 0x7E, an empty string is
+// printable.
+static inline bool is_printable_string(const char *str, size_t len) {
+    if (len == 0) {
+        return true;
+    }
+    if (str == NULL) {
+        return false;
+    }
+    for (size_t i = 0; i < len; i++) {
+        if (((unsigned char) str[i] < 0x20) || ((unsigned char) str[i] > 0x7E)) {
+            return false;
+        }
+    }
+    return true;
+}
+
 // SDK macro that turns a relative pointer into an absolute one on device.
 // In host-side unit tests pointers are already absolute, so it's a no-op.
 #define PIC(x) (x)

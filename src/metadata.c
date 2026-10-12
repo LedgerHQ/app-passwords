@@ -9,7 +9,7 @@
  * loop goes through this so a crafted or truncated database cannot walk past its end.
  *
  * On success `*total_len` is the number of bytes the record occupies, or 0 for the
- * end-of-database terminator, and `*kind` is META_NONE or META_ERASED.
+ * end-of-database terminator, and `*kind` is META_ERASED or a known generation version.
  */
 static error_type_t record_at(const volatile uint8_t *db,
                               uint32_t offset,
@@ -27,7 +27,7 @@ static error_type_t record_at(const volatile uint8_t *db,
         return OK;
     }
 
-    // A record always carries its charset byte, and never more than a full nickname.
+    // A record never holds more than its parameters and a full nickname.
     if (datalen > MAX_METANAME) {
         return ERR_METADATA_ENTRY_TOO_BIG;
     }
@@ -37,7 +37,16 @@ static error_type_t record_at(const volatile uint8_t *db,
     }
 
     const uint8_t record_kind = db[offset + 1];
-    if ((record_kind != META_NONE) && (record_kind != META_ERASED)) {
+    if (record_kind == META_VERSION_0) {
+        if (datalen > MAX_NICKNAME_LEN + 1) {
+            return ERR_METADATA_ENTRY_TOO_BIG;
+        }
+    } else if (record_kind <= META_CURRENT_VERSION) {
+        // Charset and password length, then the nickname.
+        if ((datalen < 2) || !password_length_is_supported(db[offset + 3])) {
+            return ERR_CORRUPTED_METADATA;
+        }
+    } else if (record_kind != META_ERASED) {
         return ERR_CORRUPTED_METADATA;
     }
 
@@ -48,6 +57,18 @@ static error_type_t record_at(const volatile uint8_t *db,
 
 static error_type_t metadata_record_at(uint32_t offset, uint32_t *total_len, uint8_t *kind) {
     return record_at(N_storage.metadatas, offset, total_len, kind);
+}
+
+/* A live record's nickname is the password derivation input and must be retypable on the device:
+ * at least one byte, printable ASCII only. */
+static bool nickname_is_valid(const uint8_t *image, uint32_t offset, uint8_t kind) {
+    const uint32_t params_len = (kind == META_VERSION_0) ? 1 : 2;
+    const uint32_t datalen = image[offset];
+    if (datalen <= params_len) {
+        return false;
+    }
+    return is_printable_string((const char *) &image[offset + 2 + params_len],
+                               datalen - params_len);
 }
 
 error_type_t validate_metadata_image(const uint8_t *image) {
@@ -63,9 +84,20 @@ error_type_t validate_metadata_image(const uint8_t *image) {
         if (entry_len == 0) {
             return OK;
         }
-        // Same limit compact_metadata() enforces once the erased entries are dropped.
-        if ((kind != META_ERASED) && (++count > MAX_METADATA_COUNT)) {
-            return ERR_NO_MORE_SPACE_AVAILABLE;
+        if (kind != META_ERASED) {
+            if (!nickname_is_valid(image, offset, kind)) {
+                return ERR_CORRUPTED_METADATA;
+            }
+            // Version 0 entries are kept as they are, weak or not: their passwords are in use.
+            if ((kind != META_VERSION_0) &&
+                (charsets_are_weak(image[offset + 2]) ||
+                 !password_length_fits_charsets(image[offset + 3], image[offset + 2]))) {
+                return ERR_CORRUPTED_METADATA;
+            }
+            // Same limit compact_metadata() enforces once the erased entries are dropped.
+            if (++count > MAX_METADATA_COUNT) {
+                return ERR_NO_MORE_SPACE_AVAILABLE;
+            }
         }
         offset += entry_len;
     }
@@ -83,7 +115,7 @@ error_type_t commit_metadata_image(const uint8_t *image) {
     return OK;
 }
 
-error_type_t write_metadata(uint8_t *data, uint8_t dataSize) {
+error_type_t write_metadata(uint8_t *data, uint8_t dataSize, uint8_t version) {
     if (dataSize > MAX_METANAME) {
         dataSize = MAX_METANAME;
     }
@@ -106,7 +138,7 @@ error_type_t write_metadata(uint8_t *data, uint8_t dataSize) {
     tmp[1] = META_NONE;
     nvm_write((void *) &N_storage.metadatas[offset + 2 + dataSize], tmp, 2);
     tmp[0] = dataSize;
-    tmp[1] = META_NONE;
+    tmp[1] = version;
     nvm_write((void *) &N_storage.metadatas[offset], tmp, 2);
     size_t metadata_count = N_storage.metadata_count + 1;
     nvm_write((void *) &N_storage.metadata_count, &metadata_count, 4);

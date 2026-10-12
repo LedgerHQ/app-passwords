@@ -2,7 +2,8 @@
 
 ## Quick summary
 
-The Passwords application for Ledger Device is available for download on the [Ledger Live](https://www.ledger.com/ledger-live/download).
+The Passwords application for Ledger Device is available for download on
+[Ledger Wallet](https://shop.ledger.com/pages/ledger-wallet).
 
 This application demonstrates a Password Manager implemented with no support from the host.
 The passwords are typed from the device interacting as a keyboard to the connected computer / phone.
@@ -11,14 +12,16 @@ The passwords are typed from the device interacting as a keyboard to the connect
 
 To create a password:
 
-- Choose which kind of characters you want in this password (lowercase, uppercase, numbers, dashes, extra symbols)
-- Enter a nickname for the new entry (for instance, "wikipedia.com").
+- In the application settings, choose which kinds of characters new passwords use, and their length
+  (see below).
+- Choose "Create a new password" and enter a nickname for the new entry (for instance, "wikipedia.com").
   The device then derives a deterministic password from the device's seed and this nickname.
 
-To type a password, just select it in your list of password.
+To type a password, select it in your list of passwords: the device types it on the connected computer.
+To read it instead, use "Show a password".
 
 If you want to add a lot of passwords, this process can be pretty painful. Instead of doing it manually,
-you can use the [backup tool](https://blog.ledger.com/passwords-backup/) to load a custom list of password nicknames.
+you can use the [backup tool](https://passwords.ledger.com) to load a custom list of password nicknames.
 Nicknames in such a list must use printable ASCII only and stay under 20 characters, matching what the device
 keyboard can produce: the nickname is the input the password is derived from, so a nickname you cannot retype
 on the device is a password you cannot get back.
@@ -27,18 +30,32 @@ on the device is a password you cannot get back.
 
 In the application settings, the user can configure
 
-- Which keyboard the device should emulate when typing a password (Qwerty, International Qwerty or Azerty).
+- Which kinds of characters new passwords use: uppercase letters, lowercase letters, numbers,
+  separators (`-`, `_` and space) and special characters. Since version 1.4.0, a new password
+  contains at least one character of each enabled kind, and at least one of letters, numbers or
+  special characters must stay enabled.
+- The length of new passwords: 8, 12, 16, 20, 24, 32, 48 or 64 characters (20 by default, and the
+  only length before version 1.4.0), or a 4 or 6-digit PIN, which requires numbers to be the only
+  kind of characters enabled.
+
+The character kinds and the length are recorded with each entry when it is created: changing the
+settings later does not change existing passwords.
+
+- Which keyboard the device should emulate when typing a password (Qwerty, International Qwerty, Azerty or German Qwertz).
 - If the `Enter` key should be pressed automatically after typing a password
   (this is convenient for typing start-up password at encrypted servers without attaching display and keyboard, for instance).
 
 ## Backup
 
-As passwords are deterministically derived, it's not a problem if you loose your device,
-as long as you remember the password nicknames and you still have you device recovery phrase
+As passwords are deterministically derived, it's not a problem if you lose your device,
+as long as you remember the password nicknames and you still have your device recovery phrase
 to set up again the Passwords app on a new device.
 
-Same applies when updating the device firmware or the application itself, the list of password nicknames
-won't be restored automatically, so make sure to save a backup using [this tool](https://blog.ledger.com/passwords-backup/).
+Same applies when updating the device firmware or the application itself: the list of password nicknames
+is erased and won't be restored automatically, so make sure to save a backup using [this tool](https://passwords.ledger.com).
+
+A backup made with any version of the app restores on version 1.4.0 and later with the same passwords.
+A backup holding passwords created with version 1.4.0 or later restores only on version 1.4.0 or later.
 
 These nicknames are not confidential (meaning, someone who finds them will not be able to retrieve your passwords
 without your [24-words recovery phrase](https://www.ledger.com/academy/crypto/what-is-a-recovery-phrase)),
@@ -46,7 +63,7 @@ so you don't have to hide your backup like you did with your recovery phrase. Se
 
 ## Password generation mechanism
 
-- Metadatas are SHA-256 hashed
+- The nickname is SHA-256 hashed
 
 - The SHA-256 components are turned into 8 big endian uint32 | 0x80000000
 
@@ -54,15 +71,29 @@ so you don't have to hide your backup like you did with your recovery phrase. Se
 
 - The private key and chain code are SHA-256 hashed, the result is used as the entropy to seed an AES DRBG
 
-- A password is generated by randomly choosing from a set of characters using the previously seeded DRBG
+- A password of the entry's length is generated by randomly choosing from the enabled character sets
+  of the entry, using the previously seeded DRBG
 
-## Troobleshooting
+- Each password entry records the version of the generation rule it was created with, so existing
+  passwords never change:
+  - version 0: 20 characters, at least one uppercase letter, lowercase letter, digit and space, for
+    each of those sets that is enabled
+  - version 1 (app 1.4.0 and later): the length recorded in the entry, at least one uppercase letter,
+    lowercase letter and digit, one separator (`-`, `_` or space) and one special character, for each
+    of those groups that is enabled; each character is drawn uniformly (the version 0 draw slightly
+    favours some characters)
+
+## Troubleshooting
 
 - If you configured a password with some charset only, and you get unwanted characters when typing it,
   check that you have configured the application with the right keyboard.
   It must be configured like the keyboard settings of your operating systems to type correctly.
+  The password shown on the device ("Show a password") is always the reference.
 
-- If the keyboard is not recognized by your computer, have a look here: [Fix-connection-issues](https://support.ledger.com/hc/en-us/articles/115005165269-Fix-connection-issues)
+- If extra characters appear when typing into a text editor, check its auto-closing of brackets and
+  quotes: the editor may automatically add the closing character itself.
+
+- If the keyboard is not recognized by your computer, have a look here: [Fix USB connection issues](https://support.ledger.com/article/115005165269-zd)
 
 ## Tests
 
@@ -124,12 +155,6 @@ Then open the app on your device and run:
 ```bash
 pytest --hid
 ```
-
-## Future work
-
-This release is an early alpha - among the missing parts :
-
-- Support of different password policies mechanisms
 
 ## Credits
 
