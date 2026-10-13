@@ -105,7 +105,7 @@ error_type_t validate_metadata_image(const uint8_t *image) {
 
 error_type_t commit_metadata_image(const uint8_t *image) {
     begin_metadata_restore();
-    nvm_write((void *) N_storage.metadatas, (void *) image, sizeof(N_storage.metadatas));
+    nvm_write((void *) N_storage.metadatas, (void *) image, sizeof(N_storage_real.metadatas));
     const error_type_t err = compact_metadata();
     if (err != OK) {
         abort_metadata_restore();
@@ -151,7 +151,9 @@ void begin_metadata_restore(void) {
 }
 
 void end_metadata_restore(void) {
-    nvm_write((void *) &N_storage.restore_in_progress, NULL, sizeof(N_storage.restore_in_progress));
+    nvm_write((void *) &N_storage.restore_in_progress,
+              NULL,
+              sizeof(N_storage_real.restore_in_progress));
 }
 
 bool metadata_restore_in_progress(void) {
@@ -166,8 +168,8 @@ void abort_metadata_restore(void) {
 }
 
 void reset_metadatas(void) {
-    nvm_write((void *) N_storage.metadatas, NULL, sizeof(N_storage.metadatas));
-    nvm_write((void *) &N_storage.metadata_count, 0, sizeof(N_storage.metadata_count));
+    nvm_write((void *) N_storage.metadatas, NULL, sizeof(N_storage_real.metadatas));
+    nvm_write((void *) &N_storage.metadata_count, 0, sizeof(N_storage_real.metadata_count));
 }
 
 error_type_t erase_metadata(uint32_t offset) {
@@ -184,13 +186,13 @@ error_type_t erase_metadata(uint32_t offset) {
 
     size_t metadata_count = N_storage.metadata_count - 1;
     unsigned char m = META_ERASED;
-    nvm_write((void *) &N_storage.metadatas[offset + 1], &m, sizeof(N_storage.metadatas[0]));
+    nvm_write((void *) &N_storage.metadatas[offset + 1], &m, sizeof(N_storage_real.metadatas[0]));
     // Marking the entry erased leaves its nickname readable in flash until the next compaction
     // moves other entries over it, so wipe the data block now.
     nvm_write((void *) &N_storage.metadatas[offset + 2], NULL, entry_len - 2);
     nvm_write((void *) &N_storage.metadata_count,
               &metadata_count,
-              sizeof(N_storage.metadata_count));
+              sizeof(N_storage_real.metadata_count));
     return OK;
 }
 
@@ -301,6 +303,6 @@ error_type_t compact_metadata() {
     }
     nvm_write((void *) &N_storage.metadata_count,
               (void *) &count,
-              sizeof(N_storage.metadata_count));
+              sizeof(N_storage_real.metadata_count));
     return OK;
 }
