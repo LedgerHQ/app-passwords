@@ -42,14 +42,14 @@ int dump_metadatas() {
      * answer is smaller. Treating the sentinel as a length would mark the whole region live and
      * export precisely the stale bytes withheld above, so refuse the backup instead. Checked
      * before the transfer bookkeeping below, so nothing is written to the APDU buffer. */
-    if (live_size >= sizeof(N_storage.metadatas)) {
+    if (live_size >= sizeof(N_storage_real.metadatas)) {
         app_state.user_approval = false;
         app_state.bytes_transferred = 0;
         ui_idle();
         return io_send_sw(SW_METADATAS_PARSING_ERROR);
     }
 
-    size_t remaining_bytes_count = sizeof(N_storage.metadatas) - app_state.bytes_transferred;
+    size_t remaining_bytes_count = sizeof(N_storage_real.metadatas) - app_state.bytes_transferred;
     size_t payload_size;
     int status = 0;
 

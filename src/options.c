@@ -68,6 +68,6 @@ bool set_keyboard_layout(hid_mapping_t mapping) {
     const uint8_t stored_mapping = (uint8_t) mapping;
     nvm_write((void *) &N_storage.keyboard_layout,
               (void *) &stored_mapping,
-              sizeof(N_storage.keyboard_layout));
+              sizeof(N_storage_real.keyboard_layout));
     return return_value;
 }
