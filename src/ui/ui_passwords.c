@@ -143,7 +143,7 @@ static void confirm_password_deletion(const size_t index) {
         snprintf(msgBuffer,
                  sizeof(msgBuffer),
                  "Confirm the deletion\nof all passwords (%u)",
-                 (uint32_t) N_storage.metadata_count);
+                 (unsigned int) N_storage.metadata_count);
     } else {
         // A single password
         all_passwords = false;
