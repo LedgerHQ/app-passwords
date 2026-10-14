@@ -14,6 +14,7 @@ permissions:
   actions: write
   pull-requests: write
   code-quality: write
+  packages: read
 
 jobs:
   job_unit_test:
