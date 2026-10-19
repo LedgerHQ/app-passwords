@@ -24,6 +24,36 @@ static uint8_t fake_get_password_length(int cmock_num_calls) {
     return stub_password_length;
 }
 
+// Arguments of the last type_password() call, and its result
+static struct {
+    size_t calls;
+    const uint8_t *data;
+    uint32_t data_size;
+    const uint8_t *out;
+    setmask_t sets;
+    uint8_t version;
+    uint32_t size;
+} typed;
+static bool type_result;
+
+static bool fake_type_password(uint8_t *data,
+                               uint32_t dataSize,
+                               uint8_t *out,
+                               setmask_t setMask,
+                               uint8_t version,
+                               uint32_t size,
+                               int cmock_num_calls) {
+    (void) cmock_num_calls;
+    typed.calls++;
+    typed.data = data;
+    typed.data_size = dataSize;
+    typed.out = out;
+    typed.sets = setMask;
+    typed.version = version;
+    typed.size = size;
+    return type_result;
+}
+
 // --- helpers ----------------------------------------------------------------
 
 // Append one live metadata entry holding `nickname` to N_storage_rw.
@@ -51,6 +81,9 @@ void setUp(void) {
     Mockpassword_typing_Init();
     get_charset_options_StubWithCallback(fake_get_charset_options);
     get_password_length_StubWithCallback(fake_get_password_length);
+    memset(&typed, 0, sizeof(typed));
+    type_result = true;
+    type_password_StubWithCallback(fake_type_password);
 }
 
 void tearDown(void) {
@@ -724,6 +757,51 @@ static void test_erase_metadata_rejects_out_of_range_offset(void) {
     TEST_ASSERT_EQUAL(1, N_storage_rw.metadata_count);
 }
 
+// --- password generation parameters ----------------------------------------
+
+static void test_type_password_at_offset_version_0_entry(void) {
+    // Charset 0 stands for all the sets, and version 0 has no length byte
+    add_password("legacy");
+
+    TEST_ASSERT_TRUE(type_password_at_offset(0));
+    TEST_ASSERT_EQUAL(1, typed.calls);
+    TEST_ASSERT_EQUAL_PTR(&N_storage_rw.metadatas[3], typed.data);
+    TEST_ASSERT_EQUAL(6, typed.data_size);
+    TEST_ASSERT_NULL(typed.out);
+    TEST_ASSERT_EQUAL_HEX8(ALL_SETS, typed.sets);
+    TEST_ASSERT_EQUAL(META_VERSION_0, typed.version);
+    TEST_ASSERT_EQUAL(PASSWORD_DEFAULT_SIZE, typed.size);
+}
+
+static void test_show_password_at_offset_version_1_entry(void) {
+    uint8_t out[PASSWORD_MAX_SIZE + 1];
+    stub_charsets = 0x07;
+    stub_password_length = 32;
+    add_password("first");
+    TEST_ASSERT_EQUAL(OK, create_new_password("mail", 4));
+    const uint32_t offset = get_metadata(1);
+
+    TEST_ASSERT_TRUE(show_password_at_offset(offset, out));
+    TEST_ASSERT_EQUAL(1, typed.calls);
+    TEST_ASSERT_EQUAL_PTR(&N_storage_rw.metadatas[offset + 4], typed.data);
+    TEST_ASSERT_EQUAL_MEMORY("mail", typed.data, 4);
+    TEST_ASSERT_EQUAL(4, typed.data_size);
+    TEST_ASSERT_EQUAL_PTR(out, typed.out);
+    TEST_ASSERT_EQUAL_HEX8(0x07, typed.sets);
+    TEST_ASSERT_EQUAL(META_VERSION_1, typed.version);
+    TEST_ASSERT_EQUAL(32, typed.size);
+}
+
+static void test_password_at_offset_reports_a_failure(void) {
+    uint8_t out[PASSWORD_MAX_SIZE + 1];
+    add_password("alpha");
+    type_result = false;
+
+    TEST_ASSERT_FALSE(type_password_at_offset(0));
+    TEST_ASSERT_FALSE(show_password_at_offset(0, out));
+    TEST_ASSERT_EQUAL(2, typed.calls);
+}
+
 int main(void) {
     UNITY_BEGIN();
     RUN_TEST(test_nickname_exists_empty_db);
@@ -767,5 +845,8 @@ int main(void) {
     RUN_TEST(test_get_metadata_terminates_on_corrupt_storage);
     RUN_TEST(test_find_free_metadata_sentinel_is_unambiguous);
     RUN_TEST(test_erase_metadata_rejects_out_of_range_offset);
+    RUN_TEST(test_type_password_at_offset_version_0_entry);
+    RUN_TEST(test_show_password_at_offset_version_1_entry);
+    RUN_TEST(test_password_at_offset_reports_a_failure);
     return UNITY_END();
 }

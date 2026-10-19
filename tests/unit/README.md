@@ -20,9 +20,13 @@ All of them are available in the `ledger-app-builder` Docker images.
 | --- | --- |
 | `CMakeLists.txt` | Test declarations, one `ledger_unit_tests_add_test()` per test executable |
 | `test_<name>.c` | Test executable `test_<name>` |
-| `fakes/` | Hand-written replacements of SDK functions (`nvm_write`, `is_printable_string`), of the app globals, and of the generated `glyphs.h` |
+| `fakes/` | Hand-written replacements of SDK functions (`nvm_write`, `is_printable_string`, the `TRY`/`THROW` context), of the app globals, and of the generated `glyphs.h` |
 
 Prefer the real SDK headers and CMock mocks (`MOCK_HEADERS`) to new fakes.
+CMock cannot parse `os_seed.h`, so `test_password_typing.c` defines `os_perso_derive_node_with_seed_key()` itself.
+
+The password generation tests use the DRBG seeds the device derives from the Speculos default seed,
+so their expected passwords are the ones of the functional tests.
 The persistent storage `N_storage_real` is defined writable in `fakes/fake_vars.c`:
 tests access it through `N_storage_rw`, from `fakes/fake_vars.h`.
 

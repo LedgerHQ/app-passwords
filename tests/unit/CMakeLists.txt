@@ -30,14 +30,19 @@ set(UT_INCLUDE_DIRS
     ${FAKES_DIR}
     ${APP_DIR}
     ${APP_DIR}/apdu_handlers
+    ${APP_DIR}/ctaes
     ${APP_DIR}/ui
     ${UT_INCLUDE_DIRS_SDK}
 )
+
+# CMock checks for NULL the arguments that SDK headers declare nonnull
+set(MOCK_COMPILE_OPTIONS -Wno-nonnull-compare)
 
 set(UT_COMPILE_DEFS
     ${UT_COMPILE_DEFS_SDK}
     APPNAME="Passwords"
     APPVERSION="a.b.c"
+    USE_CTAES
 )
 
 #######################################################################
@@ -103,11 +108,48 @@ ledger_unit_tests_add_test(
 )
 
 ledger_unit_tests_add_test(
+    NAME         test_load_metadatas
+    SOURCES      ${APP_DIR}/apdu_handlers/load_metadatas.c
+                 ${APP_DIR}/metadata.c
+                 ${FAKE_SOURCES}
+    MOCK_HEADERS ${APP_DIR}/ui/ui.h
+                 ${SDK_DIR}/lib_standard_app/io.h
+    INCLUDE_DIRS ${UT_INCLUDE_DIRS}
+    COMPILE_DEFS ${UT_COMPILE_DEFS}
+)
+
+ledger_unit_tests_add_test(
     NAME         test_options
     SOURCES      ${APP_DIR}/options.c
                  ${FAKE_SOURCES}
     INCLUDE_DIRS ${UT_INCLUDE_DIRS}
     COMPILE_DEFS ${UT_COMPILE_DEFS}
+)
+
+ledger_unit_tests_add_test(
+    NAME         test_password_generation
+    SOURCES      ${APP_DIR}/password_generation.c
+                 ${APP_DIR}/ctr_drbg.c
+                 ${APP_DIR}/ctaes/ctaes.c
+    INCLUDE_DIRS ${UT_INCLUDE_DIRS}
+    COMPILE_DEFS ${UT_COMPILE_DEFS}
+)
+
+ledger_unit_tests_add_test(
+    NAME         test_password_typing
+    SOURCES      ${APP_DIR}/password_typing.c
+                 ${APP_DIR}/password_generation.c
+                 ${APP_DIR}/password_path.c
+                 ${APP_DIR}/hid_mapping.c
+                 ${APP_DIR}/ctr_drbg.c
+                 ${APP_DIR}/ctaes/ctaes.c
+                 ${FAKE_SOURCES}
+    MOCK_HEADERS ${SDK_DIR}/lib_cxng/include/lcx_sha256.h
+                 ${SDK_DIR}/io/include/os_io_seph_cmd.h
+                 ${SDK_DIR}/lib_stusb/include/usbd_ledger.h
+    INCLUDE_DIRS ${UT_INCLUDE_DIRS}
+    COMPILE_DEFS ${UT_COMPILE_DEFS}
+    COMPILE_OPTIONS ${MOCK_COMPILE_OPTIONS}
 )
 
 # A signed shift overflow aborts the test
