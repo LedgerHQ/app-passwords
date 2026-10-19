@@ -2,7 +2,7 @@
 
 static const message_pair_t ERR_MESSAGES[7] = {
     // OK
-    {},
+    {NULL, NULL},
     // ERR_NO_MORE_SPACE_AVAILABLE
     {"Write Error", "Database is full"},
     // ERR_CORRUPTED_METADATA

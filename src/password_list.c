@@ -1,8 +1,4 @@
-#if defined(TEST)
-#include <bsd/string.h>
-#else
 #include <string.h>
-#endif
 
 #include "password_list.h"
 #include "os.h"

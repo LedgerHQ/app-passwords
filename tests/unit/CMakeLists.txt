@@ -1,83 +1,184 @@
 cmake_minimum_required(VERSION 3.10)
-
-if(${CMAKE_VERSION} VERSION_LESS 3.10)
-    cmake_policy(VERSION ${CMAKE_MAJOR_VERSION}.${CMAKE_MINOR_VERSION})
-endif()
-
-# project information
 project(unit_tests
-        VERSION 0.1
-        DESCRIPTION "Unit tests for the Passwords application"
-        LANGUAGES C)
-
-
-# guard against bad build-type strings
-if (NOT CMAKE_BUILD_TYPE)
-  set(CMAKE_BUILD_TYPE "Debug")
-endif()
-
-include(CTest)
-ENABLE_TESTING()
-
-# specify C standard
-set(CMAKE_C_STANDARD 11)
-set(CMAKE_C_STANDARD_REQUIRED True)
-set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -Wall -pedantic -g -O0 --coverage")
-
-set(GCC_COVERAGE_LINK_FLAGS "--coverage -lgcov")
-set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} ${GCC_COVERAGE_LINK_FLAGS}")
-set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${GCC_COVERAGE_LINK_FLAGS}")
-
-# guard against in-source builds
-if(${CMAKE_SOURCE_DIR} STREQUAL ${CMAKE_BINARY_DIR})
-  message(FATAL_ERROR "In-source builds not allowed. Please make a new directory (called a build \
-                       directory) and run CMake from there. You may need to remove CMakeCache.txt.")
-endif()
-
-add_compile_definitions(WIDE=)
-add_compile_definitions(TEST)
-add_compile_definitions(HAVE_BOLOS_UX)
-add_compile_definitions(SCREEN_SIZE_WALLET)
-add_compile_definitions(TARGET_STAX)
-add_compile_definitions(OS_IO_SEPROXYHAL)
-add_compile_definitions(OS_IO_SEPH_BUFFER_SIZE=300)
-
-include_directories(
-  ../../src
-  ../../src/apdu_handlers
-  ../../include
-  ./mocks/
+    VERSION 0.1
+    DESCRIPTION "Unit tests for the Passwords application"
+    LANGUAGES C
 )
 
-add_executable(test_password_list test_password_list.c)
-add_library(password_list SHARED ../../src/password_list.c)
-target_link_libraries(test_password_list PUBLIC cmocka gcov password_list bsd)
+#######################################################################
+#                        Setup SDK & LedgerUT                         #
+#######################################################################
+if(NOT DEFINED ENV{BOLOS_SDK})
+    message(FATAL_ERROR "BOLOS_SDK environment variable is not set. Please set it to the path of the Ledger Secure SDK.")
+endif()
 
-add_executable(test_hid_mapping test_hid_mapping.c)
-add_library(hid_mapping SHARED ../../src/hid_mapping.c)
-target_link_libraries(test_hid_mapping PUBLIC cmocka gcov hid_mapping bsd)
+set(SDK_DIR $ENV{BOLOS_SDK})
+include(${SDK_DIR}/cmake/LedgerUT.cmake)
 
-add_executable(test_password test_password.c)
-add_library(password SHARED ../../src/password.c ../../src/metadata.c)
-target_link_libraries(test_password PUBLIC cmocka gcov password bsd)
+#######################################################################
+#             Setup app specific includes & compile defs              #
+#######################################################################
+set(APP_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../../src)
+set(FAKES_DIR ${CMAKE_CURRENT_SOURCE_DIR}/fakes)
 
-add_executable(test_dump_metadatas test_dump_metadatas.c)
-add_library(dump_metadatas SHARED ../../src/apdu_handlers/dump_metadatas.c ../../src/metadata.c)
-target_link_libraries(test_dump_metadatas PUBLIC cmocka gcov dump_metadatas bsd)
+set(FAKE_SOURCES
+    ${FAKES_DIR}/fake_sdk.c
+    ${FAKES_DIR}/fake_vars.c
+)
 
-add_executable(test_password_path test_password_path.c)
-add_library(password_path SHARED ../../src/password_path.c)
-target_compile_options(password_path PRIVATE -fsanitize=undefined -fno-sanitize-recover=undefined)
-target_link_options(password_path PRIVATE -fsanitize=undefined)
-target_link_libraries(test_password_path PUBLIC cmocka gcov password_path bsd -fsanitize=undefined)
+set(UT_INCLUDE_DIRS
+    ${FAKES_DIR}
+    ${APP_DIR}
+    ${APP_DIR}/apdu_handlers
+    ${APP_DIR}/ctaes
+    ${APP_DIR}/ui
+    ${UT_INCLUDE_DIRS_SDK}
+)
 
-add_executable(test_options test_options.c)
-add_library(options SHARED ../../src/options.c)
-target_link_libraries(test_options PUBLIC cmocka gcov options bsd)
+# CMock checks for NULL the arguments that SDK headers declare nonnull
+set(MOCK_COMPILE_OPTIONS -Wno-nonnull-compare)
 
-add_test(password_list test_password_list)
-add_test(hid_mapping test_hid_mapping)
-add_test(password test_password)
-add_test(dump_metadatas test_dump_metadatas)
-add_test(options test_options)
-add_test(password_path test_password_path)
+set(UT_COMPILE_DEFS
+    ${UT_COMPILE_DEFS_SDK}
+    APPNAME="Passwords"
+    APPVERSION="a.b.c"
+    USE_CTAES
+)
+
+#######################################################################
+#                           LedgerUT Setup                            #
+#######################################################################
+ledger_unit_tests_init()
+
+# The app sources live in ../../src: ledger_unit_tests_find_sources() only looks in ../src
+file(GLOB_RECURSE APP_SOURCES CONFIGURE_DEPENDS ${APP_DIR}/*.c)
+list(FILTER APP_SOURCES EXCLUDE REGEX "/app_main\\.c$")
+
+# Built only so that every app source has a .gcno file for the coverage baseline
+ledger_unit_tests_build_app_sources_as_lib(
+    SOURCES      ${APP_SOURCES}
+    INCLUDE_DIRS ${UT_INCLUDE_DIRS}
+    COMPILE_DEFS ${UT_COMPILE_DEFS}
+)
+
+# generate_coverage filters on ../src: regenerate the report restricted to the app sources
+add_custom_command(TARGET generate_coverage POST_BUILD
+    COMMAND ${LEDGER_UT_DIR}/gen_coverage.sh ${APP_DIR}
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    VERBATIM
+)
+
+#######################################################################
+#                        LedgerUT test suites                         #
+#######################################################################
+ledger_unit_tests_add_test(
+    NAME         test_password_list
+    SOURCES      ${APP_DIR}/password_list.c
+    INCLUDE_DIRS ${UT_INCLUDE_DIRS}
+    COMPILE_DEFS ${UT_COMPILE_DEFS}
+)
+
+ledger_unit_tests_add_test(
+    NAME         test_hid_mapping
+    SOURCES      ${APP_DIR}/hid_mapping.c
+    INCLUDE_DIRS ${UT_INCLUDE_DIRS}
+    COMPILE_DEFS ${UT_COMPILE_DEFS}
+)
+
+ledger_unit_tests_add_test(
+    NAME         test_password
+    SOURCES      ${APP_DIR}/password.c
+                 ${APP_DIR}/metadata.c
+                 ${FAKE_SOURCES}
+    MOCK_HEADERS ${APP_DIR}/options.h
+                 ${APP_DIR}/password_typing.h
+    INCLUDE_DIRS ${UT_INCLUDE_DIRS}
+    COMPILE_DEFS ${UT_COMPILE_DEFS}
+)
+
+ledger_unit_tests_add_test(
+    NAME         test_dump_metadatas
+    SOURCES      ${APP_DIR}/apdu_handlers/dump_metadatas.c
+                 ${APP_DIR}/metadata.c
+                 ${FAKE_SOURCES}
+    MOCK_HEADERS ${APP_DIR}/ui/ui.h
+                 ${SDK_DIR}/lib_standard_app/io.h
+    INCLUDE_DIRS ${UT_INCLUDE_DIRS}
+    COMPILE_DEFS ${UT_COMPILE_DEFS}
+)
+
+ledger_unit_tests_add_test(
+    NAME         test_load_metadatas
+    SOURCES      ${APP_DIR}/apdu_handlers/load_metadatas.c
+                 ${APP_DIR}/metadata.c
+                 ${FAKE_SOURCES}
+    MOCK_HEADERS ${APP_DIR}/ui/ui.h
+                 ${SDK_DIR}/lib_standard_app/io.h
+    INCLUDE_DIRS ${UT_INCLUDE_DIRS}
+    COMPILE_DEFS ${UT_COMPILE_DEFS}
+)
+
+ledger_unit_tests_add_test(
+    NAME         test_get_app_config
+    SOURCES      ${APP_DIR}/apdu_handlers/get_app_config.c
+                 ${FAKE_SOURCES}
+    MOCK_HEADERS ${APP_DIR}/ui/ui.h
+                 ${SDK_DIR}/lib_standard_app/io.h
+    INCLUDE_DIRS ${UT_INCLUDE_DIRS}
+    COMPILE_DEFS ${UT_COMPILE_DEFS}
+)
+
+ledger_unit_tests_add_test(
+    NAME         test_dispatcher
+    SOURCES      ${APP_DIR}/dispatcher.c
+                 ${FAKE_SOURCES}
+    MOCK_HEADERS ${APP_DIR}/apdu_handlers/handlers.h
+                 ${SDK_DIR}/lib_standard_app/io.h
+    INCLUDE_DIRS ${UT_INCLUDE_DIRS}
+    COMPILE_DEFS ${UT_COMPILE_DEFS}
+)
+
+ledger_unit_tests_add_test(
+    NAME         test_options
+    SOURCES      ${APP_DIR}/options.c
+                 ${APP_DIR}/globals.c
+                 ${FAKE_SOURCES}
+    INCLUDE_DIRS ${UT_INCLUDE_DIRS}
+    COMPILE_DEFS ${UT_COMPILE_DEFS}
+)
+
+ledger_unit_tests_add_test(
+    NAME         test_password_generation
+    SOURCES      ${APP_DIR}/password_generation.c
+                 ${APP_DIR}/ctr_drbg.c
+                 ${APP_DIR}/ctaes/ctaes.c
+    INCLUDE_DIRS ${UT_INCLUDE_DIRS}
+    COMPILE_DEFS ${UT_COMPILE_DEFS}
+)
+
+ledger_unit_tests_add_test(
+    NAME         test_password_typing
+    SOURCES      ${APP_DIR}/password_typing.c
+                 ${APP_DIR}/password_generation.c
+                 ${APP_DIR}/password_path.c
+                 ${APP_DIR}/hid_mapping.c
+                 ${APP_DIR}/ctr_drbg.c
+                 ${APP_DIR}/ctaes/ctaes.c
+                 ${FAKE_SOURCES}
+    MOCK_HEADERS ${SDK_DIR}/lib_cxng/include/lcx_sha256.h
+                 ${SDK_DIR}/io/include/os_io_seph_cmd.h
+                 ${SDK_DIR}/lib_stusb/include/usbd_ledger.h
+    INCLUDE_DIRS ${UT_INCLUDE_DIRS}
+    COMPILE_DEFS ${UT_COMPILE_DEFS}
+    COMPILE_OPTIONS ${MOCK_COMPILE_OPTIONS}
+)
+
+# A signed shift overflow aborts the test
+ledger_unit_tests_add_test(
+    NAME            test_password_path
+    SOURCES         ${APP_DIR}/password_path.c
+    INCLUDE_DIRS    ${UT_INCLUDE_DIRS}
+    COMPILE_DEFS    ${UT_COMPILE_DEFS}
+    COMPILE_OPTIONS -fsanitize=undefined -fno-sanitize-recover=undefined
+    LINK_OPTIONS    -fsanitize=undefined
+)

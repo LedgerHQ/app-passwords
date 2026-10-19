@@ -5,3 +5,8 @@
 # needs to install its platform binary; the others are harmless to allow.
 allowBuilds:
   esbuild: true
+
+# Patched versions of transitive dependencies flagged by Dependabot.
+overrides:
+  postcss-selector-parser: 7.1.6
+  source-map-js: 1.2.2
