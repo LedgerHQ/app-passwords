@@ -1,82 +1,72 @@
-#include <stdarg.h>
-#include <setjmp.h>
 #include <stdint.h>
 #include <string.h>
-#include <cmocka.h>
+
+#include "unity.h"
 
 #include "options.h"
 #include "password.h"
 #include "types.h"
+#include "fake_vars.h"
 
-// See test_password.c for why N_storage_real is defined without `const` here.
-internalStorage_t N_storage_real;
-
-void nvm_write(void *dst, void *src, unsigned int len) {
-    if (src == NULL) {
-        memset(dst, 0, len);
-    } else {
-        memcpy(dst, src, len);
-    }
+void setUp(void) {
+    memset(&N_storage_rw, 0, sizeof(N_storage_rw));
 }
 
-static int setup(void **state __attribute__((unused))) {
-    memset(&N_storage_real, 0, sizeof(N_storage_real));
-    return 0;
+void tearDown(void) {
 }
 
 // --- tests ------------------------------------------------------------------
 
-static void test_set_keyboard_layout_stores_value(void **state __attribute__((unused))) {
+static void test_set_keyboard_layout_stores_value(void) {
     // First write reports that no layout was set yet, later ones do not.
-    assert_true(set_keyboard_layout(HID_MAPPING_AZERTY));
-    assert_int_equal(N_storage_real.keyboard_layout, HID_MAPPING_AZERTY);
+    TEST_ASSERT_TRUE(set_keyboard_layout(HID_MAPPING_AZERTY));
+    TEST_ASSERT_EQUAL(HID_MAPPING_AZERTY, N_storage_rw.keyboard_layout);
 
-    assert_false(set_keyboard_layout(HID_MAPPING_QWERTY_INTL));
-    assert_int_equal(N_storage_real.keyboard_layout, HID_MAPPING_QWERTY_INTL);
+    TEST_ASSERT_FALSE(set_keyboard_layout(HID_MAPPING_QWERTY_INTL));
+    TEST_ASSERT_EQUAL(HID_MAPPING_QWERTY_INTL, N_storage_rw.keyboard_layout);
 
-    assert_false(set_keyboard_layout(HID_MAPPING_QWERTZ));
-    assert_int_equal(N_storage_real.keyboard_layout, HID_MAPPING_QWERTZ);
+    TEST_ASSERT_FALSE(set_keyboard_layout(HID_MAPPING_QWERTZ));
+    TEST_ASSERT_EQUAL(HID_MAPPING_QWERTZ, N_storage_rw.keyboard_layout);
 }
 
-static void test_set_keyboard_layout_keeps_metadata_count(void **state __attribute__((unused))) {
+static void test_set_keyboard_layout_keeps_metadata_count(void) {
     // Regression: the setter wrote sizeof(hid_mapping_t) == 4 bytes into the one-byte
     // keyboard_layout field. In internalStorage_t that field is followed by padding and
     // then metadata_count, so a plain layout change in the settings corrupted the
     // persistent password count -- passwords appeared to vanish from the list.
-    N_storage_real.metadata_count = 0x11223344;
+    N_storage_rw.metadata_count = 0x11223344;
 
-    assert_true(set_keyboard_layout(HID_MAPPING_AZERTY));
+    TEST_ASSERT_TRUE(set_keyboard_layout(HID_MAPPING_AZERTY));
 
-    assert_int_equal(N_storage_real.keyboard_layout, HID_MAPPING_AZERTY);
-    assert_int_equal(N_storage_real.metadata_count, 0x11223344);
+    TEST_ASSERT_EQUAL(HID_MAPPING_AZERTY, N_storage_rw.keyboard_layout);
+    TEST_ASSERT_EQUAL(0x11223344, N_storage_rw.metadata_count);
 }
 
-static void test_set_keyboard_layout_rejects_unknown(void **state __attribute__((unused))) {
+static void test_set_keyboard_layout_rejects_unknown(void) {
     // map_char() has no mapping for values outside the enum, so they must not reach NVM.
-    assert_false(set_keyboard_layout((hid_mapping_t) 0xEE));
-    assert_int_equal(N_storage_real.keyboard_layout, HID_MAPPING_NONE);
+    TEST_ASSERT_FALSE(set_keyboard_layout((hid_mapping_t) 0xEE));
+    TEST_ASSERT_EQUAL(HID_MAPPING_NONE, N_storage_rw.keyboard_layout);
 }
 
-static void test_password_length(void **state __attribute__((unused))) {
+static void test_password_length(void) {
     // An unset or invalid stored value reads as the default.
-    assert_int_equal(get_password_length(), PASSWORD_DEFAULT_SIZE);
-    N_storage_real.password_length = 13;
-    assert_int_equal(get_password_length(), PASSWORD_DEFAULT_SIZE);
+    TEST_ASSERT_EQUAL(PASSWORD_DEFAULT_SIZE, get_password_length());
+    N_storage_rw.password_length = 13;
+    TEST_ASSERT_EQUAL(PASSWORD_DEFAULT_SIZE, get_password_length());
 
-    assert_true(set_password_length(4));
-    assert_int_equal(get_password_length(), 4);
-    assert_true(set_password_length(64));
-    assert_int_equal(get_password_length(), 64);
-    assert_false(set_password_length(65));
-    assert_int_equal(get_password_length(), 64);
+    TEST_ASSERT_TRUE(set_password_length(4));
+    TEST_ASSERT_EQUAL(4, get_password_length());
+    TEST_ASSERT_TRUE(set_password_length(64));
+    TEST_ASSERT_EQUAL(64, get_password_length());
+    TEST_ASSERT_FALSE(set_password_length(65));
+    TEST_ASSERT_EQUAL(64, get_password_length());
 }
 
 int main(void) {
-    const struct CMUnitTest tests[] = {
-        cmocka_unit_test_setup_teardown(test_set_keyboard_layout_stores_value, setup, NULL),
-        cmocka_unit_test_setup_teardown(test_set_keyboard_layout_keeps_metadata_count, setup, NULL),
-        cmocka_unit_test_setup_teardown(test_set_keyboard_layout_rejects_unknown, setup, NULL),
-        cmocka_unit_test_setup_teardown(test_password_length, setup, NULL),
-    };
-    return cmocka_run_group_tests(tests, NULL, NULL);
+    UNITY_BEGIN();
+    RUN_TEST(test_set_keyboard_layout_stores_value);
+    RUN_TEST(test_set_keyboard_layout_keeps_metadata_count);
+    RUN_TEST(test_set_keyboard_layout_rejects_unknown);
+    RUN_TEST(test_password_length);
+    return UNITY_END();
 }

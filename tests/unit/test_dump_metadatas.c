@@ -1,33 +1,14 @@
-#include <stdarg.h>
-#include <setjmp.h>
 #include <stdint.h>
 #include <string.h>
-#include <cmocka.h>
+
+#include "unity.h"
 
 #include "handlers.h"
-#include "io.h"
 #include "metadata.h"
 #include "types.h"
-#include "ui.h"
-
-// --- the symbols dump_metadatas.c and metadata.c resolve at link time -------
-
-// globals.h declares `extern const internalStorage_t N_storage_real;` for the on-device
-// layout (NVM is read-only from C's perspective; writes go through nvm_write). The test does
-// not include globals.h so we can define the same symbol without `const` and let it land in
-// writable BSS. The linker resolves the two declarations by symbol name; the qualifier
-// mismatch is harmless.
-internalStorage_t N_storage_real;
-app_state_t app_state;
-uint8_t G_io_apdu_buffer[IO_APDU_BUFFER_SIZE];
-
-void nvm_write(void *dst, void *src, unsigned int len) {
-    if (src == NULL) {
-        memset(dst, 0, len);
-    } else {
-        memcpy(dst, src, len);
-    }
-}
+#include "fake_vars.h"
+#include "Mockio.h"
+#include "Mockui.h"
 
 // --- captured side effects --------------------------------------------------
 
@@ -41,28 +22,36 @@ static uint16_t last_sw;
 static size_t approvals_requested;
 static size_t idle_calls;
 
-int io_send_response_pointer(const uint8_t *ptr, size_t size, uint16_t sw) {
-    assert_true(size >= TRANSFER_PAYLOAD_OFFSET);
+static int fake_io_send_response_buffers(const buffer_t *rdatalist,
+                                         size_t count,
+                                         uint16_t sw,
+                                         int cmock_num_calls) {
+    (void) cmock_num_calls;
+    last_sw = sw;
+    if (count == 0) {
+        return 0;
+    }
+    TEST_ASSERT_EQUAL(1, count);
+    const size_t size = rdatalist[0].size;
+    TEST_ASSERT_TRUE(size >= TRANSFER_PAYLOAD_OFFSET);
     const size_t payload_size = size - TRANSFER_PAYLOAD_OFFSET;
-    assert_true(sent_payload_len + payload_size <= sizeof(sent_payload));
-    memcpy(&sent_payload[sent_payload_len], ptr + TRANSFER_PAYLOAD_OFFSET, payload_size);
+    TEST_ASSERT_TRUE(sent_payload_len + payload_size <= sizeof(sent_payload));
+    memcpy(&sent_payload[sent_payload_len],
+           rdatalist[0].ptr + TRANSFER_PAYLOAD_OFFSET,
+           payload_size);
     sent_payload_len += payload_size;
     responses_sent++;
-    last_sw = sw;
     return (int) size;
 }
 
-int io_send_sw(uint16_t sw) {
-    last_sw = sw;
-    return 0;
-}
-
-void ui_idle(void) {
+static void fake_ui_idle(int cmock_num_calls) {
+    (void) cmock_num_calls;
     idle_calls++;
 }
 
-void ui_request_user_approval(message_pair_t *msg) {
+static void fake_ui_request_user_approval(message_pair_t *msg, int cmock_num_calls) {
     (void) msg;
+    (void) cmock_num_calls;
     approvals_requested++;
 }
 
@@ -73,23 +62,23 @@ static void add_password(const char *nickname) {
     const size_t name_len = strlen(nickname);
     const uint8_t datasize = 1 + name_len;  // charset byte + nickname bytes
     uint32_t offset = 0;
-    while (N_storage_real.metadatas[offset] != 0) {
-        offset += N_storage_real.metadatas[offset] + 2;
+    while (N_storage_rw.metadatas[offset] != 0) {
+        offset += N_storage_rw.metadatas[offset] + 2;
     }
-    N_storage_real.metadatas[offset] = datasize;
-    N_storage_real.metadatas[offset + 1] = META_NONE;
-    N_storage_real.metadatas[offset + 2] = 0;  // charset byte
-    memcpy(&N_storage_real.metadatas[offset + 3], nickname, name_len);
+    N_storage_rw.metadatas[offset] = datasize;
+    N_storage_rw.metadatas[offset + 1] = META_NONE;
+    N_storage_rw.metadatas[offset + 2] = 0;  // charset byte
+    memcpy(&N_storage_rw.metadatas[offset + 3], nickname, name_len);
     // terminate the list so the parsing loops stop here
-    N_storage_real.metadatas[offset + 3 + name_len] = 0;
-    N_storage_real.metadata_count++;
+    N_storage_rw.metadatas[offset + 3 + name_len] = 0;
+    N_storage_rw.metadata_count++;
 }
 
 static uint32_t raw_entry_offset(size_t nth) {
     uint32_t offset = 0;
     while (nth-- > 0) {
-        assert_int_not_equal(N_storage_real.metadatas[offset], 0);
-        offset += N_storage_real.metadatas[offset] + 2;
+        TEST_ASSERT_NOT_EQUAL(0, N_storage_rw.metadatas[offset]);
+        offset += N_storage_rw.metadatas[offset] + 2;
     }
     return offset;
 }
@@ -99,9 +88,9 @@ static uint32_t raw_entry_offset(size_t nth) {
 // erase_metadata() wipes the block -- but a database carried across an upgrade contains such
 // records, which is the case this file is about.
 static void erase_metadata_legacy_style(uint32_t offset) {
-    N_storage_real.metadatas[offset + 1] = META_ERASED;
-    assert_true(N_storage_real.metadata_count > 0);
-    N_storage_real.metadata_count--;
+    N_storage_rw.metadatas[offset + 1] = META_ERASED;
+    TEST_ASSERT_TRUE(N_storage_rw.metadata_count > 0);
+    N_storage_rw.metadata_count--;
 }
 
 // True if `needle` appears anywhere in `buffer`.
@@ -121,24 +110,24 @@ static bool contains(const uint8_t *buffer, size_t size, const char *needle) {
 // Drive a whole backup: the approval request, then every chunk until the handler reports the
 // last one. Returns the number of chunks the transfer took.
 static size_t run_full_dump(void) {
-    assert_int_equal(dump_metadatas(), 0);
+    TEST_ASSERT_EQUAL(0, dump_metadatas());
     // The first call only asks for approval; nothing may be exported before the user agrees.
-    assert_int_equal(approvals_requested, 1);
-    assert_int_equal(responses_sent, 0);
+    TEST_ASSERT_EQUAL(1, approvals_requested);
+    TEST_ASSERT_EQUAL(0, responses_sent);
 
     app_state.user_approval = true;
     size_t chunks = 0;
     while (app_state.user_approval) {
-        assert_int_equal(dump_metadatas(), 0);
+        TEST_ASSERT_EQUAL(0, dump_metadatas());
         chunks++;
         // A stuck handler must not spin forever on a failed assertion elsewhere.
-        assert_true(chunks <= sizeof(N_storage_real.metadatas));
+        TEST_ASSERT_TRUE(chunks <= sizeof(N_storage_real.metadatas));
     }
     return chunks;
 }
 
-static int setup(void **state __attribute__((unused))) {
-    memset(&N_storage_real, 0, sizeof(N_storage_real));
+void setUp(void) {
+    memset(&N_storage_rw, 0, sizeof(N_storage_rw));
     memset(&app_state, 0, sizeof(app_state));
     memset(G_io_apdu_buffer, 0, sizeof(G_io_apdu_buffer));
     memset(sent_payload, 0, sizeof(sent_payload));
@@ -147,13 +136,23 @@ static int setup(void **state __attribute__((unused))) {
     last_sw = 0;
     approvals_requested = 0;
     idle_calls = 0;
-    return 0;
+    Mockio_Init();
+    Mockui_Init();
+    io_send_response_buffers_StubWithCallback(fake_io_send_response_buffers);
+    ui_idle_StubWithCallback(fake_ui_idle);
+    ui_request_user_approval_StubWithCallback(fake_ui_request_user_approval);
+}
+
+void tearDown(void) {
+    Mockio_Verify();
+    Mockui_Verify();
+    Mockio_Destroy();
+    Mockui_Destroy();
 }
 
 // --- tests ------------------------------------------------------------------
 
-static void test_dump_does_not_export_a_legacy_erased_nickname(void **state
-                                                               __attribute__((unused))) {
+static void test_dump_does_not_export_a_legacy_erased_nickname(void) {
     // The exported region is bounded at the terminator, but a legacy erased record sits
     // *before* it, so its nickname was inside the bound and went out with the backup. The
     // handler compacts the store before the first chunk, which drops the record.
@@ -164,26 +163,26 @@ static void test_dump_does_not_export_a_legacy_erased_nickname(void **state
 
     run_full_dump();
 
-    assert_int_equal(last_sw, SWO_SUCCESS);
-    assert_false(contains(sent_payload, sent_payload_len, "secretsite"));
+    TEST_ASSERT_EQUAL(SWO_SUCCESS, last_sw);
+    TEST_ASSERT_FALSE(contains(sent_payload, sent_payload_len, "secretsite"));
     // The surviving names are still exported, so the backup is not simply empty.
-    assert_true(contains(sent_payload, sent_payload_len, "alpha"));
-    assert_true(contains(sent_payload, sent_payload_len, "gamma"));
+    TEST_ASSERT_TRUE(contains(sent_payload, sent_payload_len, "alpha"));
+    TEST_ASSERT_TRUE(contains(sent_payload, sent_payload_len, "gamma"));
 }
 
-static void test_dump_exports_the_whole_region(void **state __attribute__((unused))) {
+static void test_dump_exports_the_whole_region(void) {
     add_password("alpha");
 
     const size_t chunks = run_full_dump();
 
     // The host reads a fixed-size store, so the stream must cover it exactly whatever the
     // chunk size works out to.
-    assert_int_equal(sent_payload_len, sizeof(N_storage_real.metadatas));
-    assert_int_equal(chunks, responses_sent);
-    assert_int_equal(idle_calls, 1);  // only the last chunk returns to the idle screen
+    TEST_ASSERT_EQUAL(sizeof(N_storage_real.metadatas), sent_payload_len);
+    TEST_ASSERT_EQUAL(responses_sent, chunks);
+    TEST_ASSERT_EQUAL(1, idle_calls);  // only the last chunk returns to the idle screen
 }
 
-static void test_dump_exports_live_records_verbatim(void **state __attribute__((unused))) {
+static void test_dump_exports_live_records_verbatim(void) {
     add_password("alpha");
     add_password("beta");
 
@@ -200,54 +199,48 @@ static void test_dump_exports_live_records_verbatim(void **state __attribute__((
         "\x00\x00";
     const size_t expected_len = sizeof(expected) - 1;  // drop the implicit terminator
 
-    assert_memory_equal(sent_payload, expected, expected_len);
+    TEST_ASSERT_EQUAL_MEMORY(expected, sent_payload, expected_len);
     // Everything past the terminator is zeroed rather than raw flash slack.
     for (size_t i = expected_len; i < sent_payload_len; i++) {
-        assert_int_equal(sent_payload[i], 0);
+        TEST_ASSERT_EQUAL(0, sent_payload[i]);
     }
 }
 
-static void test_dump_zeroes_the_slack_past_the_terminator(void **state __attribute__((unused))) {
+static void test_dump_zeroes_the_slack_past_the_terminator(void) {
     add_password("alpha");
     // Stale bytes of a name that is no longer part of the database, sitting past its end.
     const char stale[] = "oldsecret";
-    memcpy(&N_storage_real.metadatas[200], stale, sizeof(stale));
+    memcpy(&N_storage_rw.metadatas[200], stale, sizeof(stale));
 
     run_full_dump();
 
-    assert_false(contains(sent_payload, sent_payload_len, stale));
+    TEST_ASSERT_FALSE(contains(sent_payload, sent_payload_len, stale));
 }
 
-static void test_dump_refuses_a_store_that_does_not_parse(void **state __attribute__((unused))) {
+static void test_dump_refuses_a_store_that_does_not_parse(void) {
     // A record claiming more data than MAX_METANAME allows: the store has no usable
     // terminator, so no length bound can be trusted and nothing may be exported.
-    N_storage_real.metadatas[0] = MAX_METANAME + 1;
-    N_storage_real.metadatas[1] = META_NONE;
-    N_storage_real.metadata_count = 1;
+    N_storage_rw.metadatas[0] = MAX_METANAME + 1;
+    N_storage_rw.metadatas[1] = META_NONE;
+    N_storage_rw.metadata_count = 1;
 
-    assert_int_equal(dump_metadatas(), 0);
+    TEST_ASSERT_EQUAL(0, dump_metadatas());
     app_state.user_approval = true;
-    assert_int_equal(dump_metadatas(), 0);
+    TEST_ASSERT_EQUAL(0, dump_metadatas());
 
-    assert_int_equal(last_sw, SW_METADATAS_PARSING_ERROR);
-    assert_int_equal(responses_sent, 0);
+    TEST_ASSERT_EQUAL(SW_METADATAS_PARSING_ERROR, last_sw);
+    TEST_ASSERT_EQUAL(0, responses_sent);
     // The transfer is abandoned, not left half-open for the next command.
-    assert_false(app_state.user_approval);
-    assert_int_equal(app_state.bytes_transferred, 0);
+    TEST_ASSERT_FALSE(app_state.user_approval);
+    TEST_ASSERT_EQUAL(0, app_state.bytes_transferred);
 }
 
-int main() {
-    const struct CMUnitTest tests[] = {
-        cmocka_unit_test_setup_teardown(test_dump_does_not_export_a_legacy_erased_nickname,
-                                        setup,
-                                        NULL),
-        cmocka_unit_test_setup_teardown(test_dump_exports_the_whole_region, setup, NULL),
-        cmocka_unit_test_setup_teardown(test_dump_exports_live_records_verbatim, setup, NULL),
-        cmocka_unit_test_setup_teardown(test_dump_zeroes_the_slack_past_the_terminator,
-                                        setup,
-                                        NULL),
-        cmocka_unit_test_setup_teardown(test_dump_refuses_a_store_that_does_not_parse, setup, NULL),
-    };
-
-    return cmocka_run_group_tests(tests, NULL, NULL);
+int main(void) {
+    UNITY_BEGIN();
+    RUN_TEST(test_dump_does_not_export_a_legacy_erased_nickname);
+    RUN_TEST(test_dump_exports_the_whole_region);
+    RUN_TEST(test_dump_exports_live_records_verbatim);
+    RUN_TEST(test_dump_zeroes_the_slack_past_the_terminator);
+    RUN_TEST(test_dump_refuses_a_store_that_does_not_parse);
+    return UNITY_END();
 }

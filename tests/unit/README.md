@@ -1,36 +1,49 @@
 # Unit tests
 
-## Prerequisite
+The unit tests use the SDK unit-test framework (`LedgerUT`), based on
+[Unity](https://github.com/ThrowTheSwitch/Unity) and [CMock](https://github.com/ThrowTheSwitch/CMock).
+It is documented in the SDK, in `cmake/USAGE.md`.
 
-Be sure to have installed:
+## Prerequisites
 
 - CMake >= 3.10
-- CMocka >= 1.1.5
+- Ruby, used by CMock to generate the mocks
+- Network access on the first configuration, to fetch Unity and CMock
+- lcov >= 1.14, for the code coverage
 
-and for code coverage generation:
+All of them are available in the `ledger-app-builder` Docker images.
+`BOLOS_SDK` must point to the SDK, as it does in these images.
 
-- lcov >= 1.14
+## Layout
 
-## Overview
+| Path | Content |
+| --- | --- |
+| `CMakeLists.txt` | Test declarations, one `ledger_unit_tests_add_test()` per test executable |
+| `test_<name>.c` | Test executable `test_<name>` |
+| `fakes/` | Hand-written replacements of SDK functions (`nvm_write`, `is_printable_string`), of the app globals, and of the generated `glyphs.h` |
 
-In `tests/unit` folder, compile with
+Prefer the real SDK headers and CMock mocks (`MOCK_HEADERS`) to new fakes.
+The persistent storage `N_storage_real` is defined writable in `fakes/fake_vars.c`:
+tests access it through `N_storage_rw`, from `fakes/fake_vars.h`.
 
-```sh
-cmake -Bbuild -H. && make -C build
+## Build and run
+
+In `tests/unit` folder:
+
+```shell
+cmake -B build -S .
+cmake --build build
+ctest --test-dir build --output-on-failure
 ```
 
-and run tests with
+A single test executable can also be run directly, for example `build/test_password`.
 
-```sh
-CTEST_OUTPUT_ON_FAILURE=1 make -C build test
+## Code coverage
+
+After running the tests:
+
+```shell
+cmake --build build --target generate_coverage
 ```
 
-## Generate code coverage
-
-Just execute in `tests/unit` folder
-
-```sh
-./gen_coverage.sh
-```
-
-it will output `coverage.total` and `coverage/` folder with HTML details (in `coverage/index.html`).
+It outputs `build/coverage.info`, `build/coverage.xml`, and an HTML report in `build/coverage/index.html`.

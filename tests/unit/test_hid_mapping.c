@@ -1,21 +1,26 @@
-#include <stdarg.h>
-#include <setjmp.h>
 #include <string.h>
-#include <cmocka.h>
+
+#include "unity.h"
 
 #include "hid_mapping.h"
+
+void setUp(void) {
+}
+
+void tearDown(void) {
+}
 
 const char *test =
     "a&b~c#d  {e\"f'g(h  -i  _j)k=l+m  [n  |o  \\p^q  @r  ]s  }t$u!v:w/x;y.z,A?B  <C  "
     ">D`EFGHIJKLMNOPQRSTUVWXYZ0123456789";
 
 void check_map(uint8_t *map, uint8_t first, uint8_t third) {
-    assert_int_equal(map[0], first);
-    assert_int_equal(map[1], 0);
-    assert_int_equal(map[2], third);
+    TEST_ASSERT_EQUAL_HEX8(first, map[0]);
+    TEST_ASSERT_EQUAL_HEX8(0, map[1]);
+    TEST_ASSERT_EQUAL_HEX8(third, map[2]);
 }
 
-static void test_map_char_qwerty_regular(void **state __attribute__((unused))) {
+static void test_map_char_qwerty_regular(void) {
     uint8_t map[3] = {0, 0, 0};
     map_char(HID_MAPPING_QWERTY, 'a', map);
     check_map(map, 0, 0x4);
@@ -33,7 +38,7 @@ static void test_map_char_qwerty_regular(void **state __attribute__((unused))) {
     check_map(map, 0, 0x37);
 }
 
-static void test_map_char_qwerty_shift(void **state __attribute__((unused))) {
+static void test_map_char_qwerty_shift(void) {
     uint8_t map[3] = {0, 0, 0};
     map_char(HID_MAPPING_QWERTY, 'A', map);
     check_map(map, SHIFT_KEY, 0x4);
@@ -51,7 +56,7 @@ static void test_map_char_qwerty_shift(void **state __attribute__((unused))) {
     check_map(map, SHIFT_KEY, 0x37);
 }
 
-static void test_map_char_azerty_regular(void **state __attribute__((unused))) {
+static void test_map_char_azerty_regular(void) {
     uint8_t map[3] = {0, 0, 0};
     map_char(HID_MAPPING_AZERTY, 'q', map);
     check_map(map, 0, 0x4);
@@ -69,7 +74,7 @@ static void test_map_char_azerty_regular(void **state __attribute__((unused))) {
     check_map(map, 0, 0x37);
 }
 
-static void test_map_char_azerty_shift(void **state __attribute__((unused))) {
+static void test_map_char_azerty_shift(void) {
     uint8_t map[3] = {0, 0, 0};
     map_char(HID_MAPPING_AZERTY, 'Q', map);
     check_map(map, SHIFT_KEY, 0x4);
@@ -87,7 +92,7 @@ static void test_map_char_azerty_shift(void **state __attribute__((unused))) {
     check_map(map, SHIFT_KEY, 0x37);
 }
 
-static void test_map_char_azerty_alt(void **state __attribute__((unused))) {
+static void test_map_char_azerty_alt(void) {
     uint8_t map[3] = {0, 0, 0};
     map_char(HID_MAPPING_AZERTY, '@', map);
     check_map(map, RIGHT_ALT_KEY, 0x27);
@@ -109,7 +114,7 @@ static void test_map_char_azerty_alt(void **state __attribute__((unused))) {
     check_map(map, RIGHT_ALT_KEY, 0x1f);
 }
 
-static void test_map_char_qwertz_regular(void **state __attribute__((unused))) {
+static void test_map_char_qwertz_regular(void) {
     uint8_t map[3] = {0, 0, 0};
     map_char(HID_MAPPING_QWERTZ, 'y', map);
     check_map(map, 0, 0x1d);
@@ -129,7 +134,7 @@ static void test_map_char_qwertz_regular(void **state __attribute__((unused))) {
     check_map(map, 0, 0x35);
 }
 
-static void test_map_char_qwertz_shift(void **state __attribute__((unused))) {
+static void test_map_char_qwertz_shift(void) {
     uint8_t map[3] = {0, 0, 0};
     map_char(HID_MAPPING_QWERTZ, 'Y', map);
     check_map(map, SHIFT_KEY, 0x1d);
@@ -153,7 +158,7 @@ static void test_map_char_qwertz_shift(void **state __attribute__((unused))) {
     check_map(map, SHIFT_KEY, 0x64);
 }
 
-static void test_map_char_qwertz_alt(void **state __attribute__((unused))) {
+static void test_map_char_qwertz_alt(void) {
     uint8_t map[3] = {0, 0, 0};
     map_char(HID_MAPPING_QWERTZ, '@', map);
     check_map(map, RIGHT_ALT_KEY, 0x14);
@@ -173,55 +178,54 @@ static void test_map_char_qwertz_alt(void **state __attribute__((unused))) {
     check_map(map, RIGHT_ALT_KEY, 0x64);
 }
 
-static void test_is_dead_key(void **state __attribute__((unused))) {
-    assert_true(is_dead_key(HID_MAPPING_QWERTY_INTL, '"'));
-    assert_true(is_dead_key(HID_MAPPING_QWERTY_INTL, '\''));
-    assert_true(is_dead_key(HID_MAPPING_QWERTY_INTL, '`'));
-    assert_true(is_dead_key(HID_MAPPING_QWERTY_INTL, '~'));
-    assert_true(is_dead_key(HID_MAPPING_QWERTY_INTL, '^'));
-    assert_false(is_dead_key(HID_MAPPING_QWERTY_INTL, 'a'));
+static void test_is_dead_key(void) {
+    TEST_ASSERT_TRUE(is_dead_key(HID_MAPPING_QWERTY_INTL, '"'));
+    TEST_ASSERT_TRUE(is_dead_key(HID_MAPPING_QWERTY_INTL, '\''));
+    TEST_ASSERT_TRUE(is_dead_key(HID_MAPPING_QWERTY_INTL, '`'));
+    TEST_ASSERT_TRUE(is_dead_key(HID_MAPPING_QWERTY_INTL, '~'));
+    TEST_ASSERT_TRUE(is_dead_key(HID_MAPPING_QWERTY_INTL, '^'));
+    TEST_ASSERT_FALSE(is_dead_key(HID_MAPPING_QWERTY_INTL, 'a'));
 
-    assert_true(is_dead_key(HID_MAPPING_QWERTZ, '^'));
-    assert_true(is_dead_key(HID_MAPPING_QWERTZ, '`'));
-    assert_false(is_dead_key(HID_MAPPING_QWERTZ, '~'));
-    assert_false(is_dead_key(HID_MAPPING_QWERTZ, '"'));
+    TEST_ASSERT_TRUE(is_dead_key(HID_MAPPING_QWERTZ, '^'));
+    TEST_ASSERT_TRUE(is_dead_key(HID_MAPPING_QWERTZ, '`'));
+    TEST_ASSERT_FALSE(is_dead_key(HID_MAPPING_QWERTZ, '~'));
+    TEST_ASSERT_FALSE(is_dead_key(HID_MAPPING_QWERTZ, '"'));
 
-    assert_false(is_dead_key(HID_MAPPING_QWERTY, '^'));
-    assert_false(is_dead_key(HID_MAPPING_AZERTY, '^'));
+    TEST_ASSERT_FALSE(is_dead_key(HID_MAPPING_QWERTY, '^'));
+    TEST_ASSERT_FALSE(is_dead_key(HID_MAPPING_AZERTY, '^'));
 }
 
-static void test_map_char_reports_unmappable(void **state __attribute__((unused))) {
+static void test_map_char_reports_unmappable(void) {
     // map_char() used to raise an exception for keys outside the mapped range, which unwound
     // past the caller's plaintext buffer. It now reports the failure instead.
     uint8_t map[3] = {0xAA, 0xAA, 0xAA};
 
-    assert_false(map_char(HID_MAPPING_QWERTY, 0x00, map));
-    assert_false(map_char(HID_MAPPING_QWERTY, 0x1F, map));
+    TEST_ASSERT_FALSE(map_char(HID_MAPPING_QWERTY, 0x00, map));
+    TEST_ASSERT_FALSE(map_char(HID_MAPPING_QWERTY, 0x1F, map));
     // 0x7f (DEL) maps to index 95, one past the 95 printable entries the table holds. The
     // bounds check used to accept it and read one entry past the key-code table.
-    assert_false(map_char(HID_MAPPING_QWERTY, 0x7F, map));
+    TEST_ASSERT_FALSE(map_char(HID_MAPPING_QWERTY, 0x7F, map));
     // `out` is left untouched on failure.
-    assert_int_equal(map[0], 0xAA);
-    assert_int_equal(map[1], 0xAA);
-    assert_int_equal(map[2], 0xAA);
+    TEST_ASSERT_EQUAL_HEX8(0xAA, map[0]);
+    TEST_ASSERT_EQUAL_HEX8(0xAA, map[1]);
+    TEST_ASSERT_EQUAL_HEX8(0xAA, map[2]);
 
     // The lowest and highest mapped characters still succeed.
-    assert_true(map_char(HID_MAPPING_QWERTY, 0x20, map));
-    assert_true(map_char(HID_MAPPING_QWERTY, 0x7E, map));
+    TEST_ASSERT_TRUE(map_char(HID_MAPPING_QWERTY, 0x20, map));
+    TEST_ASSERT_TRUE(map_char(HID_MAPPING_QWERTY, 0x7E, map));
 }
 
-int main() {
-    const struct CMUnitTest tests[] = {
-        cmocka_unit_test_setup_teardown(test_map_char_reports_unmappable, NULL, NULL),
-        cmocka_unit_test_setup_teardown(test_map_char_qwerty_regular, NULL, NULL),
-        cmocka_unit_test_setup_teardown(test_map_char_qwerty_shift, NULL, NULL),
-        cmocka_unit_test_setup_teardown(test_map_char_azerty_regular, NULL, NULL),
-        cmocka_unit_test_setup_teardown(test_map_char_azerty_shift, NULL, NULL),
-        cmocka_unit_test_setup_teardown(test_map_char_azerty_alt, NULL, NULL),
-        cmocka_unit_test_setup_teardown(test_map_char_qwertz_regular, NULL, NULL),
-        cmocka_unit_test_setup_teardown(test_map_char_qwertz_shift, NULL, NULL),
-        cmocka_unit_test_setup_teardown(test_map_char_qwertz_alt, NULL, NULL),
-        cmocka_unit_test_setup_teardown(test_is_dead_key, NULL, NULL),
-    };
-    return cmocka_run_group_tests(tests, NULL, NULL);
+int main(void) {
+    UNITY_BEGIN();
+    RUN_TEST(test_map_char_reports_unmappable);
+    RUN_TEST(test_map_char_qwerty_regular);
+    RUN_TEST(test_map_char_qwerty_shift);
+    RUN_TEST(test_map_char_azerty_regular);
+    RUN_TEST(test_map_char_azerty_shift);
+    RUN_TEST(test_map_char_azerty_alt);
+    RUN_TEST(test_map_char_qwertz_regular);
+    RUN_TEST(test_map_char_qwertz_shift);
+    RUN_TEST(test_map_char_qwertz_alt);
+    RUN_TEST(test_is_dead_key);
+    return UNITY_END();
 }
