@@ -119,8 +119,29 @@ ledger_unit_tests_add_test(
 )
 
 ledger_unit_tests_add_test(
+    NAME         test_get_app_config
+    SOURCES      ${APP_DIR}/apdu_handlers/get_app_config.c
+                 ${FAKE_SOURCES}
+    MOCK_HEADERS ${APP_DIR}/ui/ui.h
+                 ${SDK_DIR}/lib_standard_app/io.h
+    INCLUDE_DIRS ${UT_INCLUDE_DIRS}
+    COMPILE_DEFS ${UT_COMPILE_DEFS}
+)
+
+ledger_unit_tests_add_test(
+    NAME         test_dispatcher
+    SOURCES      ${APP_DIR}/dispatcher.c
+                 ${FAKE_SOURCES}
+    MOCK_HEADERS ${APP_DIR}/apdu_handlers/handlers.h
+                 ${SDK_DIR}/lib_standard_app/io.h
+    INCLUDE_DIRS ${UT_INCLUDE_DIRS}
+    COMPILE_DEFS ${UT_COMPILE_DEFS}
+)
+
+ledger_unit_tests_add_test(
     NAME         test_options
     SOURCES      ${APP_DIR}/options.c
+                 ${APP_DIR}/globals.c
                  ${FAKE_SOURCES}
     INCLUDE_DIRS ${UT_INCLUDE_DIRS}
     COMPILE_DEFS ${UT_COMPILE_DEFS}
