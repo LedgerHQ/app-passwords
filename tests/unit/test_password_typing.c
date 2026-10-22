@@ -4,13 +4,13 @@
 #include "unity.h"
 
 #include "exceptions.h"
-#include "os_seed.h"
 #include "hid_mapping.h"
 #include "metadata.h"
 #include "password_path.h"
 #include "password_typing.h"
 #include "fake_vars.h"
 #include "Mocklcx_sha256.h"
+#include "Mockos_seed.h"
 #include "Mockos_io_seph_cmd.h"
 #include "Mockusbd_ledger.h"
 
@@ -67,17 +67,18 @@ static size_t fake_cx_hash_sha256(const uint8_t *in,
     return 32;
 }
 
-// Not a CMock mock: CMock does not parse the PLENGTH() annotations of os_seed.h
-void os_perso_derive_node_with_seed_key(unsigned int mode,
-                                        cx_curve_t curve,
-                                        const unsigned int *path,
-                                        unsigned int pathLength,
-                                        unsigned char *privateKey,
-                                        unsigned char *chain,
-                                        unsigned char *seed_key,
-                                        unsigned int seed_key_length) {
+static void fake_os_perso_derive_node_with_seed_key(unsigned int mode,
+                                                    cx_curve_t curve,
+                                                    const unsigned int *path,
+                                                    unsigned int pathLength,
+                                                    unsigned char *privateKey,
+                                                    unsigned char *chain,
+                                                    unsigned char *seed_key,
+                                                    unsigned int seed_key_length,
+                                                    int cmock_num_calls) {
     uint32_t expected_path[PASSWORD_PATH_LEN];
 
+    (void) cmock_num_calls;
     derive_calls++;
     TEST_ASSERT_EQUAL(HDW_NORMAL, mode);
     TEST_ASSERT_EQUAL(CX_CURVE_SECP256K1, curve);
@@ -170,18 +171,22 @@ void setUp(void) {
     failing_hash = 0;
     failing_derive = false;
     Mocklcx_sha256_Init();
+    Mockos_seed_Init();
     Mockos_io_seph_cmd_Init();
     Mockusbd_ledger_Init();
     cx_hash_sha256_StubWithCallback(fake_cx_hash_sha256);
+    os_perso_derive_node_with_seed_key_StubWithCallback(fake_os_perso_derive_node_with_seed_key);
     USBD_LEDGER_send_StubWithCallback(fake_USBD_LEDGER_send);
     os_io_seph_cmd_general_status_IgnoreAndReturn(0);
 }
 
 void tearDown(void) {
     Mocklcx_sha256_Verify();
+    Mockos_seed_Verify();
     Mockos_io_seph_cmd_Verify();
     Mockusbd_ledger_Verify();
     Mocklcx_sha256_Destroy();
+    Mockos_seed_Destroy();
     Mockos_io_seph_cmd_Destroy();
     Mockusbd_ledger_Destroy();
 }

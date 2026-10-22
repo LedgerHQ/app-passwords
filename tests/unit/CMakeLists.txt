@@ -13,12 +13,13 @@ if(NOT DEFINED ENV{BOLOS_SDK})
 endif()
 
 set(SDK_DIR $ENV{BOLOS_SDK})
+set(LEDGER_UT_APP_SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../../src)
 include(${SDK_DIR}/cmake/LedgerUT.cmake)
 
 #######################################################################
 #             Setup app specific includes & compile defs              #
 #######################################################################
-set(APP_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../../src)
+set(APP_DIR ${LEDGER_UT_APP_SRC_DIR})
 set(FAKES_DIR ${CMAKE_CURRENT_SOURCE_DIR}/fakes)
 
 set(FAKE_SOURCES
@@ -35,6 +36,29 @@ set(UT_INCLUDE_DIRS
     ${UT_INCLUDE_DIRS_SDK}
 )
 
+# Both UI files, on top of the real storage and settings
+set(UI_SOURCES
+    ${APP_DIR}/ui/ui_passwords.c
+    ${APP_DIR}/ui/menu_nbgl.c
+    ${APP_DIR}/password.c
+    ${APP_DIR}/password_list.c
+    ${APP_DIR}/metadata.c
+    ${APP_DIR}/options.c
+    ${APP_DIR}/globals.c
+    ${APP_DIR}/error.c
+    ${FAKE_SOURCES}
+    ${FAKES_DIR}/fake_glyphs.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/ui_test_helpers.c
+)
+
+set(UI_MOCK_HEADERS
+    ${SDK_DIR}/lib_nbgl/include/nbgl_use_case.h
+    ${SDK_DIR}/lib_standard_app/main_std_app.h
+    ${SDK_DIR}/lib_standard_app/io.h
+    ${APP_DIR}/dispatcher.h
+    ${APP_DIR}/password_typing.h
+)
+
 # CMock checks for NULL the arguments that SDK headers declare nonnull
 set(MOCK_COMPILE_OPTIONS -Wno-nonnull-compare)
 
@@ -49,10 +73,7 @@ set(UT_COMPILE_DEFS
 #                           LedgerUT Setup                            #
 #######################################################################
 ledger_unit_tests_init()
-
-# The app sources live in ../../src: ledger_unit_tests_find_sources() only looks in ../src
-file(GLOB_RECURSE APP_SOURCES CONFIGURE_DEPENDS ${APP_DIR}/*.c)
-list(FILTER APP_SOURCES EXCLUDE REGEX "/app_main\\.c$")
+ledger_unit_tests_find_sources()
 
 # Built only so that every app source has a .gcno file for the coverage baseline
 ledger_unit_tests_build_app_sources_as_lib(
@@ -61,19 +82,19 @@ ledger_unit_tests_build_app_sources_as_lib(
     COMPILE_DEFS ${UT_COMPILE_DEFS}
 )
 
-# generate_coverage filters on ../src: regenerate the report restricted to the app sources
-add_custom_command(TARGET generate_coverage POST_BUILD
-    COMMAND ${LEDGER_UT_DIR}/gen_coverage.sh ${APP_DIR}
-    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
-    VERBATIM
-)
-
 #######################################################################
 #                        LedgerUT test suites                         #
 #######################################################################
 ledger_unit_tests_add_test(
     NAME         test_password_list
     SOURCES      ${APP_DIR}/password_list.c
+    INCLUDE_DIRS ${UT_INCLUDE_DIRS}
+    COMPILE_DEFS ${UT_COMPILE_DEFS}
+)
+
+ledger_unit_tests_add_test(
+    NAME         test_error
+    SOURCES      ${APP_DIR}/error.c
     INCLUDE_DIRS ${UT_INCLUDE_DIRS}
     COMPILE_DEFS ${UT_COMPILE_DEFS}
 )
@@ -166,6 +187,7 @@ ledger_unit_tests_add_test(
                  ${APP_DIR}/ctaes/ctaes.c
                  ${FAKE_SOURCES}
     MOCK_HEADERS ${SDK_DIR}/lib_cxng/include/lcx_sha256.h
+                 ${SDK_DIR}/include/os_seed.h
                  ${SDK_DIR}/io/include/os_io_seph_cmd.h
                  ${SDK_DIR}/lib_stusb/include/usbd_ledger.h
     INCLUDE_DIRS ${UT_INCLUDE_DIRS}
@@ -173,12 +195,27 @@ ledger_unit_tests_add_test(
     COMPILE_OPTIONS ${MOCK_COMPILE_OPTIONS}
 )
 
-# A signed shift overflow aborts the test
 ledger_unit_tests_add_test(
-    NAME            test_password_path
-    SOURCES         ${APP_DIR}/password_path.c
+    NAME         test_password_path
+    SOURCES      ${APP_DIR}/password_path.c
+    INCLUDE_DIRS ${UT_INCLUDE_DIRS}
+    COMPILE_DEFS ${UT_COMPILE_DEFS}
+)
+
+ledger_unit_tests_add_test(
+    NAME            test_ui_passwords
+    SOURCES         ${UI_SOURCES}
+    MOCK_HEADERS    ${UI_MOCK_HEADERS}
     INCLUDE_DIRS    ${UT_INCLUDE_DIRS}
     COMPILE_DEFS    ${UT_COMPILE_DEFS}
-    COMPILE_OPTIONS -fsanitize=undefined -fno-sanitize-recover=undefined
-    LINK_OPTIONS    -fsanitize=undefined
+    COMPILE_OPTIONS ${MOCK_COMPILE_OPTIONS}
+)
+
+ledger_unit_tests_add_test(
+    NAME            test_menu_nbgl
+    SOURCES         ${UI_SOURCES}
+    MOCK_HEADERS    ${UI_MOCK_HEADERS}
+    INCLUDE_DIRS    ${UT_INCLUDE_DIRS}
+    COMPILE_DEFS    ${UT_COMPILE_DEFS}
+    COMPILE_OPTIONS ${MOCK_COMPILE_OPTIONS}
 )
