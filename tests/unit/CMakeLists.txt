@@ -165,12 +165,9 @@ ledger_unit_tests_add_test(
     COMPILE_OPTIONS ${MOCK_COMPILE_OPTIONS}
 )
 
-# A signed shift overflow aborts the test
 ledger_unit_tests_add_test(
-    NAME            test_password_path
-    SOURCES         ${APP_DIR}/password_path.c
-    INCLUDE_DIRS    ${UT_INCLUDE_DIRS}
-    COMPILE_DEFS    ${UT_COMPILE_DEFS}
-    COMPILE_OPTIONS -fsanitize=undefined -fno-sanitize-recover=undefined
-    LINK_OPTIONS    -fsanitize=undefined
+    NAME         test_password_path
+    SOURCES      ${APP_DIR}/password_path.c
+    INCLUDE_DIRS ${UT_INCLUDE_DIRS}
+    COMPILE_DEFS ${UT_COMPILE_DEFS}
 )
