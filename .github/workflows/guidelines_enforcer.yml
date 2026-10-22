@@ -13,6 +13,7 @@ permissions:
   contents: read
   actions: write
   pull-requests: write
+  packages: read
 
 jobs:
   guidelines_enforcer:
