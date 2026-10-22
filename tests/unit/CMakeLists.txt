@@ -70,6 +70,13 @@ ledger_unit_tests_add_test(
 )
 
 ledger_unit_tests_add_test(
+    NAME         test_error
+    SOURCES      ${APP_DIR}/error.c
+    INCLUDE_DIRS ${UT_INCLUDE_DIRS}
+    COMPILE_DEFS ${UT_COMPILE_DEFS}
+)
+
+ledger_unit_tests_add_test(
     NAME         test_hid_mapping
     SOURCES      ${APP_DIR}/hid_mapping.c
     INCLUDE_DIRS ${UT_INCLUDE_DIRS}
