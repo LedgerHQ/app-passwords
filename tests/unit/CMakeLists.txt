@@ -36,6 +36,29 @@ set(UT_INCLUDE_DIRS
     ${UT_INCLUDE_DIRS_SDK}
 )
 
+# Both UI files, on top of the real storage and settings
+set(UI_SOURCES
+    ${APP_DIR}/ui/ui_passwords.c
+    ${APP_DIR}/ui/menu_nbgl.c
+    ${APP_DIR}/password.c
+    ${APP_DIR}/password_list.c
+    ${APP_DIR}/metadata.c
+    ${APP_DIR}/options.c
+    ${APP_DIR}/globals.c
+    ${APP_DIR}/error.c
+    ${FAKE_SOURCES}
+    ${FAKES_DIR}/fake_glyphs.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/ui_test_helpers.c
+)
+
+set(UI_MOCK_HEADERS
+    ${SDK_DIR}/lib_nbgl/include/nbgl_use_case.h
+    ${SDK_DIR}/lib_standard_app/main_std_app.h
+    ${SDK_DIR}/lib_standard_app/io.h
+    ${APP_DIR}/dispatcher.h
+    ${APP_DIR}/password_typing.h
+)
+
 # CMock checks for NULL the arguments that SDK headers declare nonnull
 set(MOCK_COMPILE_OPTIONS -Wno-nonnull-compare)
 
@@ -177,4 +200,22 @@ ledger_unit_tests_add_test(
     SOURCES      ${APP_DIR}/password_path.c
     INCLUDE_DIRS ${UT_INCLUDE_DIRS}
     COMPILE_DEFS ${UT_COMPILE_DEFS}
+)
+
+ledger_unit_tests_add_test(
+    NAME            test_ui_passwords
+    SOURCES         ${UI_SOURCES}
+    MOCK_HEADERS    ${UI_MOCK_HEADERS}
+    INCLUDE_DIRS    ${UT_INCLUDE_DIRS}
+    COMPILE_DEFS    ${UT_COMPILE_DEFS}
+    COMPILE_OPTIONS ${MOCK_COMPILE_OPTIONS}
+)
+
+ledger_unit_tests_add_test(
+    NAME            test_menu_nbgl
+    SOURCES         ${UI_SOURCES}
+    MOCK_HEADERS    ${UI_MOCK_HEADERS}
+    INCLUDE_DIRS    ${UT_INCLUDE_DIRS}
+    COMPILE_DEFS    ${UT_COMPILE_DEFS}
+    COMPILE_OPTIONS ${MOCK_COMPILE_OPTIONS}
 )
