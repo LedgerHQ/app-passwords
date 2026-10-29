@@ -1,12 +1,14 @@
-/* Inter is what lumen's design tokens ask for (`fontFamily: "Inter"`). Bundled rather than
-   pulled from fonts.googleapis.com at runtime: this page talks to a hardware wallet and
-   documents itself as local-only, so it should not announce every visit to a third party, nor
-   take its stylesheet from one. Vite emits the woff2 next to the page, same origin. */
+/* Inter, the font of the lumen design tokens, served with the page */
 @import "@fontsource-variable/inter";
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* The lumen typography uses this variable, which names "Inter" alone */
+:root {
+  --font-family-font: theme("fontFamily.sans");
+}
 
 /* Lumen's Dialog uses the Tailwind v4 class `translate-[-50%]` which maps to
    the CSS `translate` property.  This project runs Tailwind v3 where that
