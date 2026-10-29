@@ -59,9 +59,6 @@ set(UI_MOCK_HEADERS
     ${APP_DIR}/password_typing.h
 )
 
-# CMock checks for NULL the arguments that SDK headers declare nonnull
-set(MOCK_COMPILE_OPTIONS -Wno-nonnull-compare)
-
 set(UT_COMPILE_DEFS
     ${UT_COMPILE_DEFS_SDK}
     APPNAME="Passwords"
@@ -192,7 +189,6 @@ ledger_unit_tests_add_test(
                  ${SDK_DIR}/lib_stusb/include/usbd_ledger.h
     INCLUDE_DIRS ${UT_INCLUDE_DIRS}
     COMPILE_DEFS ${UT_COMPILE_DEFS}
-    COMPILE_OPTIONS ${MOCK_COMPILE_OPTIONS}
 )
 
 ledger_unit_tests_add_test(
@@ -208,7 +204,6 @@ ledger_unit_tests_add_test(
     MOCK_HEADERS    ${UI_MOCK_HEADERS}
     INCLUDE_DIRS    ${UT_INCLUDE_DIRS}
     COMPILE_DEFS    ${UT_COMPILE_DEFS}
-    COMPILE_OPTIONS ${MOCK_COMPILE_OPTIONS}
 )
 
 ledger_unit_tests_add_test(
@@ -217,5 +212,4 @@ ledger_unit_tests_add_test(
     MOCK_HEADERS    ${UI_MOCK_HEADERS}
     INCLUDE_DIRS    ${UT_INCLUDE_DIRS}
     COMPILE_DEFS    ${UT_COMPILE_DEFS}
-    COMPILE_OPTIONS ${MOCK_COMPILE_OPTIONS}
 )
