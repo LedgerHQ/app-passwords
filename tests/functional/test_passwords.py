@@ -128,6 +128,40 @@ def test_alphabetical_order(navigator: Navigator, device: Device, default_screen
     )
 
 
+def test_password_list_slices(navigator: Navigator, device: Device, default_screenshot_path: Path):
+    """Beyond 20 passwords, the list is split into slices of 15, each opening its own list."""
+    # password1 to password3, then "a" to "r": 21 passwords, sliced into 15 and 6.
+    instructions = [
+        CustomNavInsID.DISCLAIMER_CONFIRM,
+        CustomNavInsID.CHOOSE_KBL_QWERTY,
+        CustomNavInsID.HOME_TO_MENU,
+    ]
+    for nickname in "abcdefghijklmnopqr":
+        instructions += [
+            CustomNavInsID.MENU_TO_CREATE,
+            NavIns(CustomNavInsID.KEYBOARD_WRITE, (nickname,)),
+            CustomNavInsID.KEYBOARD_TO_CONFIRM,
+            NavInsID.WAIT_FOR_SCREEN_CHANGE,
+        ]
+    navigator.navigate(instructions, screen_change_before_first_instruction=False)
+
+    # The slices, the second one and back, then the first entry of the second one.
+    instructions = [CustomNavInsID.MENU_TO_DISPLAY]
+    if device.is_nano:
+        instructions += [CustomNavInsID.SETTINGS_NEXT, CustomNavInsID.BUTTON_APPROVE]
+        instructions += [CustomNavInsID.LIST_TO_MENU, CustomNavInsID.BUTTON_APPROVE]
+    else:
+        instructions += [NavIns(CustomNavInsID.LIST_CHOOSE, (2,)), CustomNavInsID.LIST_TO_MENU]
+        instructions += [NavIns(CustomNavInsID.LIST_CHOOSE, (2,))]
+    instructions += [NavIns(CustomNavInsID.LIST_CHOOSE, (1,))]
+    navigator.navigate_and_compare(
+        default_screenshot_path,
+        "password_list_slices",
+        instructions,
+        screen_change_before_first_instruction=False,
+    )
+
+
 @pytest.mark.skip_nano  # Nano lists one choice per page; this targets the touch pagination
 def test_show_password_on_second_page(
     cmd: PasswordsManagerCommand,

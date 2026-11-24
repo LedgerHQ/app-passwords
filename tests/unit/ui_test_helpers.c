@@ -17,6 +17,7 @@
 screen_t screen;
 size_t screen_count;
 uint8_t choices_per_page;
+uint8_t bars_per_page;
 
 bool generation_result;
 size_t generation_calls;
@@ -135,6 +136,19 @@ static void fake_navigable_content(const char *title,
     screen.touch = controlsCallback;
 }
 
+static uint8_t fake_nb_bars_in_page(uint8_t nbBars,
+                                    const nbgl_contentBarsList_t *barsList,
+                                    uint8_t startIndex,
+                                    bool withNav,
+                                    int cmock_num_calls) {
+    (void) nbBars;
+    (void) barsList;
+    (void) startIndex;
+    (void) withNav;
+    (void) cmock_num_calls;
+    return bars_per_page;
+}
+
 static uint8_t fake_nb_choices_in_page(uint8_t nbChoices,
                                        const nbgl_contentRadioChoice_t *choicesList,
                                        uint8_t startIndex,
@@ -202,6 +216,7 @@ void ui_test_setup(void) {
     memset(&screen, 0, sizeof(screen));
     screen_count = 0;
     choices_per_page = 4;
+    bars_per_page = 4;
     generation_result = true;
     generation_calls = 0;
     generation_out = NULL;
@@ -223,6 +238,7 @@ void ui_test_setup(void) {
     nbgl_useCaseHomeAndSettings_StubWithCallback(fake_home_and_settings);
     nbgl_useCaseNavigableContent_StubWithCallback(fake_navigable_content);
     nbgl_useCaseGetNbChoicesInPage_StubWithCallback(fake_nb_choices_in_page);
+    nbgl_useCaseGetNbBarsInPage_StubWithCallback(fake_nb_bars_in_page);
     type_password_StubWithCallback(fake_type_password);
     app_exit_StubWithCallback(fake_app_exit);
     dispatch_StubWithCallback(fake_dispatch);

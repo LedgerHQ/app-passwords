@@ -107,6 +107,19 @@ static void test_password_list_sort(void) {
     }
 }
 
+static void test_password_list_common_prefix_len(void) {
+    const char *const names[] = {"Bank1", "bank15", "other"};
+    for (size_t i = 0; i < 3; i++) {
+        TEST_ASSERT_TRUE(password_list_add_password(i, i, names[i], strlen(names[i]) + 1));
+    }
+    TEST_ASSERT_EQUAL(5, password_list_common_prefix_len(0, 1));
+    TEST_ASSERT_EQUAL(5, password_list_common_prefix_len(0, 0));
+    TEST_ASSERT_EQUAL(0, password_list_common_prefix_len(0, 2));
+    // Unset or out of bounds entries
+    TEST_ASSERT_EQUAL(0, password_list_common_prefix_len(0, 3));
+    TEST_ASSERT_EQUAL(0, password_list_common_prefix_len(MAX_METADATA_COUNT, 0));
+}
+
 int main(void) {
     UNITY_BEGIN();
     RUN_TEST(test_password_list_reset);
@@ -119,5 +132,6 @@ int main(void) {
     RUN_TEST(test_password_list_reset_buffer);
     RUN_TEST(test_password_list_set_current);
     RUN_TEST(test_password_list_sort);
+    RUN_TEST(test_password_list_common_prefix_len);
     return UNITY_END();
 }
