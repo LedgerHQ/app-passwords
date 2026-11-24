@@ -5,7 +5,10 @@
 #include "ui.h"
 #include "ui_test_helpers.h"
 #include "globals.h"
+#include "metadata.h"
+#include "options.h"
 #include "password.h"
+#include "password_list.h"
 #include "fake_vars.h"
 
 // Indexes passed to the action selected in the passwords list
@@ -67,6 +70,25 @@ static void test_password_list_shows_every_nickname(void) {
     TEST_ASSERT_EQUAL_STRING("alpha", content->content.choicesList.names[0]);
     TEST_ASSERT_EQUAL_STRING("bravo", content->content.choicesList.names[1]);
     TEST_ASSERT_EQUAL_STRING("charlie", content->content.choicesList.names[2]);
+}
+
+static void test_password_list_sorted(void) {
+    add_password("charlie");
+    add_password("Bravo");
+    add_password("alpha");
+    N_storage_rw.passwords_order = PASSWORDS_ORDER_ALPHABETICAL;
+    selector_callback = spy_selector;
+
+    display_password_list();
+    const nbgl_content_t *content = list_content();
+    TEST_ASSERT_EQUAL_STRING("alpha", content->content.choicesList.names[0]);
+    TEST_ASSERT_EQUAL_STRING("Bravo", content->content.choicesList.names[1]);
+    TEST_ASSERT_EQUAL_STRING("charlie", content->content.choicesList.names[2]);
+
+    // The selected entry keeps its own record
+    content->contentActionCallback(0, 0, 0);
+    TEST_ASSERT_EQUAL(1, selected_count);
+    TEST_ASSERT_EQUAL(get_metadata(2), password_list_get_offset(selected[0]));
 }
 
 // The list stops at the first record that cannot be read
@@ -306,6 +328,7 @@ int main(void) {
     UNITY_BEGIN();
     RUN_TEST(test_password_list_empty);
     RUN_TEST(test_password_list_shows_every_nickname);
+    RUN_TEST(test_password_list_sorted);
     RUN_TEST(test_password_list_stops_at_a_corrupted_record);
     RUN_TEST(test_password_list_selection_is_absolute);
     RUN_TEST(test_password_list_selection_out_of_the_list);

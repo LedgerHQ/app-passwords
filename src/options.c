@@ -39,6 +39,16 @@ void set_charset_option(const uint8_t bitflag) {
     set_charset_options(get_charset_options() ^ bitflag);
 }
 
+bool passwords_sorted_alphabetically(void) {
+    return N_storage.passwords_order == PASSWORDS_ORDER_ALPHABETICAL;
+}
+
+void change_passwords_order(void) {
+    uint8_t new_value =
+        passwords_sorted_alphabetically() ? PASSWORDS_ORDER_CREATION : PASSWORDS_ORDER_ALPHABETICAL;
+    nvm_write((void *) &N_storage.passwords_order, (void *) &new_value, sizeof(new_value));
+}
+
 void change_enter_options() {
     bool new_value = !N_storage.press_enter_after_typing;
     nvm_write((void *) &N_storage.press_enter_after_typing, (void *) &new_value, sizeof(new_value));

@@ -244,6 +244,9 @@ void display_password_list(void) {
         nbgl_useCaseStatus("No passwords available", false, display_choice_page);
         return;
     }
+    if (passwords_sorted_alphabetically()) {
+        password_list_sort(nbPasswords);
+    }
     nbDisplayedPasswords = nbPasswords;
     genericContent.nbContents = 1;
     genericContent.contentsList = &contentsList;

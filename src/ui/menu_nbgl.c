@@ -53,6 +53,7 @@ enum {
     BARS_TOKEN,
     EXT_SYMBOLS_TOKEN,
     NO_ENTER_TOKEN,
+    SORT_TOKEN,
     KBD_TOKEN,
     LENGTH_TOKEN,
     CHARSET_BAR_TOKEN,
@@ -108,6 +109,16 @@ enum {
 #define LENGTH_OPTIONS_NB 10
 
 /**
+ * @brief Settings: switches IDs of the main settings page
+ *
+ */
+enum {
+    ENTER_SWITCH_ID = 0,
+    SORT_SWITCH_ID,
+    OPTION_SWITCHES_NB,
+};
+
+/**
  * @brief Settings: contents indexes
  *
  */
@@ -119,9 +130,9 @@ enum {
 
 static void display_home_page(void);
 
-// Settings switches: the character types, in their sub-menu, and "Press enter"
+// Settings switches: the character types, in their sub-menu, and the main page ones
 static nbgl_contentSwitch_t switches[CHARSET_SWITCHES_NB] = {0};
-static nbgl_contentSwitch_t enterSwitch = {0};
+static nbgl_contentSwitch_t optionSwitches[OPTION_SWITCHES_NB] = {0};
 
 // Settings keyboard layouts
 static const char *const availableKbd[KBD_OPTIONS_NB] = {"QWERTY", "QWERTY INT.", "AZERTY", "QWERTZ (DE)"};
@@ -378,7 +389,11 @@ static void controls_callback(int token, uint8_t index, int page) {
             break;
         case NO_ENTER_TOKEN:
             change_enter_options();
-            enterSwitch.initState = N_storage.press_enter_after_typing;
+            optionSwitches[ENTER_SWITCH_ID].initState = N_storage.press_enter_after_typing;
+            break;
+        case SORT_TOKEN:
+            change_passwords_order();
+            optionSwitches[SORT_SWITCH_ID].initState = passwords_sorted_alphabetically();
             break;
         case KBD_TOKEN: {
 #ifdef SCREEN_SIZE_WALLET
@@ -509,12 +524,20 @@ static void init_settings(void) {
     switches[EXT_SYMBOLS_ID].tuneId = TUNE_TAP_CASUAL;
 #endif
 
-    enterSwitch.initState = N_storage.press_enter_after_typing;
-    enterSwitch.text = "Press enter";
-    enterSwitch.subText = "after writing the password";
-    enterSwitch.token = NO_ENTER_TOKEN;
+    optionSwitches[ENTER_SWITCH_ID].initState = N_storage.press_enter_after_typing;
+    optionSwitches[ENTER_SWITCH_ID].text = "Press enter";
+    optionSwitches[ENTER_SWITCH_ID].subText = "after writing the password";
+    optionSwitches[ENTER_SWITCH_ID].token = NO_ENTER_TOKEN;
 #ifdef HAVE_PIEZO_SOUND
-    enterSwitch.tuneId = TUNE_TAP_CASUAL;
+    optionSwitches[ENTER_SWITCH_ID].tuneId = TUNE_TAP_CASUAL;
+#endif
+
+    optionSwitches[SORT_SWITCH_ID].initState = passwords_sorted_alphabetically();
+    optionSwitches[SORT_SWITCH_ID].text = "Alphabetical order";
+    optionSwitches[SORT_SWITCH_ID].subText = "for the passwords list";
+    optionSwitches[SORT_SWITCH_ID].token = SORT_TOKEN;
+#ifdef HAVE_PIEZO_SOUND
+    optionSwitches[SORT_SWITCH_ID].tuneId = TUNE_TAP_CASUAL;
 #endif
 
     // Initialize settings content
@@ -525,8 +548,8 @@ static void init_settings(void) {
     charsetSwitchesContent.contentActionCallback = controls_callback;
 
     contents[SETTING_ENTER].type = SWITCHES_LIST;
-    contents[SETTING_ENTER].content.switchesList.nbSwitches = 1;
-    contents[SETTING_ENTER].content.switchesList.switches = &enterSwitch;
+    contents[SETTING_ENTER].content.switchesList.nbSwitches = OPTION_SWITCHES_NB;
+    contents[SETTING_ENTER].content.switchesList.switches = optionSwitches;
     contents[SETTING_ENTER].contentActionCallback = controls_callback;
 
     // "Character types", "Password length" and "Host keyboard" entries, each opening a

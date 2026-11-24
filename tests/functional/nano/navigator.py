@@ -57,6 +57,7 @@ class CustomNanoNavigator(Navigator):
         callbacks = {
             NavInsID.WAIT: sleep,
             NavInsID.WAIT_FOR_SCREEN_CHANGE: backend.wait_for_screen_change,
+            NavInsID.LEFT_CLICK: self._left,
             # First-launch disclaimer (nbgl_useCaseChoice): the message spans
             # several pages on Nano, so step through them before confirming.
             CustomNavInsID.DISCLAIMER_CONFIRM: self._disclaimer_confirm,

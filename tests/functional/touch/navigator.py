@@ -70,6 +70,7 @@ class CustomTouchNavigator(Navigator):
             CustomNavInsID.MENU_TO_DELETE: partial(self.screen.menu_choice.choose, 4),
             CustomNavInsID.MENU_TO_DELETE_ALL: partial(self.screen.menu_choice.choose, 5),
             CustomNavInsID.LIST_TO_MENU: self.screen.settings.multi_page_exit,
+            CustomNavInsID.MENU_TO_HOME: self.screen.settings.multi_page_exit,
             CustomNavInsID.CONFIRM_YES: self.screen.confirmation.confirm,
             CustomNavInsID.KEYBOARD_WRITE: self.screen.keyboard.write,
             CustomNavInsID.KEYBOARD_TO_CONFIRM: self.screen.keyboard_confirm.tap,

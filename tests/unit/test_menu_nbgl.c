@@ -311,6 +311,22 @@ static void test_enter_switch(void) {
     TEST_ASSERT_FALSE(switch_state(content, 0));
 }
 
+static void test_sort_switch(void) {
+    show_home();
+    const nbgl_content_t *content = &settings->contentsList[ENTER_CONTENT];
+    TEST_ASSERT_EQUAL(2, content->content.switchesList.nbSwitches);
+    TEST_ASSERT_FALSE(switch_state(content, 1));
+
+    toggle_switch(content, 1, 0);
+    TEST_ASSERT_TRUE(passwords_sorted_alphabetically());
+    TEST_ASSERT_TRUE(switch_state(content, 1));
+    TEST_ASSERT_FALSE(N_storage.press_enter_after_typing);
+
+    toggle_switch(content, 1, 0);
+    TEST_ASSERT_FALSE(passwords_sorted_alphabetically());
+    TEST_ASSERT_FALSE(switch_state(content, 1));
+}
+
 /* ----------------------------------------------------------------------- */
 /* Settings: password length                                               */
 /* ----------------------------------------------------------------------- */
@@ -465,6 +481,7 @@ int main(void) {
     RUN_TEST(test_charset_toggle_keeps_a_strong_set);
     RUN_TEST(test_charset_toggle_keeps_pin_numbers_only);
     RUN_TEST(test_enter_switch);
+    RUN_TEST(test_sort_switch);
     RUN_TEST(test_length_sub_menu);
     RUN_TEST(test_length_selection);
     RUN_TEST(test_length_selection_out_of_the_list);
