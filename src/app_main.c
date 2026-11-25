@@ -35,7 +35,7 @@
 #include "password_typing.h"
 #include "ui.h"
 #if defined(POPULATE)
-#include "password.h"
+#include "tests.h"
 #endif  // POPULATE
 
 const internalStorage_t N_storage_real;
@@ -64,11 +64,7 @@ void app_main() {
     // they would be appended again on every app start and pile up as
     // duplicates.
     if (storage_freshly_initialized) {
-        // removing 1 as `sizeof` will include the trailing null byte in the result (10)
-        // but this app stores password without this trailing null byte.
-        create_new_password("password1", sizeof("password1") - 1);
-        create_new_password("password2", sizeof("password2") - 1);
-        create_new_password("password3", sizeof("password3") - 1);
+        populate_passwords();
     }
 #else
     UNUSED(storage_freshly_initialized);

@@ -64,9 +64,8 @@ static size_t nbDisplayedPasswords = 0;
 static size_t nbPasswordsPerPage = 0;
 
 // A list longer than the threshold is split into slices, each opening its own list.
-#define PASSWORDS_SLICE_THRESHOLD 20
-#define PASSWORDS_SLICE_SIZE      15
-#define MAX_SLICES                ((MAX_METADATA_COUNT + PASSWORDS_SLICE_SIZE - 1) / PASSWORDS_SLICE_SIZE)
+#define PASSWORDS_SLICE_SIZE 15
+#define MAX_SLICES           ((MAX_METADATA_COUNT + PASSWORDS_SLICE_SIZE - 1) / PASSWORDS_SLICE_SIZE)
 // "<first> - <last>"
 #define SLICE_LABEL_SIZE (2 * MAX_NICKNAME_LEN + 4)
 static char sliceLabels[MAX_SLICES][SLICE_LABEL_SIZE] = {0};

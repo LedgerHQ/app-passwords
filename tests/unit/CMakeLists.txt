@@ -32,6 +32,7 @@ set(UT_INCLUDE_DIRS
     ${APP_DIR}
     ${APP_DIR}/apdu_handlers
     ${APP_DIR}/ctaes
+    ${APP_DIR}/tests
     ${APP_DIR}/ui
     ${UT_INCLUDE_DIRS_SDK}
 )
@@ -101,6 +102,20 @@ ledger_unit_tests_add_test(
     SOURCES      ${APP_DIR}/hid_mapping.c
     INCLUDE_DIRS ${UT_INCLUDE_DIRS}
     COMPILE_DEFS ${UT_COMPILE_DEFS}
+)
+
+# Every demo password of the largest POPULATE level is created
+ledger_unit_tests_add_test(
+    NAME         test_populate
+    SOURCES      ${APP_DIR}/tests/tests.c
+                 ${APP_DIR}/password.c
+                 ${APP_DIR}/metadata.c
+                 ${APP_DIR}/options.c
+                 ${APP_DIR}/globals.c
+                 ${FAKE_SOURCES}
+    MOCK_HEADERS ${APP_DIR}/password_typing.h
+    INCLUDE_DIRS ${UT_INCLUDE_DIRS}
+    COMPILE_DEFS ${UT_COMPILE_DEFS} POPULATE=3
 )
 
 ledger_unit_tests_add_test(
