@@ -17,6 +17,7 @@ bool init_storage() {
     nvm_write((void *) &N_storage.restore_in_progress,
               NULL,
               sizeof(N_storage_real.restore_in_progress));
+    nvm_write((void *) &N_storage.passwords_order, NULL, sizeof(N_storage_real.passwords_order));
     // Clear the whole region, not just the terminator: whatever the flash held before is
     // otherwise still there behind the logical end of the database.
     nvm_write((void *) N_storage.metadatas, NULL, sizeof(N_storage_real.metadatas));

@@ -20,7 +20,7 @@ enum { CHARSET_BAR = 0, LENGTH_BAR, KBD_BAR };
 // Switches of the character types sub-menu
 enum { UPPERCASE_SWITCH = 0, LOWERCASE_SWITCH, NUMBERS_SWITCH, BARS_SWITCH, EXT_SYMBOLS_SWITCH };
 // Entries of the action page
-enum { CREATE_ACTION = 0, TYPE_ACTION, SHOW_ACTION, DELETE_ACTION, DELETE_ALL_ACTION };
+enum { TYPE_ACTION = 0, SHOW_ACTION, CREATE_ACTION, DELETE_ACTION, DELETE_ALL_ACTION };
 
 static const nbgl_genericContents_t *settings;
 
@@ -171,6 +171,10 @@ static void test_action_page_empty_database(void) {
     const nbgl_pageContent_t content = action_page();
     TEST_ASSERT_EQUAL(1, content.barsList.nbBars);
     TEST_ASSERT_EQUAL_STRING("Create a new password", content.barsList.barTexts[0]);
+
+    // The only entry opens the creation keyboard
+    screen.touch(content.barsList.tokens[0], 0);
+    TEST_ASSERT_EQUAL(SCREEN_KEYBOARD, screen.type);
 }
 
 static void test_action_page(void) {
@@ -178,6 +182,10 @@ static void test_action_page(void) {
 
     const nbgl_pageContent_t content = action_page();
     TEST_ASSERT_EQUAL(5, content.barsList.nbBars);
+    TEST_ASSERT_EQUAL_STRING("Type a password", content.barsList.barTexts[TYPE_ACTION]);
+    TEST_ASSERT_EQUAL_STRING("Show a password", content.barsList.barTexts[SHOW_ACTION]);
+    TEST_ASSERT_EQUAL_STRING("Create a new password", content.barsList.barTexts[CREATE_ACTION]);
+    TEST_ASSERT_EQUAL_STRING("Delete a password", content.barsList.barTexts[DELETE_ACTION]);
     TEST_ASSERT_EQUAL_STRING("Delete all passwords", content.barsList.barTexts[DELETE_ALL_ACTION]);
 
     screen.quit();
@@ -185,6 +193,7 @@ static void test_action_page(void) {
 }
 
 static void test_action_create(void) {
+    add_password("alpha");
     select_action(CREATE_ACTION);
     TEST_ASSERT_EQUAL(SCREEN_KEYBOARD, screen.type);
 }
@@ -300,6 +309,22 @@ static void test_enter_switch(void) {
     toggle_switch(content, 0, 0);
     TEST_ASSERT_FALSE(N_storage.press_enter_after_typing);
     TEST_ASSERT_FALSE(switch_state(content, 0));
+}
+
+static void test_sort_switch(void) {
+    show_home();
+    const nbgl_content_t *content = &settings->contentsList[ENTER_CONTENT];
+    TEST_ASSERT_EQUAL(2, content->content.switchesList.nbSwitches);
+    TEST_ASSERT_FALSE(switch_state(content, 1));
+
+    toggle_switch(content, 1, 0);
+    TEST_ASSERT_TRUE(passwords_sorted_alphabetically());
+    TEST_ASSERT_TRUE(switch_state(content, 1));
+    TEST_ASSERT_FALSE(N_storage.press_enter_after_typing);
+
+    toggle_switch(content, 1, 0);
+    TEST_ASSERT_FALSE(passwords_sorted_alphabetically());
+    TEST_ASSERT_FALSE(switch_state(content, 1));
 }
 
 /* ----------------------------------------------------------------------- */
@@ -456,6 +481,7 @@ int main(void) {
     RUN_TEST(test_charset_toggle_keeps_a_strong_set);
     RUN_TEST(test_charset_toggle_keeps_pin_numbers_only);
     RUN_TEST(test_enter_switch);
+    RUN_TEST(test_sort_switch);
     RUN_TEST(test_length_sub_menu);
     RUN_TEST(test_length_selection);
     RUN_TEST(test_length_selection_out_of_the_list);

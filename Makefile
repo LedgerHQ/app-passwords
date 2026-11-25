@@ -28,8 +28,8 @@ APPNAME ="Passwords"
 
 # Application version
 APPVERSION_M=1
-APPVERSION_N=4
-APPVERSION_P=2
+APPVERSION_N=5
+APPVERSION_P=0
 APPVERSION=$(APPVERSION_M).$(APPVERSION_N).$(APPVERSION_P)
 
 # Application source files
@@ -118,10 +118,12 @@ else
     DEFINES += TESTING
 endif
 
+# Demo passwords created on the first start, for tests only:
+# 1: password1 to password3 (CI builds), 2: 20 varied nicknames (no slices), 3: 45 (3 slices)
 POPULATE ?= 0
 ifneq ($(POPULATE), 0)
     $(info POPULATE ENABLED)
-    DEFINES += POPULATE
+    DEFINES += POPULATE=$(POPULATE)
 endif
 
 include $(BOLOS_SDK)/Makefile.standard_app

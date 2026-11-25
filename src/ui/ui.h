@@ -15,6 +15,9 @@
  * @brief prototype of function to be called when an page of settings is double-pressed
  * @param page page index (0->(nb_pages-1))
  */
+// Longest passwords list shown without slices.
+#define PASSWORDS_SLICE_THRESHOLD 20
+
 typedef void (*pwd_actionCallback_t)(const size_t index);
 extern pwd_actionCallback_t selector_callback;
 

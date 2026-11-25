@@ -91,6 +91,35 @@ static void test_password_list_set_current(void) {
     TEST_ASSERT_EQUAL(index * 2, password_list_get_current_offset());
 }
 
+static void test_password_list_sort(void) {
+    const char *const names[] = {"bravo", "Alpha", "charlie", "alpha", "al"};
+    for (size_t i = 0; i < 5; i++) {
+        TEST_ASSERT_TRUE(password_list_add_password(i, 10 + i, names[i], strlen(names[i]) + 1));
+    }
+
+    password_list_sort(5);
+    // Case is ignored, and equal nicknames keep their order
+    const char *const sorted[] = {"al", "Alpha", "alpha", "bravo", "charlie"};
+    const size_t offsets[] = {14, 11, 13, 10, 12};
+    for (size_t i = 0; i < 5; i++) {
+        TEST_ASSERT_EQUAL_STRING(sorted[i], password_list_get_password(i));
+        TEST_ASSERT_EQUAL(offsets[i], password_list_get_offset(i));
+    }
+}
+
+static void test_password_list_common_prefix_len(void) {
+    const char *const names[] = {"Bank1", "bank15", "other"};
+    for (size_t i = 0; i < 3; i++) {
+        TEST_ASSERT_TRUE(password_list_add_password(i, i, names[i], strlen(names[i]) + 1));
+    }
+    TEST_ASSERT_EQUAL(5, password_list_common_prefix_len(0, 1));
+    TEST_ASSERT_EQUAL(5, password_list_common_prefix_len(0, 0));
+    TEST_ASSERT_EQUAL(0, password_list_common_prefix_len(0, 2));
+    // Unset or out of bounds entries
+    TEST_ASSERT_EQUAL(0, password_list_common_prefix_len(0, 3));
+    TEST_ASSERT_EQUAL(0, password_list_common_prefix_len(MAX_METADATA_COUNT, 0));
+}
+
 int main(void) {
     UNITY_BEGIN();
     RUN_TEST(test_password_list_reset);
@@ -102,5 +131,7 @@ int main(void) {
     RUN_TEST(test_password_list_passwords_nok);
     RUN_TEST(test_password_list_reset_buffer);
     RUN_TEST(test_password_list_set_current);
+    RUN_TEST(test_password_list_sort);
+    RUN_TEST(test_password_list_common_prefix_len);
     return UNITY_END();
 }

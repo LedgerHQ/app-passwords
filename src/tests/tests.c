@@ -1,10 +1,14 @@
+#include <string.h>
+
 #include "io.h"
+#include "os_utils.h"
 
 #include "error.h"
 #include "password.h"
 #include "metadata.h"
 #include "password_typing.h"
 #include "tests.h"
+#include "ui.h"
 
 // Test-only APDU handler: compiled into nothing unless built with TESTING=1,
 // matching the `#ifdef TESTING` guard on the dispatch site in dispatcher.c.
@@ -60,3 +64,42 @@ int test_dispatcher(uint8_t p1, uint8_t p2, const buf_t *input) {
 }
 
 #endif  // TESTING
+
+#if defined(POPULATE)
+
+#if POPULATE == 1
+// Seeded by the CI builds: the functional tests rely on these exact entries.
+static const char *const populate_names[] = {"password1", "password2", "password3"};
+#define POPULATE_COUNT ARRAYLEN(populate_names)
+#else
+// Mixed case, digits, symbols, spaces and shared prefixes, in no particular order, to check the
+// alphabetical order and the slices labels. "a-nickname-19-chars" is as long as a nickname can be.
+static const char *const populate_names[] = {
+    "GitHub",     "amazon",      "Bank-Perso",   "2fa-backup",      "zoom",
+    "Netflix",    "bank-pro",    "_sandbox",     "Email-work",      "dropbox",
+    "Bank-joint", "Wi-Fi home",  "email-perso",  "Ledger",          "0-router",
+    "Spotify",    "Paypal",      "VPN",          "crypto-exchange", "a-nickname-19-chars",
+    "Twitter",    "Instagram",   "LinkedIn",     "Steam",           "Discord",
+    "Slack",      "Jira",        "Confluence",   "Gitlab",          "Docker Hub",
+    "npm",        "PyPI",        "Apple ID",     "Google",          "Microsoft",
+    "Outlook",    "Proton Mail", "Signal",       "Telegram",        "Uber",
+    "Airbnb",     "Booking",     "Bank-savings", "github-work",     "amazon-aws",
+};
+#if POPULATE == 2
+// The longest list shown without slices
+#define POPULATE_COUNT PASSWORDS_SLICE_THRESHOLD
+#else
+#define POPULATE_COUNT ARRAYLEN(populate_names)
+#endif
+#endif
+_Static_assert(POPULATE_COUNT <= ARRAYLEN(populate_names), "not enough demo nicknames");
+
+void populate_passwords(void) {
+    for (size_t i = 0; i < POPULATE_COUNT; i++) {
+        const char *const *names = (const char *const *) PIC(populate_names);
+        const char *name = (const char *) PIC(names[i]);
+        create_new_password(name, strlen(name));
+    }
+}
+
+#endif  // POPULATE
