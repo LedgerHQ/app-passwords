@@ -5,7 +5,10 @@
 #include "ui.h"
 #include "ui_test_helpers.h"
 #include "globals.h"
+#include "metadata.h"
+#include "options.h"
 #include "password.h"
+#include "password_list.h"
 #include "fake_vars.h"
 
 // Indexes passed to the action selected in the passwords list
@@ -67,6 +70,148 @@ static void test_password_list_shows_every_nickname(void) {
     TEST_ASSERT_EQUAL_STRING("alpha", content->content.choicesList.names[0]);
     TEST_ASSERT_EQUAL_STRING("bravo", content->content.choicesList.names[1]);
     TEST_ASSERT_EQUAL_STRING("charlie", content->content.choicesList.names[2]);
+}
+
+static void test_password_list_sorted(void) {
+    add_password("charlie");
+    add_password("Bravo");
+    add_password("alpha");
+    N_storage_rw.passwords_order = PASSWORDS_ORDER_ALPHABETICAL;
+    selector_callback = spy_selector;
+
+    display_password_list();
+    const nbgl_content_t *content = list_content();
+    TEST_ASSERT_EQUAL_STRING("alpha", content->content.choicesList.names[0]);
+    TEST_ASSERT_EQUAL_STRING("Bravo", content->content.choicesList.names[1]);
+    TEST_ASSERT_EQUAL_STRING("charlie", content->content.choicesList.names[2]);
+
+    // The selected entry keeps its own record
+    content->contentActionCallback(0, 0, 0);
+    TEST_ASSERT_EQUAL(1, selected_count);
+    TEST_ASSERT_EQUAL(get_metadata(2), password_list_get_offset(selected[0]));
+}
+
+static void add_numbered_passwords(size_t count) {
+    char name[8];
+    for (size_t i = 0; i < count; i++) {
+        snprintf(name, sizeof(name), "n%02u", (unsigned int) i);
+        add_password(name);
+    }
+}
+
+static void test_password_list_up_to_the_threshold(void) {
+    add_numbered_passwords(20);
+
+    display_password_list();
+    TEST_ASSERT_EQUAL_STRING("Passwords list", screen.title);
+    TEST_ASSERT_EQUAL(20, list_content()->content.choicesList.nbChoices);
+    TEST_ASSERT_EQUAL_STRING("n19", list_content()->content.choicesList.names[19]);
+}
+
+// Press the slice `slice` of the slices list
+static void choose_slice(size_t slice) {
+    const nbgl_contentBarsList_t *bars = &list_content()->content.barsList;
+    TEST_ASSERT_TRUE(slice < bars->nbBars);
+    list_content()->contentActionCallback(bars->tokens[slice], 0, 0);
+}
+
+static void test_password_list_slices(void) {
+    add_numbered_passwords(21);
+    choices_per_page = 4;
+    selector_callback = spy_selector;
+
+    display_password_list();
+    TEST_ASSERT_EQUAL_STRING("Passwords list", screen.title);
+    TEST_ASSERT_EQUAL_PTR(display_choice_page, screen.quit);
+    TEST_ASSERT_EQUAL(0, screen.init_page);
+    const nbgl_content_t *content = list_content();
+    TEST_ASSERT_EQUAL(BARS_LIST, content->type);
+    TEST_ASSERT_EQUAL(2, content->content.barsList.nbBars);
+    // Creation order: labelled by position
+    TEST_ASSERT_EQUAL_STRING("1 - 15", content->content.barsList.barTexts[0]);
+    TEST_ASSERT_EQUAL_STRING("16 - 21", content->content.barsList.barTexts[1]);
+
+    choose_slice(1);
+    TEST_ASSERT_EQUAL_STRING("16 - 21", screen.title);
+    content = list_content();
+    TEST_ASSERT_EQUAL(CHOICES_LIST, content->type);
+    TEST_ASSERT_EQUAL(6, content->content.choicesList.nbChoices);
+    TEST_ASSERT_EQUAL_STRING("n15", content->content.choicesList.names[0]);
+    TEST_ASSERT_EQUAL_STRING("n20", content->content.choicesList.names[5]);
+
+    // Second entry of the second page: the index is absolute in the whole list
+    content->contentActionCallback(0, 1, 1);
+    // Out of the slice
+    content->contentActionCallback(0, 2, 1);
+    TEST_ASSERT_EQUAL(1, selected_count);
+    TEST_ASSERT_EQUAL(20, selected[0]);
+    TEST_ASSERT_EQUAL_STRING("n20", password_list_get_password(selected[0]));
+
+    // Back to the slices
+    screen.quit();
+    TEST_ASSERT_EQUAL_STRING("Passwords list", screen.title);
+    TEST_ASSERT_EQUAL(2, list_content()->content.barsList.nbBars);
+    TEST_ASSERT_EQUAL(0, screen.init_page);
+    // Unknown tokens are ignored
+    list_content()->contentActionCallback(FIRST_USER_TOKEN + 2, 0, 0);
+    list_content()->contentActionCallback(FIRST_USER_TOKEN - 1, 0, 0);
+    TEST_ASSERT_EQUAL_STRING("Passwords list", screen.title);
+}
+
+static void test_password_list_back_to_a_slice_on_another_page(void) {
+    add_numbered_passwords(31);
+    bars_per_page = 2;
+
+    display_password_list();
+    TEST_ASSERT_EQUAL(3, list_content()->content.barsList.nbBars);
+    choose_slice(2);
+    TEST_ASSERT_EQUAL(1, list_content()->content.choicesList.nbChoices);
+    TEST_ASSERT_EQUAL_STRING("n30", list_content()->content.choicesList.names[0]);
+
+    // Back on the second page, which holds the third slice
+    screen.quit();
+    TEST_ASSERT_EQUAL(BARS_LIST, list_content()->type);
+    TEST_ASSERT_EQUAL(1, screen.init_page);
+
+    // A new list starts on the first page
+    display_password_list();
+    TEST_ASSERT_EQUAL(0, screen.init_page);
+}
+
+static void test_password_list_slice_labels_by_position(void) {
+    add_numbered_passwords(31);
+
+    display_password_list();
+    const nbgl_contentBarsList_t *bars = &list_content()->content.barsList;
+    TEST_ASSERT_EQUAL(3, bars->nbBars);
+    TEST_ASSERT_EQUAL_STRING("1 - 15", bars->barTexts[0]);
+    TEST_ASSERT_EQUAL_STRING("16 - 30", bars->barTexts[1]);
+    // A single entry keeps its position only
+    TEST_ASSERT_EQUAL_STRING("31", bars->barTexts[2]);
+}
+
+static void test_password_list_slice_labels(void) {
+    // Sorted, case ignored: "Bank1" to "Bank9" fill the first slice, "bankx00" and up the second
+    char name[12];
+    for (size_t i = 1; i <= 15; i++) {
+        snprintf(name, sizeof(name), "%s%u", (i % 2) ? "Bank" : "bank", (unsigned int) i);
+        add_password(name);
+    }
+    for (size_t i = 0; i < 15; i++) {
+        snprintf(name, sizeof(name), "bankx%02u", (unsigned int) i);
+        add_password(name);
+    }
+    add_password("zebra");
+    N_storage_rw.passwords_order = PASSWORDS_ORDER_ALPHABETICAL;
+
+    display_password_list();
+    const nbgl_contentBarsList_t *bars = &list_content()->content.barsList;
+    TEST_ASSERT_EQUAL(3, bars->nbBars);
+    // Upper case, as the order ignores the case
+    TEST_ASSERT_EQUAL_STRING("BANK1 - BANK9", bars->barTexts[0]);
+    TEST_ASSERT_EQUAL_STRING("BANKX0 - BANKX1", bars->barTexts[1]);
+    // A single entry keeps its whole nickname
+    TEST_ASSERT_EQUAL_STRING("ZEBRA", bars->barTexts[2]);
 }
 
 // The list stops at the first record that cannot be read
@@ -306,6 +451,12 @@ int main(void) {
     UNITY_BEGIN();
     RUN_TEST(test_password_list_empty);
     RUN_TEST(test_password_list_shows_every_nickname);
+    RUN_TEST(test_password_list_sorted);
+    RUN_TEST(test_password_list_up_to_the_threshold);
+    RUN_TEST(test_password_list_slices);
+    RUN_TEST(test_password_list_back_to_a_slice_on_another_page);
+    RUN_TEST(test_password_list_slice_labels_by_position);
+    RUN_TEST(test_password_list_slice_labels);
     RUN_TEST(test_password_list_stops_at_a_corrupted_record);
     RUN_TEST(test_password_list_selection_is_absolute);
     RUN_TEST(test_password_list_selection_out_of_the_list);

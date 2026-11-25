@@ -9,4 +9,6 @@ pytest_directory = "./tests/functional"
 
 [use_cases]
 use_test = "TESTING=1 POPULATE=1"
+use_test_2 = "TESTING=1 POPULATE=2"
+use_test_3 = "TESTING=1 POPULATE=3"
 dbg_use_test = "DEBUG=1 TESTING=1 POPULATE=1"

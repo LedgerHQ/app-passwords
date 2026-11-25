@@ -83,6 +83,51 @@ bool password_list_add_password(const size_t index,
     return true;
 }
 
+static char ascii_lower(const char c) {
+    return (c >= 'A' && c <= 'Z') ? (char) (c - 'A' + 'a') : c;
+}
+
+static int compare_nicknames(const char *a, const char *b) {
+    while (*a != '\0' && ascii_lower(*a) == ascii_lower(*b)) {
+        a++;
+        b++;
+    }
+    return (int) (unsigned char) ascii_lower(*a) - (int) (unsigned char) ascii_lower(*b);
+}
+
+size_t password_list_common_prefix_len(const size_t index1, const size_t index2) {
+    if (index1 >= MAX_METADATA_COUNT || index2 >= MAX_METADATA_COUNT) {
+        return 0;
+    }
+    const char *a = passwordList.passwords[index1];
+    const char *b = passwordList.passwords[index2];
+    if (a == NULL || b == NULL) {
+        return 0;
+    }
+    size_t len = 0;
+    while (a[len] != '\0' && ascii_lower(a[len]) == ascii_lower(b[len])) {
+        len++;
+    }
+    return len;
+}
+
+void password_list_sort(const size_t count) {
+    const size_t nb = (count < MAX_METADATA_COUNT) ? count : MAX_METADATA_COUNT;
+    // Stable insertion sort: equal nicknames keep their creation order.
+    for (size_t i = 1; i < nb; i++) {
+        const char *password = passwordList.passwords[i];
+        const size_t offset = passwordList.offsets[i];
+        size_t j = i;
+        while (j > 0 && compare_nicknames(passwordList.passwords[j - 1], password) > 0) {
+            passwordList.passwords[j] = passwordList.passwords[j - 1];
+            passwordList.offsets[j] = passwordList.offsets[j - 1];
+            j--;
+        }
+        passwordList.passwords[j] = password;
+        passwordList.offsets[j] = offset;
+    }
+}
+
 void password_list_reset_buffer() {
     explicit_bzero(&passwordList.buffer[0], sizeof(passwordList.buffer));
     passwordList.currentOffset = 0;

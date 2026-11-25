@@ -89,6 +89,22 @@ static void test_change_enter_options(void) {
     TEST_ASSERT_FALSE(N_storage_rw.press_enter_after_typing);
 }
 
+static void test_passwords_order(void) {
+    TEST_ASSERT_FALSE(passwords_sorted_alphabetically());
+    change_passwords_order();
+    TEST_ASSERT_EQUAL(PASSWORDS_ORDER_ALPHABETICAL, N_storage_rw.passwords_order);
+    TEST_ASSERT_TRUE(passwords_sorted_alphabetically());
+    change_passwords_order();
+    TEST_ASSERT_EQUAL(PASSWORDS_ORDER_CREATION, N_storage_rw.passwords_order);
+    TEST_ASSERT_FALSE(passwords_sorted_alphabetically());
+
+    // Any other value reads as the creation order
+    N_storage_rw.passwords_order = 0xAA;
+    TEST_ASSERT_FALSE(passwords_sorted_alphabetically());
+    change_passwords_order();
+    TEST_ASSERT_TRUE(passwords_sorted_alphabetically());
+}
+
 static void test_init_storage_on_a_blank_storage(void) {
     // Whatever the flash held before the first start
     memset(&N_storage_rw, 0xAA, sizeof(N_storage_rw));
@@ -103,6 +119,7 @@ static void test_init_storage_on_a_blank_storage(void) {
     TEST_ASSERT_EQUAL(0, N_storage_rw.restore_in_progress);
     TEST_ASSERT_EQUAL_HEX8(0x07, N_storage_rw.charset_options);
     TEST_ASSERT_EQUAL(PASSWORD_DEFAULT_SIZE, N_storage_rw.password_length);
+    TEST_ASSERT_EQUAL(PASSWORDS_ORDER_CREATION, N_storage_rw.passwords_order);
     for (size_t i = 0; i < sizeof(N_storage_rw.metadatas); i++) {
         TEST_ASSERT_EQUAL_HEX8(0, N_storage_rw.metadatas[i]);
     }
@@ -116,6 +133,7 @@ static void test_init_storage_keeps_an_initialized_storage(void) {
     N_storage_rw.metadatas[0] = 0x02;
     N_storage_rw.charset_options = 0xFF;
     N_storage_rw.password_length = 64;
+    N_storage_rw.passwords_order = PASSWORDS_ORDER_ALPHABETICAL;
     const internalStorage_t before = N_storage_rw;
 
     TEST_ASSERT_FALSE(init_storage());
@@ -130,6 +148,7 @@ int main(void) {
     RUN_TEST(test_password_length);
     RUN_TEST(test_charset_options);
     RUN_TEST(test_change_enter_options);
+    RUN_TEST(test_passwords_order);
     RUN_TEST(test_init_storage_on_a_blank_storage);
     RUN_TEST(test_init_storage_keeps_an_initialized_storage);
     return UNITY_END();

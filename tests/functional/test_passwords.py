@@ -2,6 +2,7 @@ from pathlib import Path
 from time import sleep
 
 import pytest
+from ledgered.devices import Device
 from passwordsManager_cmd import PasswordsManagerCommand
 from ragger.backend import BackendInterface
 from ragger.navigator import Navigator, NavIns, NavInsID
@@ -85,6 +86,77 @@ def test_create_password(navigator: Navigator, default_screenshot_path: Path):
     navigator.navigate_and_compare(
         default_screenshot_path,
         "create_password",
+        instructions,
+        screen_change_before_first_instruction=False,
+    )
+
+
+def test_alphabetical_order(navigator: Navigator, device: Device, default_screenshot_path: Path):
+    """With the "Alphabetical order" setting on, the list is sorted by nickname."""
+    # "abc", created after password1 to password3, comes first once sorted.
+    instructions = [
+        CustomNavInsID.DISCLAIMER_CONFIRM,
+        CustomNavInsID.CHOOSE_KBL_QWERTY,
+        CustomNavInsID.HOME_TO_MENU,
+        CustomNavInsID.MENU_TO_CREATE,
+        NavIns(CustomNavInsID.KEYBOARD_WRITE, ("a",)),
+        NavIns(CustomNavInsID.KEYBOARD_WRITE, ("b",)),
+        NavIns(CustomNavInsID.KEYBOARD_WRITE, ("c",)),
+        CustomNavInsID.KEYBOARD_TO_CONFIRM,
+        NavInsID.WAIT_FOR_SCREEN_CHANGE,
+        CustomNavInsID.MENU_TO_HOME,
+        CustomNavInsID.HOME_TO_SETTINGS,
+    ]
+    if device.is_nano:
+        # One page per entry: the three sub-menus, "Press enter", then "Alphabetical order".
+        instructions += [CustomNavInsID.SETTINGS_NEXT] * 4
+        instructions += [CustomNavInsID.BUTTON_APPROVE, CustomNavInsID.SETTINGS_TO_HOME]
+        # "Back" lands on the settings page of home, right after "Tap to manage".
+        instructions += [NavInsID.LEFT_CLICK, CustomNavInsID.BUTTON_APPROVE]
+        instructions += [CustomNavInsID.MENU_TO_DISPLAY]
+        instructions += [CustomNavInsID.SETTINGS_NEXT] * 3
+    else:
+        # The two switches are on the second settings page.
+        instructions += [CustomNavInsID.SETTINGS_NEXT, NavIns(CustomNavInsID.SETTINGS_CHOOSE, (2,))]
+        instructions += [CustomNavInsID.SETTINGS_TO_HOME, CustomNavInsID.HOME_TO_MENU]
+        instructions += [CustomNavInsID.MENU_TO_DISPLAY]
+    navigator.navigate_and_compare(
+        default_screenshot_path,
+        "alphabetical_order",
+        instructions,
+        screen_change_before_first_instruction=False,
+    )
+
+
+def test_password_list_slices(navigator: Navigator, device: Device, default_screenshot_path: Path):
+    """Beyond 20 passwords, the list is split into slices of 15, each opening its own list."""
+    # password1 to password3, then "a" to "r": 21 passwords, sliced into 15 and 6.
+    instructions = [
+        CustomNavInsID.DISCLAIMER_CONFIRM,
+        CustomNavInsID.CHOOSE_KBL_QWERTY,
+        CustomNavInsID.HOME_TO_MENU,
+    ]
+    for nickname in "abcdefghijklmnopqr":
+        instructions += [
+            CustomNavInsID.MENU_TO_CREATE,
+            NavIns(CustomNavInsID.KEYBOARD_WRITE, (nickname,)),
+            CustomNavInsID.KEYBOARD_TO_CONFIRM,
+            NavInsID.WAIT_FOR_SCREEN_CHANGE,
+        ]
+    navigator.navigate(instructions, screen_change_before_first_instruction=False)
+
+    # The slices, the second one and back, then the first entry of the second one.
+    instructions = [CustomNavInsID.MENU_TO_DISPLAY]
+    if device.is_nano:
+        instructions += [CustomNavInsID.SETTINGS_NEXT, CustomNavInsID.BUTTON_APPROVE]
+        instructions += [CustomNavInsID.LIST_TO_MENU, CustomNavInsID.BUTTON_APPROVE]
+    else:
+        instructions += [NavIns(CustomNavInsID.LIST_CHOOSE, (2,)), CustomNavInsID.LIST_TO_MENU]
+        instructions += [NavIns(CustomNavInsID.LIST_CHOOSE, (2,))]
+    instructions += [NavIns(CustomNavInsID.LIST_CHOOSE, (1,))]
+    navigator.navigate_and_compare(
+        default_screenshot_path,
+        "password_list_slices",
         instructions,
         screen_change_before_first_instruction=False,
     )

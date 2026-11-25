@@ -34,9 +34,11 @@ typedef struct internalStorage_t {
     uint8_t restore_in_progress;
     // Length of new passwords, see options.h.
     uint8_t password_length;
+    // Order of the passwords list, see options.h.
+    uint8_t passwords_order;
 } internalStorage_t;
 
-/* `restore_in_progress` and `password_length` have to stay inside the padding that already followed
+/* The fields after `charset_options` have to stay inside the padding that already followed
  * `charset_options`: the structure then keeps the size and the field offsets it had before,
  * and an app update reads the user's data where it left it. That holds exactly when the
  * structure ends one alignment unit past the offset of `charset_options`. */

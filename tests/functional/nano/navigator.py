@@ -57,6 +57,7 @@ class CustomNanoNavigator(Navigator):
         callbacks = {
             NavInsID.WAIT: sleep,
             NavInsID.WAIT_FOR_SCREEN_CHANGE: backend.wait_for_screen_change,
+            NavInsID.LEFT_CLICK: self._left,
             # First-launch disclaimer (nbgl_useCaseChoice): the message spans
             # several pages on Nano, so step through them before confirming.
             CustomNavInsID.DISCLAIMER_CONFIRM: self._disclaimer_confirm,
@@ -69,11 +70,11 @@ class CustomNanoNavigator(Navigator):
             # Settings navigation
             CustomNavInsID.SETTINGS_NEXT: self._right,
             CustomNavInsID.SETTINGS_TO_HOME: self._settings_to_home,
-            # Main menu bars (see src/ui/menu_nbgl.c: Create, Type, Show,
+            # Main menu bars (see src/ui/menu_nbgl.c: Type, Show, Create,
             # Delete, Delete all). Each bar is a page on Nano.
-            CustomNavInsID.MENU_TO_CREATE: lambda: self._menu_select_bar(0),
-            CustomNavInsID.MENU_TO_TYPE: lambda: self._menu_select_bar(1),
-            CustomNavInsID.MENU_TO_DISPLAY: lambda: self._menu_select_bar(2),
+            CustomNavInsID.MENU_TO_CREATE: lambda: self._menu_select_bar(2),
+            CustomNavInsID.MENU_TO_TYPE: lambda: self._menu_select_bar(0),
+            CustomNavInsID.MENU_TO_DISPLAY: lambda: self._menu_select_bar(1),
             CustomNavInsID.MENU_TO_DELETE: lambda: self._menu_select_bar(3),
             CustomNavInsID.MENU_TO_DELETE_ALL: lambda: self._menu_select_bar(4),
             # "Back" entry of the main menu

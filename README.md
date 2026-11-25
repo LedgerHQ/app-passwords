@@ -138,6 +138,10 @@ Before running them, you first need to compile the application with env variable
 make all TESTING=1 POPULATE=1
 ```
 
+`POPULATE=1` creates the three passwords the functional tests expect, on the first start.
+For manual tests only, `POPULATE=2` creates 20 passwords with varied nicknames, the longest list
+shown without slices, and `POPULATE=3` creates 45 of them, split into three slices.
+
 Then you can execute tests on speculos with:
 
 ```bash

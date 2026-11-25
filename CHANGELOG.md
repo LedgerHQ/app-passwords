@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.0] - 2026-11-24
+
+### Add
+
+- "Alphabetical order" setting, next to "Press enter": the passwords list is sorted by nickname,
+  ignoring case, instead of by creation order (the default).
+- Beyond 20 passwords, the passwords list is split into slices of 15, each opening its own list and
+  labelled with its first and last nicknames when sorted, with its positions otherwise.
+
+### Change
+
+- The actions menu lists "Type a password" and "Show a password" before "Create a new password".
+
 ## [1.4.2] - 2026-10-22
 
 ### Fix
