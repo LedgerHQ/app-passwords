@@ -309,11 +309,9 @@ static void display_slices_list(void) {
     contentsList.content.barsList.tuneId = TUNE_TAP_CASUAL;
 #endif
     contentsList.contentActionCallback = &slice_callback;
+    // Touch screens start on the first page, Nano on the slice itself.
 #ifdef SCREEN_SIZE_WALLET
-    const uint8_t nbSlicesPerPage =
-        nbgl_useCaseGetNbBarsInPage(nbSlices, &contentsList.content.barsList, 0, false);
-    // Touch screens start on the page holding the current slice, Nano on the slice itself.
-    const uint8_t initPage = (nbSlicesPerPage > 0) ? currentSlice / nbSlicesPerPage : 0;
+    const uint8_t initPage = 0;
 #else
     const uint8_t initPage = currentSlice;
 #endif

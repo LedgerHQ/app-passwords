@@ -44,8 +44,6 @@ extern screen_t screen;
 extern size_t screen_count;
 // Choices per page returned by nbgl_useCaseGetNbChoicesInPage()
 extern uint8_t choices_per_page;
-// Bars per page returned by nbgl_useCaseGetNbBarsInPage()
-extern uint8_t bars_per_page;
 
 // Result of the password generation, and the text written for a displayed password
 extern bool generation_result;
