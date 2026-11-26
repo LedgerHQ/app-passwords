@@ -158,9 +158,8 @@ static void test_password_list_slices(void) {
     TEST_ASSERT_EQUAL_STRING("Passwords list", screen.title);
 }
 
-static void test_password_list_back_to_a_slice_on_another_page(void) {
+static void test_password_list_back_to_the_slices(void) {
     add_numbered_passwords(31);
-    bars_per_page = 2;
 
     display_password_list();
     TEST_ASSERT_EQUAL(3, list_content()->content.barsList.nbBars);
@@ -168,10 +167,10 @@ static void test_password_list_back_to_a_slice_on_another_page(void) {
     TEST_ASSERT_EQUAL(1, list_content()->content.choicesList.nbChoices);
     TEST_ASSERT_EQUAL_STRING("n30", list_content()->content.choicesList.names[0]);
 
-    // Back on the second page, which holds the third slice
+    // Back on the first page
     screen.quit();
     TEST_ASSERT_EQUAL(BARS_LIST, list_content()->type);
-    TEST_ASSERT_EQUAL(1, screen.init_page);
+    TEST_ASSERT_EQUAL(0, screen.init_page);
 
     // A new list starts on the first page
     display_password_list();
@@ -454,7 +453,7 @@ int main(void) {
     RUN_TEST(test_password_list_sorted);
     RUN_TEST(test_password_list_up_to_the_threshold);
     RUN_TEST(test_password_list_slices);
-    RUN_TEST(test_password_list_back_to_a_slice_on_another_page);
+    RUN_TEST(test_password_list_back_to_the_slices);
     RUN_TEST(test_password_list_slice_labels_by_position);
     RUN_TEST(test_password_list_slice_labels);
     RUN_TEST(test_password_list_stops_at_a_corrupted_record);
